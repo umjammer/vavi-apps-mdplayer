@@ -320,7 +320,7 @@ public class MuapDriver extends BaseDriver {
         }
 
         if (dat.port == -1) return;
-        //Debug.WriteLine(string.Format("Out ChipA:%d Port:%d Adr:[{%02x] val[%02x]", chipId, dat.port, dat.address, dat.data));
+        //logger.log(Level.TRACE, "Out ChipA:%d Port:%d Adr:[{%02x] val[%02x]".formatted(chipId, dat.port, dat.address, dat.data));
 
         plugin.chipRegister.chip(Ym2612Chip.class).write(chipId, dat.port, dat.address, dat.data, model, frameCounter);
     }

@@ -58,7 +58,7 @@ class Ymf278Probe {
                 StringBuilder sb = new StringBuilder("  base " + base + " (0x"
                         + Integer.toHexString(8 + base * 24) + "): ");
                 for (int ch = 0; ch < 24; ch++) {
-                    sb.append(String.format("%02x ", regs[2][8 + base * 24 + ch]));
+                    sb.append("%02x ".formatted(regs[2][8 + base * 24 + ch]));
                 }
                 System.err.println(sb);
             }

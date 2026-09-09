@@ -1341,7 +1341,7 @@ public class PsxHw implements PsxBus {
                 case 'd', 'D' -> out.append(integer(spec, value, 10, false, true));
                 case 'u', 'U' -> out.append(integer(spec, Integer.toUnsignedLong(value), 10, false, false));
                 case 'c', 'C' -> out.append(pad(String.valueOf((char) value), spec));
-                case 's' -> out.append(String.format(tfmt + "s", ramString(value)));
+                case 's' -> out.append((tfmt + "s").formatted(ramString(value)));
                 case '%' -> {
                     out.append('%');
                     curparm--;

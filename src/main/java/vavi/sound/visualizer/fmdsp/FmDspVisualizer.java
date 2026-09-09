@@ -1411,7 +1411,7 @@ public class FmDspVisualizer extends JComponent {
                 // FALLTHRU
             case SSG:
                 if (track.ssgNoise) {
-                    info2 = String.format("%c%02X ", track.ssgTone ? 'M' : 'N', track.ssgNoiseFreq & 0x1f);
+                    info2 = "%c%02X ".formatted(track.ssgTone ? 'M' : 'N', track.ssgNoiseFreq & 0x1f);
                 }
                 break;
             case FM3EX:
@@ -1439,14 +1439,14 @@ public class FmDspVisualizer extends JComponent {
         putSmall("KN:", TDETAIL_X, y + 6, 1, true);
         putSmall(notestr, TDETAIL_KN_V_X, y + 6, 1, true);
         putSmall("TN:", TDETAIL_TN_X, y + 6, 1, true);
-        putSmall(String.format("%03d", track.toneNum), TDETAIL_TN_V_X, y + 6, 1, true);
+        putSmall("%03d".formatted(track.toneNum), TDETAIL_TN_V_X, y + 6, 1, true);
         putSmall("Vl", TDETAIL_VL_X, y + 6, 1, true);
         putSmall(":", TDETAIL_VL_C_X, y + 6, 1, true);
-        putSmall(String.format("%03d", track.volume), TDETAIL_VL_V_X, y + 6, 1, true);
+        putSmall("%03d".formatted(track.volume), TDETAIL_VL_V_X, y + 6, 1, true);
         putSmall("GT:", TDETAIL_GT_X, y + 6, 1, true);
-        putSmall(String.format("%03d", track.gate), TDETAIL_GT_V_X, y + 6, 1, true);
+        putSmall("%03d".formatted(track.gate), TDETAIL_GT_V_X, y + 6, 1, true);
         putSmall("DT:", TDETAIL_DT_X, y + 6, 1, true);
-        putSmall(String.format("%03d", track.detune > 0 ? track.detune : -track.detune),
+        putSmall("%03d".formatted(track.detune > 0 ? track.detune : -track.detune),
                 TDETAIL_DT_V_X, y + 6, 1, true);
         int sign = track.detune == 0 ? 0 : (track.detune < 0 ? 1 : 2);
         vramblit(TDETAIL_DT_S_X, y + 6 + 2, s_dt_sign, sign * (DT_SIGN_W * DT_SIGN_H), DT_SIGN_W, DT_SIGN_H);
@@ -2006,14 +2006,14 @@ public class FmDspVisualizer extends JComponent {
             vramblitColor(LEVEL_X + LEVEL_W * c - 1, PANPOT_Y, s_panpot, pan * (PANPOT_W * PANPOT_H),
                     PANPOT_W, PANPOT_H, masked ? 5 : 1);
             if (c != 9) {
-                putSmall(String.format("%03d", prog), LEVEL_X + LEVEL_W * c, LEVEL_PROG_Y, 1, true);
+                putSmall("%03d".formatted(prog), LEVEL_X + LEVEL_W * c, LEVEL_PROG_Y, 1, true);
             }
             String buf = "---";
             if (c != 9 && playing) {
                 int oct = (key >> 4) & 0xf;
                 int n = key & 0xf;
                 if (n < 12) {
-                    buf = String.format("%03d", oct * 12 + n);
+                    buf = "%03d".formatted(oct * 12 + n);
                 }
             }
             putSmall(buf, LEVEL_X + LEVEL_W * c, LEVEL_KEY_Y, 1, true);

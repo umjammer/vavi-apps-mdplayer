@@ -128,6 +128,6 @@ public class Memory {
     }
 
     public String getBank() {
-        return String.format("bnk %d:%d:%d:%d", cartROMBank, vRAMBank, exRAMBank, wkRAMBank);
+        return "bnk %d:%d:%d:%d".formatted(cartROMBank, vRAMBank, exRAMBank, wkRAMBank);
     }
 }

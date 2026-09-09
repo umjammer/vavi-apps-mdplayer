@@ -183,12 +183,12 @@ System.out.println("out size: " + new File(outPath).length());
                 : 0;
 
         System.out.println("=== WAV Comparison Results ===");
-        System.out.println("Reference RMS: " + String.format("%.2f", refRms));
-        System.out.println("Output RMS:    " + String.format("%.2f", outRms));
-        System.out.println("Diff RMS:      " + String.format("%.2f", rmsDiff));
+        System.out.println("Reference RMS: " + "%.2f".formatted(refRms));
+        System.out.println("Output RMS:    " + "%.2f".formatted(outRms));
+        System.out.println("Diff RMS:      " + "%.2f".formatted(rmsDiff));
         System.out.println("Max Diff:      " + maxDiff);
-        System.out.println("SNR (dB):      " + String.format("%.2f", snr));
-        System.out.println("Correlation:   " + String.format("%.6f", correlation));
+        System.out.println("SNR (dB):      " + "%.2f".formatted(snr));
+        System.out.println("Correlation:   " + "%.6f".formatted(correlation));
 
         assertTrue(outRms > 200 && Math.abs(correlation) > 0.85, "quality test");
     }
