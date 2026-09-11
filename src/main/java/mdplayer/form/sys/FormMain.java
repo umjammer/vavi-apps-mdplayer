@@ -128,7 +128,7 @@ public class FormMain extends JFrame {
         return ym2612Midi.ym2612Midi;
     }
 
-    private static final Point empty = new Point(0, 0);
+    static final Point empty = new Point(0, 0);
 
     private BufferedImage pbRf5c164Screen;
     private FrameBuffer mainScreen = new FrameBuffer();
@@ -156,7 +156,7 @@ public class FormMain extends JFrame {
 //    private frmVSTeffectList frmVSTeffectList = null;
 
     private FormMixer2 frmMixer2 = null;
-    private FormVisWave frmVisWave;
+    private FormVisWave frmVisWave = new FormVisWave();
     private FormFmdsp frmFmdsp = new FormFmdsp();
     private FormVSTeffectList frmVSTeffectList;
 
@@ -510,7 +510,7 @@ public class FormMain extends JFrame {
         if (setting.getLocation().getOPlayList()) dispPlayList();
         if (setting.getLocation().getOInfo()) openInfo();
         if (setting.getLocation().getOMixer()) openMixer();
-        if (setting.getLocation().getOpenVisWave()) openFormVisWave();
+        if (setting.getLocation().getOpenVisWave()) frmVisWave.open();
         if (setting.getLocation().getOpenVSTeffectList()) openVSTeffectList();
 
         for (Map.Entry<ViewProvider, View[]> e : views.entrySet()) {
@@ -915,12 +915,7 @@ public class FormMain extends JFrame {
             }
         }
 
-        if (frmVisWave != null && !frmVisWave.isClosed) {
-            setting.getLocation().setPosVisWave(frmVisWave.getLocation());
-            frmVisWave.setVisible(false);
-            setting.getLocation().setOpenVisWave(true);
-        }
-
+        frmVisWave.close();
         frmFmdsp.close(audio);
 
         setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
@@ -1084,43 +1079,6 @@ public class FormMain extends JFrame {
         frmConsole = new FormConsole(this);
         frmConsole.setLocation(this.getLocation().x, this.getLocation().y + 100);
         frmConsole.setVisible(true);
-    }
-
-    private void openFormVisWave() {
-        if (frmVisWave != null && !frmVisWave.isClosed) {
-            frmVisWave.requestFocus();
-            return;
-        }
-
-        frmVisWave = new FormVisWave(this);
-
-        if (setting.getLocation().getPosVisWave().equals(empty)) {
-            frmVisWave.x = this.getLocation().x;
-            frmVisWave.y = this.getLocation().y + 264;
-        } else {
-            frmVisWave.x = setting.getLocation().getPosVisWave().x;
-            frmVisWave.y = setting.getLocation().getPosVisWave().y;
-        }
-
-        frmVisWave.setVisible(true);
-
-        checkAndSetForm(frmVisWave);
-    }
-
-    private void closeFormVisWave() {
-        if (frmVisWave == null) return;
-
-        try {
-            frmVisWave.setVisible(false);
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-        }
-        try {
-            frmVisWave.dispose();
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-        }
-        frmVisWave = null;
     }
 
     private void openInfo() {
@@ -1343,6 +1301,7 @@ public class FormMain extends JFrame {
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
         frmFmdsp.init();
+        frmVisWave.init(this);
 
         reqAllScreenInit = false;
     }
@@ -2485,7 +2444,7 @@ public class FormMain extends JFrame {
         }
     }
 
-    private static void checkAndSetForm(JFrame frm) {
+    static void checkAndSetForm(JFrame frm) {
         frm.pack();
         Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
         Rectangle rc = new Rectangle(frm.getLocation(), frm.getSize());
@@ -3032,7 +2991,7 @@ public class FormMain extends JFrame {
         this.visualizerMenu.setIcon(new ImageIcon(Common.getImage("empty")));
         this.visualizerMenu.setName("visualizer");
         this.tsmiVisualizer.setName("tsmiVisualizer");
-        this.tsmiVisualizer.addActionListener(_ -> openFormVisWave());
+        this.tsmiVisualizer.addActionListener(_ -> frmVisWave.open());
         this.fmdspVisualizer.setName("fmdspVisualizer");
         this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
         this.visualizerMenu.add(this.tsmiVisualizer);
