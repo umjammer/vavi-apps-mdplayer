@@ -159,6 +159,10 @@ public abstract class BaseDriver {
         watched = true;
     }
 
+    public void removeViewListener(GenericListener listener) {
+        viewSupport.removeGenericListener(listener);
+    }
+
     /**
      * Fires a view event.
      *

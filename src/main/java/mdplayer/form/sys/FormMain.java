@@ -157,6 +157,7 @@ public class FormMain extends JFrame {
 
     private FormMixer2 frmMixer2 = null;
     private FormVisWave frmVisWave;
+    private FormFmdsp frmFmdsp = new FormFmdsp();
     private FormVSTeffectList frmVSTeffectList;
 
     /** every chip/panel view the providers contribute, in provider order, indexed primary/secondary */
@@ -920,6 +921,8 @@ public class FormMain extends JFrame {
             setting.getLocation().setOpenVisWave(true);
         }
 
+        frmFmdsp.close(audio);
+
         setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
         if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
             setting.getLocation().setPosVSTeffectList(frmVSTeffectList.getLocation());
@@ -1339,6 +1342,7 @@ public class FormMain extends JFrame {
 
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
+        frmFmdsp.init();
 
         reqAllScreenInit = false;
     }
@@ -1730,6 +1734,7 @@ public class FormMain extends JFrame {
 
     public void pause() {
         audio.pause();
+        frmFmdsp.pause(audio);
     }
 
     private void fadeout() {
@@ -1843,6 +1848,7 @@ public class FormMain extends JFrame {
             if (frmInfo != null) {
                 frmInfo.update();
             }
+
 
             // the panels the song wants are opened once it is actually playing, from the screen
             // loop — until then there is nothing to ask about which chips it uses
@@ -2787,7 +2793,9 @@ public class FormMain extends JFrame {
         this.tsmiChangeZoomX3 = new JMenuItem();
         this.tsmiChangeZoomX4 = new JMenuItem();
         this.registerDumpDisplayToolStripMenuItem = new JMenu();
+        this.visualizerMenu = new JMenu();
         this.tsmiVisualizer = new JMenuItem();
+        this.fmdspVisualizer = new JMenuItem();
         this.tsmiConsole = new JMenuItem();
         this.opeButtonSetting = new JButton();
         this.toolTip1 = new JToolTip();
@@ -2846,7 +2854,7 @@ public class FormMain extends JFrame {
         this.cmsMenu.add(this.anotherWindowDisplayToolStripMenuItem);
         this.cmsMenu.add(this.tsmiChangeZoom);
         this.cmsMenu.add(this.registerDumpDisplayToolStripMenuItem);
-        this.cmsMenu.add(this.tsmiVisualizer);
+        this.cmsMenu.add(this.visualizerMenu);
         this.cmsMenu.add(this.tsmiConsole);
         this.cmsMenu.setName("contextMenuStrip1");
         //
@@ -3021,8 +3029,14 @@ public class FormMain extends JFrame {
         //
         // tsmiVisualizer
         //
+        this.visualizerMenu.setIcon(new ImageIcon(Common.getImage("empty")));
+        this.visualizerMenu.setName("visualizer");
         this.tsmiVisualizer.setName("tsmiVisualizer");
-        this.tsmiVisualizer.addActionListener(this::tsmiVisWave_Click);
+        this.tsmiVisualizer.addActionListener(_ -> openFormVisWave());
+        this.fmdspVisualizer.setName("fmdspVisualizer");
+        this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
+        this.visualizerMenu.add(this.tsmiVisualizer);
+        this.visualizerMenu.add(this.fmdspVisualizer);
         //
         // tsmiConsole
         //
@@ -3334,7 +3348,9 @@ public class FormMain extends JFrame {
     private JButton opeButtonPlayList;
     private JButton opeButtonOpen;
     private JButton opeButtonMode;
+    private JMenu visualizerMenu;
     private JMenuItem tsmiVisualizer;
+    private JMenuItem fmdspVisualizer;
     private JMenuItem tsmiConsole;
     private FormConsole frmConsole;
 
