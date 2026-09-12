@@ -70,7 +70,7 @@ import vavi.sound.visualizer.fmdsp.TrackStatusSource;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-08-03 nsano initial version <br>
  */
-class BoidsVisualizer extends JComponent {
+public class BoidsVisualizer extends JComponent {
 
     /** the rows shown when the source names none of its own */
     private static final TrackId[] DEFAULT_TRACKS = {

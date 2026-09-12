@@ -158,6 +158,7 @@ public class FormMain extends JFrame {
     private FormMixer2 frmMixer2 = null;
     private FormVisWave frmVisWave = new FormVisWave();
     private FormFmdsp frmFmdsp = new FormFmdsp();
+    private FormBoids frmBoids = new FormBoids();
     private FormVSTeffectList frmVSTeffectList;
 
     /** every chip/panel view the providers contribute, in provider order, indexed primary/secondary */
@@ -917,6 +918,7 @@ public class FormMain extends JFrame {
 
         frmVisWave.close();
         frmFmdsp.close(audio);
+        frmBoids.close(audio);
 
         setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
         if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
@@ -1301,6 +1303,7 @@ public class FormMain extends JFrame {
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
         frmFmdsp.init();
+        frmBoids.init();
         frmVisWave.init(this);
 
         reqAllScreenInit = false;
@@ -1694,6 +1697,7 @@ public class FormMain extends JFrame {
     public void pause() {
         audio.pause();
         frmFmdsp.pause(audio);
+        frmBoids.pause(audio);
     }
 
     private void fadeout() {
@@ -2755,6 +2759,7 @@ public class FormMain extends JFrame {
         this.visualizerMenu = new JMenu();
         this.tsmiVisualizer = new JMenuItem();
         this.fmdspVisualizer = new JMenuItem();
+        this.boidsVisualizer = new JMenuItem();
         this.tsmiConsole = new JMenuItem();
         this.opeButtonSetting = new JButton();
         this.toolTip1 = new JToolTip();
@@ -2994,8 +2999,11 @@ public class FormMain extends JFrame {
         this.tsmiVisualizer.addActionListener(_ -> frmVisWave.open());
         this.fmdspVisualizer.setName("fmdspVisualizer");
         this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
+        this.boidsVisualizer.setName("boidsVisualizer");
+        this.boidsVisualizer.addActionListener(_ -> frmBoids.open(audio, this::pause));
         this.visualizerMenu.add(this.tsmiVisualizer);
         this.visualizerMenu.add(this.fmdspVisualizer);
+        this.visualizerMenu.add(this.boidsVisualizer);
         //
         // tsmiConsole
         //
@@ -3310,6 +3318,7 @@ public class FormMain extends JFrame {
     private JMenu visualizerMenu;
     private JMenuItem tsmiVisualizer;
     private JMenuItem fmdspVisualizer;
+    private JMenuItem boidsVisualizer;
     private JMenuItem tsmiConsole;
     private FormConsole frmConsole;
 
