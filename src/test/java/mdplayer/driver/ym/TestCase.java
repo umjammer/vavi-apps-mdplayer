@@ -243,9 +243,8 @@ Debug.print(ym);
         YmMusicInfo info = new YmMusicInfo();
         music.getMusicInfo(info);
 
-        AudioFormat format = new AudioFormat(44100, 16, 1, true, false);
-        SourceDataLine line = AudioSystem.getSourceDataLine(format);
-        line.open(format);
+        SourceDataLine line = AudioSystem.getSourceDataLine(new AudioFormat(44100, 16, 1, true, false));
+        line.open();
         volume(line, volume);
         line.start();
 

@@ -70,9 +70,8 @@ if (!System.getProperty("vavi.test", "").equals("ide") && volume > 0.01) volume 
         Path path = Path.of(ahx);
 Debug.print(ahx);
 
-        AudioFormat format = new AudioFormat(44100, 16, 1, true, false);
-        SourceDataLine line = AudioSystem.getSourceDataLine(format);
-        line.open(format);
+        SourceDataLine line = AudioSystem.getSourceDataLine(new AudioFormat(44100, 16, 1, true, false));
+        line.open();
         volume(line, volume);
         line.start();
 
