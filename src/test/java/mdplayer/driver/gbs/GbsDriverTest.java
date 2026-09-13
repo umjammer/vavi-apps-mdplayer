@@ -8,6 +8,8 @@ import mdplayer.ChipFmDspSource;
 import mdplayer.Common;
 import mdplayer.Setting;
 import mdplayer.driver.FileFormat;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -70,5 +72,10 @@ class GbsDriverTest {
 
         plugin.stop();
         plugin.close();
+    }
+
+    @AfterAll
+    static void tearDownAll() {
+        System.clearProperty("javax.sound.sampled.SourceDataLine");
     }
 }

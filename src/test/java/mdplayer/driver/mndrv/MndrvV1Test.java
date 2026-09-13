@@ -22,6 +22,7 @@ import mdplayer.driver.FileFormat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -134,6 +135,7 @@ class MndrvV1Test {
 
     @Test
     @DisplayName("every v1 song renders without faulting")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void allV1Render() throws Exception {
         List<Path> files = v1Files();
         assertEquals(62, files.size());

@@ -27,7 +27,6 @@ import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.sound.sampled.spi.AudioFileReader;
 import javax.sound.sampled.spi.FormatConversionProvider;
-
 import com.sun.media.sound.JDK13Services;
 
 import vavi.util.Debug;
@@ -38,7 +37,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -162,7 +160,6 @@ Debug.println("settings\n" +
 
     @Test
     @DisplayName("via spi directly")
-    @DisabledIfEnvironmentVariable(named = "GITHUB_WORKFLOW", matches = ".*") // github workflow detect waveout line???
     public void test0() throws Exception {
 Debug.println(inFile);
         Path path = Paths.get(inFile);
@@ -208,7 +205,6 @@ Debug.println("OUT: " + outAudioFormat);
 
     @Test
     @DisplayName("via spi")
-    @DisabledIfEnvironmentVariable(named = "GITHUB_WORKFLOW", matches = ".*") // github workflow detect waveout line???
     public void test1() throws Exception {
 Debug.println(inFile);
         Path path = Paths.get(inFile);

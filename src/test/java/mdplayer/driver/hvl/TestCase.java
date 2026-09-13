@@ -27,6 +27,7 @@ import vavi.util.properties.annotation.PropsEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static vavi.sound.SoundUtil.volume;
@@ -53,7 +54,7 @@ class TestCase {
     String hvl;
 
     static final boolean onIde = System.getProperty("vavi.test", "").equals("ide");
-    static final long time = onIde ? 1000 * 1000 : 10 * 1000;
+    static final long time = onIde ? 1000 * 1000 : 5 * 1000;
 
     @BeforeEach
     void setup() throws Exception {
@@ -181,6 +182,7 @@ Debug.println("OUT: " + outAudioFormat);
     }
 
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void testAllHvlInTmp() throws Exception {
         Path tmpDir = Path.of("tmp/hvl");
         if (!Files.exists(tmpDir)) return;

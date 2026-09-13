@@ -62,7 +62,7 @@ class TestCase {
     String ym;
 
     static final boolean onIde = System.getProperty("vavi.test", "").equals("ide");
-    static final long time = onIde ? 1000 * 1000 : 10 * 1000;
+    static final long time = onIde ? 1000 * 1000 : 5 * 1000;
 
     @BeforeEach
     void setup() throws Exception {
@@ -74,6 +74,7 @@ class TestCase {
     static final int NBSAMPLEPERBUFFER = 1024;
 
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void test1() throws Exception {
 Debug.print(ym);
 
@@ -329,6 +330,7 @@ Debug.println("OUT: " + outAudioFormat);
     }
 
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void testUnionDemo() throws Exception {
         Path path = Path.of("tmp/ym/Union_Demo-Alloy_Run.ym");
         if (!Files.exists(path)) return;

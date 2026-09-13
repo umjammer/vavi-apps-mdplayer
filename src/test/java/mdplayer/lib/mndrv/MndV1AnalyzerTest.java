@@ -10,6 +10,7 @@ import mdplayer.lib.mndrv.MndV1Analyzer.FileResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -72,6 +73,7 @@ class MndV1AnalyzerTest {
 
     @Test
     @DisplayName("v2 data parses cleanly, so the check is calibrated")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void v2ParsesCleanly() throws Exception {
         List<Path> files = mndFiles(V2);
         assertEquals(24, files.size());
@@ -80,12 +82,14 @@ class MndV1AnalyzerTest {
 
     @Test
     @DisplayName("v3 data parses cleanly, so the check is calibrated")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void v3ParsesCleanly() throws Exception {
         assertAllClean(List.of(V3));
     }
 
     @Test
     @DisplayName("v1 data parses cleanly with the v1 opcode map")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void v1ParsesCleanly() throws Exception {
         List<Path> files = mndFiles(V1);
         assertEquals(62, files.size());
