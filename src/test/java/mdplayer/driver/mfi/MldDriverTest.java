@@ -31,6 +31,7 @@ import mdplayer.driver.FileFormat;
 import mdplayer.driver.mfi.MldChip.Vendor;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.mfi.faith.FaithType4Player;
+import vavi.sound.mfi.rohm.RohmRom;
 import vavi.sound.mobile.AudioEngineMixer;
 import vavi.sound.visualizer.fmdsp.TrackId;
 import vavi.sound.visualizer.fmdsp.TrackStatus;
@@ -165,6 +166,21 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
     }
 
     @Test
+    void playsOnRohm() throws Exception {
+        playsThroughTheDriver("rohm", mld);
+    }
+
+    /** a song of a rohm phone, on the synthesizer of its chip, whose ainf tells no audio format */
+    @Test
+    void playsARohmSong() throws Exception {
+        assumeTrue(RohmRom.isAvailable(), "no rt_synth_2.dll, set -Dvavi.sound.mfi.faith.path");
+        Path rohm = corpus.resolve("Ringtones from Cuebus F901iC/110_8981100010347092588F.MLD");
+        assumeTrue(Files.exists(rohm), rohm + " is missing");
+        assertEquals(MldChip.ROHM, MldChip.detect(MldFile.decode(Files.readAllBytes(rohm))).chip());
+        playsThroughTheDriver(null, rohm);
+    }
+
+    @Test
     void playsOnGervill() throws Exception {
         playsThroughTheDriver("gervill", mld);
     }
@@ -174,6 +190,9 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
         assumeTrue(Files.exists(mld), mld + " is missing");
         if ("ucs".equals(synth)) {
             assumeTrue(FaithType4Player.isAvailable(), "no rt_synth_4.dll, set -Dvavi.sound.mfi.faith.path");
+        }
+        if ("rohm".equals(synth)) {
+            assumeTrue(RohmRom.isAvailable(), "no rt_synth_2.dll, set -Dvavi.sound.mfi.faith.path");
         }
 
         Setting setting = Setting.getInstance();

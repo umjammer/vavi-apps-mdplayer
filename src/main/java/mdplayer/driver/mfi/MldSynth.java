@@ -24,6 +24,9 @@ import javax.sound.sampled.AudioInputStream;
 import com.sun.media.sound.AudioSynthesizer;
 import vavi.sound.mfi.InvalidMfiDataException;
 import vavi.sound.mfi.faith.FaithType4Player;
+import vavi.sound.mfi.rohm.RohmAudioEngine;
+import vavi.sound.mfi.rohm.RohmMfiSynthesizer.RohmMfiReceiver;
+import vavi.sound.mfi.rohm.RohmRom;
 import vavi.sound.mfi.ucs.FuetrekRom;
 import vavi.sound.mfi.ucs.UcsAudioEngine;
 import vavi.sound.mfi.ucs.UcsMfiSynthesizer.UcsMfiReceiver;
@@ -48,7 +51,7 @@ import static java.lang.System.getLogger;
  */
 public interface MldSynth extends AutoCloseable {
 
-    /** system property: a synthesizer for every file, {@code nuked}, {@code ucs} or {@code gervill} */
+    /** system property: a synthesizer for every file, {@code nuked}, {@code ucs}, {@code rohm} or {@code gervill} */
     String SYNTH_KEY = "mdplayer.mfi.synth";
 
     /** where the messages go */
@@ -75,7 +78,8 @@ public interface MldSynth extends AutoCloseable {
      *  <li>{@link MldChip#YAMAHA}: Nuked OPL3 with the voices the file sends</li>
      *  <li>{@link MldChip#FUETREK}: the fuetrek sound source, needs {@code rt_synth_4.dll}
      *      ({@code -Dvavi.sound.mfi.faith.path}), Nuked OPL3 without it</li>
-     *  <li>{@link MldChip#ROHM}: no emulator of it, Gervill's general midi pcm stands in</li>
+     *  <li>{@link MldChip#ROHM}: the rohm sound source, needs {@code rt_synth_2.dll}
+     *      ({@code -Dvavi.sound.mfi.faith.path}), Gervill's general midi pcm without it</li>
      * </ul>
      */
     static MldSynth forChip(MldChip chip) {
@@ -93,7 +97,14 @@ public interface MldSynth extends AutoCloseable {
                         + ", the fuetrek song is played by the OPL3; set -Dvavi.sound.mfi.faith.path=<dir>");
                 yield new Nuked();
             }
-            case ROHM -> new Gervill();
+            case ROHM -> {
+                if (RohmRom.isAvailable()) {
+                    yield new Rohm();
+                }
+                Holder.logger.log(Level.WARNING, "no rt_synth_2.dll under " + FaithType4Player.toolsDirectory()
+                        + ", the rohm song is played by Gervill; set -Dvavi.sound.mfi.faith.path=<dir>");
+                yield new Gervill();
+            }
         };
     }
 
@@ -102,6 +113,7 @@ public interface MldSynth extends AutoCloseable {
         return switch (name) {
             case "nuked" -> new Nuked();
             case "ucs" -> new Ucs();
+            case "rohm" -> new Rohm();
             case "gervill" -> new Gervill();
             default -> throw new IllegalArgumentException(SYNTH_KEY + ": " + name);
         };
@@ -238,9 +250,57 @@ public interface MldSynth extends AutoCloseable {
         }
     }
 
+    /** the rohm sound source, the rom out of the authoring tool's dll */
+    final class Rohm implements MldSynth {
+        private final RohmAudioEngine engine;
+        private final Receiver receiver;
+        private byte[] pcm = new byte[0];
+
+        Rohm() {
+            try {
+                engine = new RohmAudioEngine(RohmRom.getInstance(), false);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            // it handles the vavi-sound exclusives (the mfi values, adpcm) itself
+            receiver = new RohmMfiReceiver(engine);
+        }
+
+        @Override
+        public Receiver getReceiver() {
+            return receiver;
+        }
+
+        @Override
+        public int getSampleRate() {
+            return RohmAudioEngine.SAMPLE_RATE;
+        }
+
+        @Override
+        public void render(int[] left, int[] right, int frames) {
+            if (pcm.length < frames * 4) pcm = new byte[frames * 4];
+            engine.render(pcm, frames);
+            for (int i = 0; i < frames; i++) {
+                left[i] = (short) ((pcm[i * 4] & 0xff) | (pcm[i * 4 + 1] << 8));
+                right[i] = (short) ((pcm[i * 4 + 2] & 0xff) | (pcm[i * 4 + 3] << 8));
+            }
+        }
+
+        @Override
+        public String getName() {
+            return "Rohm";
+        }
+
+        @Override
+        public void close() {
+            receiver.close();
+            engine.close();
+        }
+    }
+
     /**
-     * Gervill, the general midi pcm synthesizer of the jdk, standing in for a pcm sound source
-     * there is no emulator of (rohm).
+     * Gervill, the general midi pcm synthesizer of the jdk, standing in for the rohm sound
+     * source when its dll is not there.
      */
     final class Gervill implements MldSynth {
         private static final int RATE = 44100;
