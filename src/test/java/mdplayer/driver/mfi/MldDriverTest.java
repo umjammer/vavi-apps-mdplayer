@@ -31,6 +31,7 @@ import mdplayer.driver.FileFormat;
 import mdplayer.driver.mfi.MldChip.Vendor;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.mfi.faith.FaithType4Player;
+import vavi.sound.mobile.AudioEngineMixer;
 import vavi.sound.visualizer.fmdsp.TrackId;
 import vavi.sound.visualizer.fmdsp.TrackStatus;
 import vavi.util.event.GenericEvent;
@@ -202,8 +203,10 @@ System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver
             int peak = 0;
             int rendered = 0;
             long start = System.currentTimeMillis();
+            boolean adpcm = false;
             while (rendered < sampleRate * seconds && !driver.stopped) {
                 driver.render(buffer, 0, buffer.length);
+                adpcm |= AudioEngineMixer.isPlaying();
                 for (short s : buffer) {
                     peak = Math.max(peak, Math.abs(s));
                     pcm.write(s & 0xff);
@@ -224,6 +227,10 @@ System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver
                     AudioFileFormat.Type.WAVE, out.toFile());
 System.err.printf("%s: %.1fs of audio in %.1fs, peak %d -> %s%n", synth, rendered / (double) sampleRate, elapsed / 1000.0, peak, out);
             assertTrue(peak > 100, "silent: " + peak);
+            if (mld.equals(necMld)) {
+                // its adpcm (ainf 0x82) is played in the song, not to a line of its own
+                assertTrue(adpcm, "no adpcm went through the mixer");
+            }
         } finally {
             System.clearProperty(MldSynth.SYNTH_KEY);
         }

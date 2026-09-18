@@ -28,6 +28,7 @@ import mdplayer.driver.BasePlugin;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.midi.mfi.MfiMidiFileReader;
+import vavi.sound.mobile.AudioEngineMixer;
 
 import static java.lang.System.getLogger;
 
@@ -77,6 +78,15 @@ public class MldDriver extends BaseDriver {
     private double frac;
     private int[] left = new int[BLOCK], right = new int[BLOCK];
     private int blockPos = BLOCK, blockLen = BLOCK;
+
+    /**
+     * whether the adpcm of vavi-sound's engines is mixed in here, rather than played to a line
+     * of their own beside the song, see {@link AudioEngineMixer#attach()}
+     */
+    private boolean mixing;
+    private int outputRate;
+    /** the frames of the buffer being rendered the adpcm has been mixed into */
+    private int mixedFrames;
     private int curL, curR, prevL, prevR;
 
     public MldDriver(BasePlugin<? extends BaseDriver> plugin) {
@@ -180,6 +190,9 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         totalCounter = last;
 
         stopSynth();
+        this.outputRate = outputRate;
+        // the adpcm (and the UCS waves) the song starts, mixed into what is rendered here
+        mixing = AudioEngineMixer.attach();
         synth = MldSynth.forChip(detection.chip());
         receiver = synth.getReceiver();
         step = (double) synth.getSampleRate() / outputRate;
@@ -235,6 +248,10 @@ logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getName());
 
     /** closes the synthesizer of the song */
     public void stopSynth() {
+        if (mixing) {
+            mixing = false;
+            AudioEngineMixer.detach();
+        }
         if (synth != null) {
             try {
                 synth.close();
@@ -293,8 +310,14 @@ logger.log(Level.DEBUG, "send: " + e);
             return length;
         }
 
+        mixedFrames = 0;
         for (int i = 0; i < length - 1; i += 2) {
             if (!stopped) {
+                if (mixing && next < events.size() && events.get(next).frame <= position) {
+                    // what sounds before a message is mixed before the message is sent: an
+                    // adpcm it starts starts on this frame
+                    mixAdpcm(b, offset, i / 2);
+                }
                 dispatch();
             }
             int l, r;
@@ -318,7 +341,7 @@ logger.log(Level.DEBUG, "send: " + e);
             b[offset + i + 1] = (short) Math.clamp(r, Short.MIN_VALUE, Short.MAX_VALUE);
 
             position++;
-            if (position >= end) {
+            if (position >= end && !(mixing && AudioEngineMixer.isPlaying())) {
                 stopped = true;
             }
 
@@ -327,7 +350,18 @@ logger.log(Level.DEBUG, "send: " + e);
                 fireEventHappened(this, "wave.buffer", (short) l, (short) r);
             }
         }
+        if (mixing) {
+            mixAdpcm(b, offset, length / 2);
+        }
 
         return length;
+    }
+
+    /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
+    private void mixAdpcm(short[] b, int offset, int frames) {
+        if (frames > mixedFrames) {
+            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate);
+            mixedFrames = frames;
+        }
     }
 }

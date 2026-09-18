@@ -67,7 +67,8 @@ midi note, so it lights no row. The bars still move with its sound.
   the rohm one: its ADPCM and "UCS Editor R" arrived together in 1.3.0. Its tables are not laid
   out like `rt_synth_4.dll`'s (`FuetrekRom` finds no groups in it), and it does not play when
   dropped in for Type 4 under rts4c. It needs reverse engineering of its own
-* the adpcm of vavi-sound's `AudioEngine`s plays into a line of its own, not through the mixer
+* ~~the adpcm of vavi-sound's `AudioEngine`s plays into a line of its own, not through the mixer~~
+  ... `AudioEngineMixer` (vavi-sound 1.1.2): the driver mixes it in, starting on the frame of its message
 * level: UCS and Gervill reach full scale, and nothing is calibrated yet
   (`DefaultVolumeBalance_MLD.xml` is SMAF's copy)
 * loop points (`0xdd`): a song plays once
