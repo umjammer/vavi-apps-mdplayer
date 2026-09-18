@@ -59,6 +59,9 @@ public class MldDriver extends BaseDriver {
     record Event(long frame, MidiMessage message) {}
 
     private MldChip.Detection detection;
+
+    /** what the messages sent have left the channels at, for the visualizer */
+    private final MldChannels channels = new MldChannels();
     private MldSynth synth;
     private Receiver receiver;
 
@@ -106,7 +109,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         set(md, Tag.ReleaseDate, file.getDate());
         md.set(Tag.NumberOfSongs, "1");
         // no mdsound chip is registered, this is what names it on the fmdsp header
-        md.set(Tag.Chip, d.chip().label + (d.part() != null && !d.part().isEmpty() ? " " + d.part() : ""));
+        md.set(Tag.Chip, d.name());
 
         this.metaData = md;
         return md;
@@ -121,6 +124,11 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
     /** the chip found out for the song, nullable before {@link #init} */
     public MldChip.Detection getDetection() {
         return detection;
+    }
+
+    /** the channels as the song has left them so far */
+    public MldChannels getChannels() {
+        return channels;
     }
 
     /** the synthesizer playing the song, nullable */
@@ -166,6 +174,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         events = schedule(sequence, outputRate);
         next = 0;
         position = 0;
+        channels.reset();
         long last = events.isEmpty() ? 0 : events.getLast().frame;
         end = last + (long) (TAIL_SECONDS * outputRate);
         totalCounter = last;
@@ -257,6 +266,7 @@ logger.log(Level.DEBUG, "close: " + e);
         while (next < events.size() && events.get(next).frame <= position) {
             MidiMessage m = events.get(next++).message;
             if (m instanceof MetaMessage) continue; // end of track
+            channels.send(m);
             try {
                 receiver.send(m, -1);
             } catch (RuntimeException e) {

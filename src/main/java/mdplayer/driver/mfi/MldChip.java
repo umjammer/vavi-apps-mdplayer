@@ -47,17 +47,18 @@ import static java.lang.System.getLogger;
  */
 public enum MldChip {
     /** MA-2 ~ MA-7, fm */
-    YAMAHA("Yamaha MA"),
+    YAMAHA("YAMAHA"),
     /** software pcm, docomo's UCS */
-    FUETREK("FueTrek"),
+    FUETREK("FUETREK"),
     /** BU8788KN, BU8709KN, pcm */
-    ROHM("Rohm");
+    ROHM("ROHM");
 
     private static final Logger logger = getLogger(MldChip.class.getName());
 
     /** system property: the chip of a file which says nothing, default {@link #YAMAHA} */
     public static final String DEFAULT_KEY = "mdplayer.mfi.chip.default";
 
+    /** the name shown, upper case as every chip name is */
     public final String label;
 
     MldChip(String label) {
@@ -124,6 +125,11 @@ public enum MldChip {
 
     /** what was found out and why */
     public record Detection(MldChip chip, String part, String reason) {
+        /** the chip and the part when it is known, upper case: {@code "YAMAHA MA-3"} */
+        public String name() {
+            return (chip.label + (part != null && !part.isEmpty() ? " " + part : "")).toUpperCase(Locale.ROOT);
+        }
+
         @Override
         public String toString() {
             return chip + (part != null && !part.isEmpty() ? " (" + part + ")" : "") + ": " + reason;

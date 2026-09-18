@@ -22,6 +22,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 
+import mdplayer.ChipFmDspSource;
 import mdplayer.Common;
 import mdplayer.Setting;
 import mdplayer.driver.BaseDriver;
@@ -30,6 +31,9 @@ import mdplayer.driver.FileFormat;
 import mdplayer.driver.mfi.MldChip.Vendor;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.mfi.faith.FaithType4Player;
+import vavi.sound.visualizer.fmdsp.TrackId;
+import vavi.sound.visualizer.fmdsp.TrackStatus;
+import vavi.util.event.GenericEvent;
 
 import org.junit.jupiter.api.Test;
 
@@ -222,6 +226,58 @@ System.err.printf("%s: %.1fs of audio in %.1fs, peak %d -> %s%n", synth, rendere
             assertTrue(peak > 100, "silent: " + peak);
         } finally {
             System.clearProperty(MldSynth.SYNTH_KEY);
+        }
+    }
+
+    /** the keys of a song light the rows of its chip, and the chip is named in upper case */
+    @Test
+    void theVisualizerShowsTheKeys() throws Exception {
+        assumeTrue(Files.exists(mld), mld + " is missing");
+        // mld_1 is a fuetrek song: pcm rows
+        assertTrue(litRows(mld, "PPZ8", "ADPCM") > 0);
+
+        Path yamaha = corpus.resolve("90s anime songs from Cuebus N506iS/region_0550.mld");
+        if (Files.exists(yamaha)) {
+            assertTrue(litRows(yamaha, "FM") > 0);
+        }
+        assertEquals("YAMAHA MA-3", MldChip.byModel("N504i").name());
+    }
+
+    /** @return how many rows of the named kind (by {@link TrackId} name prefix) showed a key */
+    private static int litRows(Path file, String... rowKinds) throws Exception {
+        Setting.getInstance().getOutputDevice().setDeviceType(Common.DEV_Null);
+        FileFormat format = FileFormat.getFileFormat(file.toString());
+        format.load(new BufferedInputStream(Files.newInputStream(file)), null);
+        @SuppressWarnings("unchecked")
+        BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
+        plugin.setParams(format, Map.of("fileName", file.toString()));
+        plugin.prepare();
+        plugin.stopped = false;
+        plugin.paused = false;
+        plugin.fadeout = false;
+        try {
+            ChipFmDspSource source = new ChipFmDspSource();
+            source.bind(plugin);
+            BaseDriver driver = plugin.getDriver();
+            short[] buffer = new short[1024];
+            TrackStatus status = new TrackStatus();
+            java.util.Set<TrackId> lit = java.util.EnumSet.noneOf(TrackId.class);
+            for (int i = 0; i < 44100 * 2 * 5 / buffer.length; i++) {
+                driver.render(buffer, 0, buffer.length);
+                source.update(new GenericEvent(driver, "master", buffer, 0));
+                for (TrackId row : TrackId.values()) {
+                    source.readStatus(row, status);
+                    if (status.playing && status.key != 0xff
+                            && Stream.of(rowKinds).anyMatch(k -> row.name().startsWith(k))) {
+                        lit.add(row);
+                    }
+                }
+            }
+System.err.println(file.getFileName() + ": lit " + lit);
+            return lit.size();
+        } finally {
+            plugin.stop();
+            plugin.close();
         }
     }
 

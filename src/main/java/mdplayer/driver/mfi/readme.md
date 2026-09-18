@@ -49,6 +49,18 @@ The folders named after phones come out as their chips: `F901iC` all rohm, `P902
 fuetrek, `N506iS` 91 of 92 yamaha (`MldDriverTest`). A file records the phone it was made for,
 not the one it was found on: the `F-09A` folder is mostly `SH` data.
 
+## The visualizer
+
+None of the synthesizers says what it is sounding. But every message of the song goes past
+`MldDriver` on its way to one, so `MldChannels` keeps the sixteen channels as the song leaves
+them, and `mdplayer.fmdsp.MldReader` puts them on the fmdsp rows. A Yamaha song goes on the FM
+rows and a FueTrek or Rohm one on the PCM rows, taken in the order the channels first sound.
+The meters follow velocity × volume × expression. The analyzer bars are measured off the mixer,
+because the song is rendered there. The chip is named in upper case (`YAMAHA MA-3`, `FUETREK`).
+
+A song whose tune lives only in NEC machine dependent messages (`02 TRANSPARENT.mld`) sends no
+midi note, so it lights no row. The bars still move with its sound.
+
 ## TODO
 
 * rohm synthesizer. faith's `rt_synth_2.dll` is the "Ring Tone LSI Simulator Type 2", which is
