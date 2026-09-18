@@ -31,4 +31,5 @@ mdplayer.driver.ym.YmPlugin
 mdplayer.driver.psf.PsfPlugin
 mdplayer.driver.psf2.Psf2Plugin
 mdplayer.driver.smaf.SmafPlugin
+mdplayer.driver.mfi.MldPlugin
 mdplayer.driver.fmp7.Fmp7Plugin

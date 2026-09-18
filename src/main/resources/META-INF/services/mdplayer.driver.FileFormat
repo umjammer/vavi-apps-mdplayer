@@ -40,4 +40,5 @@ mdplayer.driver.ym.YmFormat
 mdplayer.driver.psf.PsfFileFormat
 mdplayer.driver.psf2.Psf2FileFormat
 mdplayer.driver.smaf.SmafFileFormat
+mdplayer.driver.mfi.MldFileFormat
 mdplayer.driver.fmp7.Fmp7FileFormat
