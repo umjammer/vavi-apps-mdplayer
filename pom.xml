@@ -556,9 +556,9 @@
     </dependency>
 
     <dependency>
-      <groupId>vavi</groupId>
+      <groupId>com.github.umjammer</groupId>
       <artifactId>vavi-apps-mfiplayer</artifactId>
-      <version>1.0.10-SNAPSHOT</version>
+      <version>1.0.10</version>
       <exclusions>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
