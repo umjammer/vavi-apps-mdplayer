@@ -12,6 +12,8 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.prefs.Preferences;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -21,14 +23,18 @@ import javax.swing.JToolBar;
 import javax.swing.Timer;
 
 import mdplayer.Common;
+import mdplayer.Setting;
 import mdplayer.form.FormBase;
 import vavi.util.SplitRadixFft;
 import vavi.util.compat.Tuple;
 
+import static mdplayer.form.sys.FormMain.empty;
+
 
 public class FormVisWave extends FormBase {
 
-    public boolean isClosed = false;
+    private static final Logger logger = System.getLogger(FormVisWave.class.getName());
+
     public int x = -1;
     public int y = -1;
 
@@ -41,15 +47,48 @@ public class FormVisWave extends FormBase {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(FormVisWave.class);
 
+    public Setting setting = Setting.load();
+
     /** where in {@link #buf} the next sample goes */
     private int writeIndex;
 
-    public FormVisWave(FormMain frm) {
-        parent = frm;
-        initializeComponent();
+    public FormVisWave() {
         bmp = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB);
         // the timer starts drawing at once, so it needs somewhere to draw
         g = (Graphics2D) bmp.getGraphics();
+        initializeComponent();
+    }
+
+    public void init(FormMain frm) {
+        parent = frm;
+    }
+
+    public void open() {
+        if (this.isVisible()) {
+            this.requestFocus();
+            return;
+        }
+
+        if (setting.getLocation().getPosVisWave().equals(empty)) {
+            this.x = this.getLocation().x;
+            this.y = this.getLocation().y + 264;
+        } else {
+            this.x = setting.getLocation().getPosVisWave().x;
+            this.y = setting.getLocation().getPosVisWave().y;
+        }
+
+        this.setVisible(true);
+
+        FormMain.checkAndSetForm(this);
+    }
+
+    public void close() {
+        if (this.isVisible()) return;
+
+        setting.getLocation().setPosVisWave(this.getLocation());
+        setting.getLocation().setOpenVisWave(true);
+
+        this.setVisible(false);
     }
 
     /**
@@ -124,7 +163,6 @@ public class FormVisWave extends FormBase {
             } else {
                 parent.setting.getLocation().setPosVisWave(new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
             }
-            isClosed = true;
         }
 
         @Override
@@ -375,7 +413,7 @@ public class FormVisWave extends FormBase {
         this.toolStrip1.add(this.tsbDispType2);
         this.toolStrip1.add(this.tsbFFT);
         //
-        // frmVisWave
+        // this
         //
         this.getContentPane().setLayout(new BorderLayout());
         this.getContentPane().add(this.toolStrip1, BorderLayout.NORTH);
@@ -383,7 +421,7 @@ public class FormVisWave extends FormBase {
         this.setPreferredSize(new Dimension(261, 251));
         this.pack();
         this.setIconImage(Common.getImage("Feli128"));
-        this.setName("frmVisWave");
+        this.setName("this");
         // no setOpacity(): Swing only allows a translucent frame if it is undecorated, and this one
         // has a title bar to drag it by
         this.setTitle("Visualizer");

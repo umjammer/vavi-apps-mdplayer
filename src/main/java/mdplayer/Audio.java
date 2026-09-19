@@ -8,6 +8,7 @@ import java.nio.ShortBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineEvent;
@@ -455,7 +456,9 @@ logger.log(Level.DEBUG, "stop: " + plugin.stopped);
 
     /** */
     private void updateVisualVolume(short[] buffer, int offset) {
-        plugin.getDriver().fireEventHappened(this, "master", buffer, offset);
+        if (plugin.getDriver() != null) {
+            plugin.getDriver().fireEventHappened(this, "master", buffer, offset);
+        }
 
         for (var i : plugin.mds.getFirstInstruments()) {
             var vs = i.getView(0, "volume");
@@ -538,13 +541,25 @@ logger.log(Level.DEBUG, "stop: " + plugin.stopped);
      * add to plugin before start playing
      * TODO consider more
      */
-    private final List<GenericListener> listeners = new ArrayList<>();
+    private final List<GenericListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * view listeners (such as visualizer)
      * TODO consider more
      */
     public void addGenericListener(GenericListener l) {
-        listeners.add(l);
+        if (!listeners.contains(l)) {
+            listeners.add(l);
+            if (plugin != null && plugin.getDriver() != null) {
+                plugin.getDriver().addViewListener(l);
+            }
+        }
+    }
+
+    public void removeGenericListener(GenericListener l) {
+        listeners.remove(l);
+        if (plugin != null && plugin.getDriver() != null) {
+            plugin.getDriver().removeViewListener(l);
+        }
     }
 }

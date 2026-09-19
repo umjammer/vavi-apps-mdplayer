@@ -54,7 +54,7 @@ class TestCase {
     String ahx;
 
     static final boolean onIde = System.getProperty("vavi.test", "").equals("ide");
-    static final long time = onIde ? 1000 * 1000 : 10 * 1000;
+    static final long time = onIde ? 1000 * 1000 : 5 * 1000;
 
     @BeforeEach
     void setup() throws Exception {

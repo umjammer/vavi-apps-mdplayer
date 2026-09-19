@@ -47,18 +47,19 @@ this is a fork of [MDPlayer](https://github.com/kuma4649/MDPlayer)
 | PSF/MINIPSF                     | PlayStation      |      ✅️ ️      |    -     | built-in              | [aosdk](https://github.com/nmlgc/aosdk)                                                        |                                                                                   |
 | PSF2/MINIPSF2                   | PlayStation 2    |      ✅️ ️      |    -     | built-in              | [aosdk](https://github.com/nmlgc/aosdk)                                                        |                                                                                   |
 | ZGM                             | mml2vgm          |      n/a       |    -     | built-in              |                                                                                                | currently support only YM2609                                                     |
-| MID                             | MIDI             |       ️→       |    -     | spi                   | built-in                                                                                       |                                                                                   |
+| MID                             | MIDI             |       ️→       |    -     | spi                   | built-in java                                                                                  |                                                                                   |
 | RCP                             | PC98 Recomposer  |       ✅️       |    -     | built-in              |                                                                                                |                                                                                   |
 | RCS                             | X68k RCSMP       |       ✅️       |    -     | built-in              |                                                                                                | RCP + PCM8                                                                        |
-| WAV                             |                  |       ️→       |    -     | spi                   | built-in                                                                                       |                                                                                   |
+| WAV                             |                  |       ️→       |    -     | spi                   | built-in java                                                                                  |                                                                                   |
 | MP3                             |                  |       ️→       |    -     | spi                   | [mp3spi](https://github.com/umjammer/mp3spi)                                                   |                                                                                   |
-| AIF                             | Apple AIFF       |       ️→       |    -     | spi                   | built-in                                                                                       |                                                                                   |
+| AIF                             | Apple AIFF       |       ️→       |    -     | spi                   | built-in java*                                                                                 | only mac java?                                                                    |
 | OGG                             |                  |       →        |    -     | spi                   | [tritonus](https://github.com/umjammer/tritonus)                                               |                                                                                   |
 | M4A/AAC                         |                  |       →        |    -     | spi                   | [vavi-sound-aac](https://github.com/umjammer/vavi-sound-aac)                                   |                                                                                   |
 | WMA                             |                  |       →        |    -     | spi                   | [vavi-sound-sandbox](https://github.com/umjammer/vavi-sound-sandbox)                           |                                                                                   |
 | FLAC                            |                  |       →        |    -     | spi                   | [vavi-sound-flac](https://github.com/umjammer/vavi-sound-flac)                                 |                                                                                   |
 | SMAF                            | YAMAHA           |       ✅️       |    -     | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [mmftool](https://github.com/umjammer/mmftool) | ~~adapt fmdsp visualizer ... difficult~~                                          |
 | OWI/MWI                         | Windows FMP7     |       ✅️       |    ✅️    | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [FMP7](http://fmpdoc.fmp.jp/fmp7/)             |                                                                                   |
+| MLD                             | DoCoMo MFi       |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         |                                                                                   |
 
 <sub>* at type: driver uses emulator</sub>
 
@@ -179,6 +180,10 @@ when using this project with vgm, gbs spi, apply the settings below to avoid con
 
 - [fmp7 settings](src/main/java/mdplayer/driver/fmp7/readme.md)
 
+#### mfi
+
+- [mfi settings](src/main/java/mdplayer/driver/mfi/readme.md)
+
 #### ROMs
 
 `mdsound.pcm.path` ... location for YM2608 drums `ym2608_adpcm_rom.bin` and YMF278B `yrw801.rom`
@@ -297,10 +302,11 @@ you can select a chip implementation variant by number.
      * \[fmp] ... move to emu/util ??? ... yes mdplayer should not care encoding, hide it native driver inside
    * \[pmd] ... add special tag in datasource to display music_title/composer/arranger
  * settings ...  demolish each driver and chips
- * midi + dls/sf2 (should not be supported, it's normal midi responsibility)
+ * ~~midi + dls/sf2~~ (should not be supported, it's normal midi responsibility)
  * visualizer for spi
  * android emulator: app + server ↔ mlplayer
- * wine + custom audio dev ... capture from that
+ * ~~wine + custom audio dev ... capture from that~~ ... chose proprietary way
+ * boids from gui is still weird
 
 ---
 

@@ -19,7 +19,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 class Probe {
 
     @Test
-    @EnabledIfSystemProperty(named = "vavi.test", matches = "probe")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "ai")
     void probe() throws Exception {
         LocalProperties.bind();
         String file = System.getProperty("probe.file");

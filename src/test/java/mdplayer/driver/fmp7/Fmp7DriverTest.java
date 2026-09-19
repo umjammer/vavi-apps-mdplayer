@@ -36,6 +36,7 @@ import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -87,6 +88,7 @@ System.err.printf("%s: \"%s\" by %s (data: %s)%n", owi, file.getTitle(), file.ge
      * the half that fails quietly - FMP7 plays perfectly well without ever publishing its work.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void playsThroughTheDriver() throws Exception {
         assumeTrue(Fmp7Player.isAvailable(),
                 "no FMP7.exe, set -D" + Fmp7Player.FMP7_PATH_KEY + "=<dir>");
@@ -216,6 +218,7 @@ System.err.println("cushion per half second:" + cushion);
      * so this is a slow test, but it is the case a play list spends its time in.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSongThatEndsDoesNotSpoilTheNext() throws Exception {
         assumeTrue(Fmp7Player.isAvailable(),
                 "no FMP7.exe, set -D" + Fmp7Player.FMP7_PATH_KEY + "=<dir>");
@@ -266,6 +269,7 @@ System.err.printf("song %d (%s): peak %d, driver stopped=%b%n", song, file.getFi
      * ways a song ends.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSecondSongPlaysAfterTheFirst() throws Exception {
         assumeTrue(Fmp7Player.isAvailable(),
                 "no FMP7.exe, set -D" + Fmp7Player.FMP7_PATH_KEY + "=<dir>");
@@ -312,6 +316,7 @@ System.err.printf("song %d: peak %d, %s%n", song, peak, p == null ? "no player" 
      * and the player still sit there, because ending it is the loop's job, not the driver's.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void endsThroughThePlayersOwnLoop() throws Exception {
         assumeTrue(Fmp7Player.isAvailable(),
                 "no FMP7.exe, set -D" + Fmp7Player.FMP7_PATH_KEY + "=<dir>");

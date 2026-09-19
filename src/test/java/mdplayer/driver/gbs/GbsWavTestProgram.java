@@ -1,17 +1,21 @@
 package mdplayer.driver.gbs;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 
 import mdplayer.Common;
 import mdplayer.Setting;
 import mdplayer.driver.BaseDriver;
-import mdplayer.driver.FileFormat;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.FileFormat;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,7 +42,7 @@ class GbsWavTestProgram {
 
     @AfterAll
     static void tearDownAll() {
-        System.setProperty("javax.sound.sampled.SourceDataLine", "");
+        System.clearProperty("javax.sound.sampled.SourceDataLine");
     }
 
     /** duration to render in seconds (matching reference wav) */
@@ -47,7 +51,7 @@ class GbsWavTestProgram {
     @Test
     @Disabled("it works, but not passed")
     void test() throws Exception {
-        new GbsWavTestProgram().play(
+        play(
                 "../vavi-sound-emu/tmp/CGB-B2XE-USA.gbs",
                 "../vavi-sound-emu/tmp/waveout.wav",
                 1);
@@ -59,10 +63,10 @@ class GbsWavTestProgram {
             return;
         }
 
-        new GbsWavTestProgram().play(args[0], args.length > 1 ? args[1] : null, 1);
+        play(args[0], args.length > 1 ? args[1] : null, 1);
     }
 
-    private void play(String filename, String refWavFile, int songNo) throws Exception {
+    private static void play(String filename, String refWavFile, int songNo) throws Exception {
         System.err.println("filename: " + filename);
         System.err.println("refWavFile: " + refWavFile);
         Setting setting = Setting.getInstance();
@@ -85,7 +89,7 @@ class GbsWavTestProgram {
 
         int timeout = RENDER_DURATION + 10; // duration + 10s buffer
 
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         int counter = 0;
         while (true) {
@@ -119,17 +123,14 @@ class GbsWavTestProgram {
         System.err.println("Rendering complete.");
 
         String actualOutWavFile = "tmp/gbs_out.wav";
-        new File("tmp").mkdirs();
-        javax.sound.sampled.AudioFormat af = new javax.sound.sampled.AudioFormat(44100, 16, 2, true, false);
+        Files.createDirectory(Path.of("tmp"));
+        AudioFormat af = new AudioFormat(44100, 16, 2, true, false);
         byte[] audioBytes = baos.toByteArray();
-        javax.sound.sampled.AudioSystem.write(
-            new javax.sound.sampled.AudioInputStream(
-                new java.io.ByteArrayInputStream(audioBytes), 
-                af, 
-                audioBytes.length / af.getFrameSize()
-            ), 
-            javax.sound.sampled.AudioFileFormat.Type.WAVE, 
-            new File(actualOutWavFile)
+        AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(audioBytes),
+                        af,
+                        audioBytes.length / af.getFrameSize()),
+                AudioFileFormat.Type.WAVE,
+                new File(actualOutWavFile)
         );
 
         if (refWavFile != null && new File(actualOutWavFile).exists()) {
@@ -183,12 +184,12 @@ System.out.println("out size: " + new File(outPath).length());
                 : 0;
 
         System.out.println("=== WAV Comparison Results ===");
-        System.out.println("Reference RMS: " + String.format("%.2f", refRms));
-        System.out.println("Output RMS:    " + String.format("%.2f", outRms));
-        System.out.println("Diff RMS:      " + String.format("%.2f", rmsDiff));
+        System.out.println("Reference RMS: " + "%.2f".formatted(refRms));
+        System.out.println("Output RMS:    " + "%.2f".formatted(outRms));
+        System.out.println("Diff RMS:      " + "%.2f".formatted(rmsDiff));
         System.out.println("Max Diff:      " + maxDiff);
-        System.out.println("SNR (dB):      " + String.format("%.2f", snr));
-        System.out.println("Correlation:   " + String.format("%.6f", correlation));
+        System.out.println("SNR (dB):      " + "%.2f".formatted(snr));
+        System.out.println("Correlation:   " + "%.6f".formatted(correlation));
 
         assertTrue(outRms > 200 && Math.abs(correlation) > 0.85, "quality test");
     }

@@ -30,6 +30,7 @@ import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -219,6 +220,7 @@ System.err.println("emulator thread, cores used:" + busy);
      * next machine's program runs but never gets its sound out. See driver/readme.md.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSecondSongCanBePlayedAfterTheFirst() throws Exception {
         assumeTrue(MmfToolPlayer.isAvailable(),
                 "no mmftoolc.exe, set -D" + MmfToolPlayer.MMFTOOL_PATH_KEY + "=<dir>");
@@ -260,6 +262,7 @@ System.err.println("emulator thread, cores used:" + busy);
      * does every time somebody presses next.
      */
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSongStoppedPartWayThroughDoesNotSpoilTheNext() throws Exception {
         assumeTrue(MmfToolPlayer.isAvailable(),
                 "no mmftoolc.exe, set -D" + MmfToolPlayer.MMFTOOL_PATH_KEY + "=<dir>");

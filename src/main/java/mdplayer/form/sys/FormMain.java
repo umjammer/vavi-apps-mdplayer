@@ -128,7 +128,7 @@ public class FormMain extends JFrame {
         return ym2612Midi.ym2612Midi;
     }
 
-    private static final Point empty = new Point(0, 0);
+    static final Point empty = new Point(0, 0);
 
     private BufferedImage pbRf5c164Screen;
     private FrameBuffer mainScreen = new FrameBuffer();
@@ -156,7 +156,9 @@ public class FormMain extends JFrame {
 //    private frmVSTeffectList frmVSTeffectList = null;
 
     private FormMixer2 frmMixer2 = null;
-    private FormVisWave frmVisWave;
+    private FormVisWave frmVisWave = new FormVisWave();
+    private FormFmdsp frmFmdsp = new FormFmdsp();
+    private FormBoids frmBoids = new FormBoids();
     private FormVSTeffectList frmVSTeffectList;
 
     /** every chip/panel view the providers contribute, in provider order, indexed primary/secondary */
@@ -456,7 +458,7 @@ public class FormMain extends JFrame {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            frmMain_FormClosed(e);
+            Runtime.getRuntime().addShutdownHook(new Thread(FormMain.this::SystemEvents_SessionEnding));
         }
 
         @Override
@@ -509,7 +511,7 @@ public class FormMain extends JFrame {
         if (setting.getLocation().getOPlayList()) dispPlayList();
         if (setting.getLocation().getOInfo()) openInfo();
         if (setting.getLocation().getOMixer()) openMixer();
-        if (setting.getLocation().getOpenVisWave()) openFormVisWave();
+        if (setting.getLocation().getOpenVisWave()) frmVisWave.open();
         if (setting.getLocation().getOpenVSTeffectList()) openVSTeffectList();
 
         for (Map.Entry<ViewProvider, View[]> e : views.entrySet()) {
@@ -673,7 +675,8 @@ public class FormMain extends JFrame {
                     tsmiStop_Click(null);
                     break;
                 case "NEXT":
-                    tsmiNext_Click(null);
+                    next();
+                    oldParam = new ScreenParams();
                     break;
                 case "PREV":
                     opeButtonPrevious_Click(null);
@@ -682,25 +685,25 @@ public class FormMain extends JFrame {
                     tsmiFadeOut_Click(null);
                     break;
                 case "FAST":
-                    tsmiFf_Click(null);
+                    ff();
                     break;
                 case "SLOW":
-                    tsmiSlow_Click(null);
+                    slow();
                     break;
                 case "PAUSE":
-                    tsmiPause_Click(null);
+                    pause();
                     break;
                 case "CLOSE":
                     setVisible(false);
                     break;
                 case "LOOP":
-                    tsmiPlayMode_Click(null);
+                    playMode();
                     break;
                 case "MIXER":
-                    tsmiOpenMixer_Click(null);
+                    openMixer();
                     break;
                 case "INFO":
-                    tsmiOpenInfo_Click(null);
+                    openInfo();
                     break;
                 case "SPLAY":
 
@@ -913,11 +916,9 @@ public class FormMain extends JFrame {
             }
         }
 
-        if (frmVisWave != null && !frmVisWave.isClosed) {
-            setting.getLocation().setPosVisWave(frmVisWave.getLocation());
-            frmVisWave.setVisible(false);
-            setting.getLocation().setOpenVisWave(true);
-        }
+        frmVisWave.close();
+        frmFmdsp.close(audio);
+        frmBoids.close(audio);
 
         setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
         if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
@@ -1028,10 +1029,6 @@ public class FormMain extends JFrame {
             faderMasterHover = false;
             faderTimeLineHover = false;
         }
-
-        @Override
-        public void mouseClicked(MouseEvent ev) {
-        }
     };
 
     private void checkMouseHover(int px, int py) {
@@ -1043,10 +1040,6 @@ public class FormMain extends JFrame {
         if (ev.isPopupTrigger()) {
             cmsMenu.show(pbScreen, ev.getX(), ev.getY());
         }
-    }
-
-    private void tsmiVisWave_Click(ActionEvent ev) {
-        openFormVisWave();
     }
 
     /**
@@ -1076,10 +1069,6 @@ public class FormMain extends JFrame {
         frmVSTeffectList.dispPluginList();
     }
 
-    private void tsmiConsole_Click(ActionEvent ev) {
-        openConsole();
-    }
-
     /** Shows what the player is logging. */
     private void openConsole() {
         if (frmConsole != null && !frmConsole.isClosed) {
@@ -1092,43 +1081,6 @@ public class FormMain extends JFrame {
         frmConsole = new FormConsole(this);
         frmConsole.setLocation(this.getLocation().x, this.getLocation().y + 100);
         frmConsole.setVisible(true);
-    }
-
-    private void openFormVisWave() {
-        if (frmVisWave != null && !frmVisWave.isClosed) {
-            frmVisWave.requestFocus();
-            return;
-        }
-
-        frmVisWave = new FormVisWave(this);
-
-        if (setting.getLocation().getPosVisWave().equals(empty)) {
-            frmVisWave.x = this.getLocation().x;
-            frmVisWave.y = this.getLocation().y + 264;
-        } else {
-            frmVisWave.x = setting.getLocation().getPosVisWave().x;
-            frmVisWave.y = setting.getLocation().getPosVisWave().y;
-        }
-
-        frmVisWave.setVisible(true);
-
-        checkAndSetForm(frmVisWave);
-    }
-
-    private void closeFormVisWave() {
-        if (frmVisWave == null) return;
-
-        try {
-            frmVisWave.setVisible(false);
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-        }
-        try {
-            frmVisWave.dispose();
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-        }
-        frmVisWave = null;
     }
 
     private void openInfo() {
@@ -1350,6 +1302,9 @@ public class FormMain extends JFrame {
 
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
+        frmFmdsp.init();
+        frmBoids.init();
+        frmVisWave.init(this);
 
         reqAllScreenInit = false;
     }
@@ -1741,6 +1696,8 @@ public class FormMain extends JFrame {
 
     public void pause() {
         audio.pause();
+        frmFmdsp.pause(audio);
+        frmBoids.pause(audio);
     }
 
     private void fadeout() {
@@ -1854,6 +1811,7 @@ public class FormMain extends JFrame {
             if (frmInfo != null) {
                 frmInfo.update();
             }
+
 
             // the panels the song wants are opened once it is actually playing, from the screen
             // loop — until then there is nothing to ask about which chips it uses
@@ -2490,7 +2448,7 @@ public class FormMain extends JFrame {
         }
     }
 
-    private static void checkAndSetForm(JFrame frm) {
+    static void checkAndSetForm(JFrame frm) {
         frm.pack();
         Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
         Rectangle rc = new Rectangle(frm.getLocation(), frm.getSize());
@@ -2500,10 +2458,6 @@ public class FormMain extends JFrame {
         } else {
             frm.setLocation(new Point(100, 100));
         }
-    }
-
-    private void frmMain_FormClosed(WindowEvent e) {
-        Runtime.getRuntime().addShutdownHook(new Thread(this::SystemEvents_SessionEnding));
     }
 
     private void tsmiOpenFile_Click(ActionEvent ev) {
@@ -2543,10 +2497,6 @@ public class FormMain extends JFrame {
         }
     }
 
-    private void tsmiExit_Click(ActionEvent ev) {
-        this.setVisible(false);
-    }
-
     private void tsmiPlay_Click(ActionEvent ev) {
         int n = frmPlayList.getMusicCount();
 
@@ -2563,46 +2513,9 @@ public class FormMain extends JFrame {
         stop();
     }
 
-    private void tsmiPause_Click(ActionEvent ev) {
-        pause();
-    }
-
     private void tsmiFadeOut_Click(ActionEvent ev) {
         fadeout();
         frmPlayList.stop();
-    }
-
-    private void tsmiSlow_Click(ActionEvent ev) {
-        slow();
-    }
-
-    private void tsmiFf_Click(ActionEvent ev) {
-        ff();
-    }
-
-    private void tsmiNext_Click(ActionEvent ev) {
-        next();
-        oldParam = new ScreenParams();
-    }
-
-    private void tsmiPlayMode_Click(ActionEvent ev) {
-        playMode();
-    }
-
-    private void tsmiOption_Click(ActionEvent ev) {
-        openSetting();
-    }
-
-    private void tsmiPlayList_Click(ActionEvent ev) {
-        dispPlayList();
-    }
-
-    private void tsmiOpenInfo_Click(ActionEvent ev) {
-        openInfo();
-    }
-
-    private void tsmiOpenMixer_Click(ActionEvent ev) {
-        openMixer();
     }
 
     private void tsmiChangeZoom_Click(ActionEvent ev) {
@@ -2614,18 +2527,6 @@ public class FormMain extends JFrame {
             setting.getOther().setZoom((setting.getOther().getZoom() == 4) ? 1 : (setting.getOther().getZoom() + 1));
 
         changeZoom();
-    }
-
-    private void tsmiVST_Click(ActionEvent ev) {
-        dispVSTList();
-    }
-
-    private void tsmiMIDIkbd_Click(ActionEvent ev) {
-        openMIDIKeyboard();
-    }
-
-    private void tsmiKBrd_Click(ActionEvent ev) {
-        showContextMenu();
     }
 
     private final BufferedImage[] lstOpeButtonEnterImage = {
@@ -2804,78 +2705,14 @@ public class FormMain extends JFrame {
         }
     }
 
-    private void opeButtonSetting_Click(ActionEvent ev) {
-        tsmiOption_Click(null);
-    }
-
-    private void opeButtonStop_Click(ActionEvent ev) {
-        tsmiStop_Click(null);
-    }
-
-    private void opeButtonPause_Click(ActionEvent ev) {
-        tsmiPause_Click(null);
-    }
-
-    private void opeButtonFadeout_Click(ActionEvent ev) {
-        tsmiFadeOut_Click(null);
-    }
-
     private void opeButtonPrevious_Click(ActionEvent ev) {
         prev();
         oldParam = new ScreenParams();
     }
 
-    private void opeButtonSlow_Click(ActionEvent ev) {
-        tsmiSlow_Click(null);
-    }
-
-    private void opeButtonPlay_Click(ActionEvent ev) {
-        tsmiPlay_Click(null);
-    }
-
-    private void opeButtonFast_Click(ActionEvent ev) {
-        tsmiFf_Click(null);
-    }
-
-    private void opeButtonNext_Click(ActionEvent ev) {
-        tsmiNext_Click(null);
-    }
-
     private void opeButtonMode_Click(ActionEvent ev) {
-        tsmiPlayMode_Click(null);
+        playMode();
         opeButton_Mouse.mouseEntered(new MouseEvent(opeButtonMode, 0, 0, 0, 0, 0, 0, 0, 0, false, 0)); // opeButtonMode
-    }
-
-    private void opeButtonOpen_Click(ActionEvent ev) {
-        tsmiOpenFile_Click(null);
-    }
-
-    private void opeButtonPlayList_Click(ActionEvent ev) {
-        tsmiPlayList_Click(null);
-    }
-
-    private void opeButtonInformation_Click(ActionEvent ev) {
-        tsmiOpenInfo_Click(null);
-    }
-
-    private void opeButtonMixer_Click(ActionEvent ev) {
-        tsmiOpenMixer_Click(null);
-    }
-
-    private void opeButtonKBD_Click(ActionEvent ev) {
-        tsmiKBrd_Click(null);
-    }
-
-    private void opeButtonVST_Click(ActionEvent ev) {
-        tsmiVST_Click(null);
-    }
-
-    private void opeButtonMIDIKBD_Click(ActionEvent ev) {
-        tsmiMIDIkbd_Click(null);
-    }
-
-    private void opeButtonZoom_Click(ActionEvent ev) {
-        tsmiChangeZoom_Click(null);
     }
 
     private void updateOpeButtonActiveState() {
@@ -2919,7 +2756,10 @@ public class FormMain extends JFrame {
         this.tsmiChangeZoomX3 = new JMenuItem();
         this.tsmiChangeZoomX4 = new JMenuItem();
         this.registerDumpDisplayToolStripMenuItem = new JMenu();
+        this.visualizerMenu = new JMenu();
         this.tsmiVisualizer = new JMenuItem();
+        this.fmdspVisualizer = new JMenuItem();
+        this.boidsVisualizer = new JMenuItem();
         this.tsmiConsole = new JMenuItem();
         this.opeButtonSetting = new JButton();
         this.toolTip1 = new JToolTip();
@@ -2978,7 +2818,7 @@ public class FormMain extends JFrame {
         this.cmsMenu.add(this.anotherWindowDisplayToolStripMenuItem);
         this.cmsMenu.add(this.tsmiChangeZoom);
         this.cmsMenu.add(this.registerDumpDisplayToolStripMenuItem);
-        this.cmsMenu.add(this.tsmiVisualizer);
+        this.cmsMenu.add(this.visualizerMenu);
         this.cmsMenu.add(this.tsmiConsole);
         this.cmsMenu.setName("contextMenuStrip1");
         //
@@ -2988,7 +2828,7 @@ public class FormMain extends JFrame {
         this.fileToolStripMenuItem.add(this.tsmiExit);
         this.fileToolStripMenuItem.setIcon(new ImageIcon(Common.getImage("ccOpenFolder")));
         // the caption is keyed on the name the designer gave it
-        this.fileToolStripMenuItem.setName("ファイルToolStripMenuItem");
+        this.fileToolStripMenuItem.setName("fileToolStripMenuItem");
         //
         // tsmiOpenFile
         //
@@ -2998,7 +2838,7 @@ public class FormMain extends JFrame {
         // tsmiExit
         //
         this.tsmiExit.setName("tsmiExit");
-        this.tsmiExit.addActionListener(this::tsmiExit_Click);
+        this.tsmiExit.addActionListener(_ -> this.setVisible(false));
         //
         // operationToolStripMenuItem
         //
@@ -3011,7 +2851,8 @@ public class FormMain extends JFrame {
         this.operationToolStripMenuItem.add(this.tsmiNext);
         this.operationToolStripMenuItem.add(this.tsmiPlayMode);
         // the caption is keyed on the name the designer gave it
-        this.operationToolStripMenuItem.setName("操作ToolStripMenuItem");
+        this.operationToolStripMenuItem.setIcon(new ImageIcon(Common.getImage("empty")));
+        this.operationToolStripMenuItem.setName("operationToolStripMenuItem");
         //
         // tsmiPlay
         //
@@ -3029,7 +2870,7 @@ public class FormMain extends JFrame {
         //
         this.tsmiPause.setIcon(new ImageIcon(Common.getImage("ccPause")));
         this.tsmiPause.setName("tsmiPause");
-        this.tsmiPause.addActionListener(this::tsmiPause_Click);
+        this.tsmiPause.addActionListener(_ -> pause());
         //
         // tsmiFadeOut
         //
@@ -3041,49 +2882,52 @@ public class FormMain extends JFrame {
         //
         this.tsmiSlow.setIcon(new ImageIcon(Common.getImage("ccSlow")));
         this.tsmiSlow.setName("tsmiSlow");
-        this.tsmiSlow.addActionListener(this::tsmiSlow_Click);
+        this.tsmiSlow.addActionListener(_ -> slow());
         //
         // tsmiFf
         //
         this.tsmiFf.setIcon(new ImageIcon(Common.getImage("ccFast")));
         this.tsmiFf.setName("tsmiFf");
-        this.tsmiFf.addActionListener(this::tsmiFf_Click);
+        this.tsmiFf.addActionListener(_ -> ff());
         //
         // tsmiNext
         //
         this.tsmiNext.setIcon(new ImageIcon(Common.getImage("ccNext")));
         this.tsmiNext.setName("tsmiNext");
-        this.tsmiNext.addActionListener(this::tsmiNext_Click);
+        this.tsmiNext.addActionListener(_ -> {
+            next();
+            oldParam = new ScreenParams();
+        });
         //
         // tsmiPlayMode
         //
         this.tsmiPlayMode.setIcon(new ImageIcon(Common.getImage("ccStep")));
         this.tsmiPlayMode.setName("tsmiPlayMode");
-        this.tsmiPlayMode.addActionListener(this::tsmiPlayMode_Click);
+        this.tsmiPlayMode.addActionListener(ev -> playMode());
         //
         // tsmiOption
         //
         this.tsmiOption.setIcon(new ImageIcon(Common.getImage("ccSetting")));
         this.tsmiOption.setName("tsmiOption");
-        this.tsmiOption.addActionListener(this::tsmiOption_Click);
+        this.tsmiOption.addActionListener(_ -> openSetting());
         //
         // tsmiPlayList
         //
         this.tsmiPlayList.setIcon(new ImageIcon(Common.getImage("ccPlayList")));
         this.tsmiPlayList.setName("tsmiPlayList");
-        this.tsmiPlayList.addActionListener(this::tsmiPlayList_Click);
+        this.tsmiPlayList.addActionListener(_ -> dispPlayList());
         //
         // tsmiOpenInfo
         //
         this.tsmiOpenInfo.setIcon(new ImageIcon(Common.getImage("ccInformation")));
         this.tsmiOpenInfo.setName("tsmiOpenInfo");
-        this.tsmiOpenInfo.addActionListener(this::tsmiOpenInfo_Click);
+        this.tsmiOpenInfo.addActionListener(_ -> openInfo());
         //
         // tsmiOpenMixer
         //
         this.tsmiOpenMixer.setIcon(new ImageIcon(Common.getImage("ccMixer")));
         this.tsmiOpenMixer.setName("tsmiOpenMixer");
-        this.tsmiOpenMixer.addActionListener(this::tsmiOpenMixer_Click);
+        this.tsmiOpenMixer.addActionListener(_ -> openMixer());
         //
         // anotherWindowDisplayToolStripMenuItem
         //
@@ -3091,25 +2935,25 @@ public class FormMain extends JFrame {
         this.anotherWindowDisplayToolStripMenuItem.add(this.tsmiVST);
         this.anotherWindowDisplayToolStripMenuItem.add(this.tsmiMIDIkbd);
         // the caption is keyed on the name the designer gave it
-        this.anotherWindowDisplayToolStripMenuItem.setName("その他ウィンドウ表示ToolStripMenuItem");
+        this.anotherWindowDisplayToolStripMenuItem.setName("anotherWindowDisplayToolStripMenuItem");
         //
         // tsmiKBrd
         //
         this.tsmiKBrd.setIcon(new ImageIcon(Common.getImage("ccKBD")));
         this.tsmiKBrd.setName("tsmiKBrd");
-        this.tsmiKBrd.addActionListener(this::tsmiKBrd_Click);
+        this.tsmiKBrd.addActionListener(_ -> showContextMenu());
         //
         // tsmiVST
         //
         this.tsmiVST.setIcon(new ImageIcon(Common.getImage("ccVST")));
         this.tsmiVST.setName("tsmiVST");
-        this.tsmiVST.addActionListener(this::tsmiVST_Click);
+        this.tsmiVST.addActionListener(_ -> dispVSTList());
         //
         // tsmiMIDIkbd
         //
         this.tsmiMIDIkbd.setIcon(new ImageIcon(Common.getImage("ccMIDIKBD")));
         this.tsmiMIDIkbd.setName("tsmiMIDIkbd");
-        this.tsmiMIDIkbd.addActionListener(this::tsmiMIDIkbd_Click);
+        this.tsmiMIDIkbd.addActionListener(_ -> openMIDIKeyboard());
         //
         // tsmiChangeZoom
         //
@@ -3144,18 +2988,29 @@ public class FormMain extends JFrame {
         // registerDumpDisplayToolStripMenuItem
         //
         // the caption is keyed on the name the designer gave it
-        this.registerDumpDisplayToolStripMenuItem.setName("レジスタダンプ表示ToolStripMenuItem");
+        this.registerDumpDisplayToolStripMenuItem.setIcon(new ImageIcon(Common.getImage("empty")));
+        this.registerDumpDisplayToolStripMenuItem.setName("registerDumpDisplayToolStripMenuItem");
         //
         // tsmiVisualizer
         //
+        this.visualizerMenu.setIcon(new ImageIcon(Common.getImage("empty")));
+        this.visualizerMenu.setName("visualizer");
         this.tsmiVisualizer.setName("tsmiVisualizer");
-        this.tsmiVisualizer.addActionListener(this::tsmiVisWave_Click);
+        this.tsmiVisualizer.addActionListener(_ -> frmVisWave.open());
+        this.fmdspVisualizer.setName("fmdspVisualizer");
+        this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
+        this.boidsVisualizer.setName("boidsVisualizer");
+        this.boidsVisualizer.addActionListener(_ -> frmBoids.open(audio, this::pause));
+        this.visualizerMenu.add(this.tsmiVisualizer);
+        this.visualizerMenu.add(this.fmdspVisualizer);
+        this.visualizerMenu.add(this.boidsVisualizer);
         //
         // tsmiConsole
         //
+        this.tsmiConsole.setIcon(new ImageIcon(Common.getImage("empty")));
         this.tsmiConsole.setName("tsmiConsole");
         this.tsmiConsole.setText("Console");
-        this.tsmiConsole.addActionListener(this::tsmiConsole_Click);
+        this.tsmiConsole.addActionListener(_ -> openConsole());
         //
         // opeButtonSetting
         //
@@ -3166,7 +3021,7 @@ public class FormMain extends JFrame {
         this.opeButtonSetting.setName("opeButtonSetting");
         this.opeButtonSetting.setActionCommand("0");
         this.opeButtonSetting.setToolTipText(rb.getString("opeButtonSetting.ToolTip"));
-        this.opeButtonSetting.addActionListener(this::opeButtonSetting_Click);
+        this.opeButtonSetting.addActionListener(ev -> openSetting());
         this.opeButtonSetting.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonStop
@@ -3176,7 +3031,7 @@ public class FormMain extends JFrame {
         this.opeButtonStop.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonStop.setName("opeButtonStop");
         this.opeButtonStop.setActionCommand("1");
-        this.opeButtonStop.addActionListener(this::opeButtonStop_Click);
+        this.opeButtonStop.addActionListener(this::tsmiStop_Click);
         this.opeButtonStop.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonPause
@@ -3187,7 +3042,7 @@ public class FormMain extends JFrame {
         this.opeButtonPause.setName("opeButtonPause");
         this.opeButtonPause.setActionCommand("2");
 //        this.opeButtonPause.setToolTipText(Resources.getResourceManager().getString("opeButtonPause.ToolTip"));
-        this.opeButtonPause.addActionListener(this::opeButtonPause_Click);
+        this.opeButtonPause.addActionListener(_ -> pause());
         this.opeButtonPause.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonFadeout
@@ -3197,7 +3052,7 @@ public class FormMain extends JFrame {
         this.opeButtonFadeout.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonFadeout.setName("opeButtonFadeout");
         this.opeButtonFadeout.setActionCommand("3");
-        this.opeButtonFadeout.addActionListener(this::opeButtonFadeout_Click);
+        this.opeButtonFadeout.addActionListener(_ -> tsmiFadeOut_Click(null));
         this.opeButtonFadeout.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonPrevious
@@ -3218,7 +3073,7 @@ public class FormMain extends JFrame {
         this.opeButtonSlow.setName("opeButtonSlow");
         this.opeButtonSlow.setActionCommand("5");
 //        this.opeButtonSlow.setToolTipText(Resources.getResourceManager().getString("opeButtonSlow.ToolTip"));
-        this.opeButtonSlow.addActionListener(this::opeButtonSlow_Click);
+        this.opeButtonSlow.addActionListener(ev -> slow());
         this.opeButtonSlow.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonPlay
@@ -3229,7 +3084,7 @@ public class FormMain extends JFrame {
         this.opeButtonPlay.setName("opeButtonPlay");
         this.opeButtonPlay.setActionCommand("6");
 //        this.opeButtonPlay.setToolTipText(Resources.getResourceManager().getString("opeButtonPlay.ToolTip"));
-        this.opeButtonPlay.addActionListener(this::opeButtonPlay_Click);
+        this.opeButtonPlay.addActionListener(this::tsmiPlay_Click);
         this.opeButtonPlay.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonFast
@@ -3240,7 +3095,7 @@ public class FormMain extends JFrame {
         this.opeButtonFast.setName("opeButtonFast");
         this.opeButtonFast.setActionCommand("7");
 //        this.opeButtonFast.setToolTipText(Resources.getResourceManager().getString("opeButtonFast.ToolTip"));
-        this.opeButtonFast.addActionListener(this::opeButtonFast_Click);
+        this.opeButtonFast.addActionListener(_ -> ff());
         this.opeButtonFast.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonNext
@@ -3251,7 +3106,10 @@ public class FormMain extends JFrame {
         this.opeButtonNext.setName("opeButtonNext");
         this.opeButtonNext.setActionCommand("8");
 //        this.opeButtonNext.setToolTipText(Resources.getResourceManager().getString("opeButtonNext.ToolTip"));
-        this.opeButtonNext.addActionListener(this::opeButtonNext_Click);
+        this.opeButtonNext.addActionListener(_ -> {
+            next();
+            oldParam = new ScreenParams();
+        });
         this.opeButtonNext.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonZoom
@@ -3262,7 +3120,7 @@ public class FormMain extends JFrame {
         this.opeButtonZoom.setName("opeButtonZoom");
         this.opeButtonZoom.setActionCommand("17");
 //        this.opeButtonZoom.setToolTipText(Resources.getResourceManager().getString("opeButtonZoom.ToolTip"));
-        this.opeButtonZoom.addActionListener(this::opeButtonZoom_Click);
+        this.opeButtonZoom.addActionListener(_ -> tsmiChangeZoom_Click(null));
         this.opeButtonZoom.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonMIDIKBD
@@ -3273,7 +3131,7 @@ public class FormMain extends JFrame {
         this.opeButtonMIDIKBD.setName("opeButtonMIDIKBD");
         this.opeButtonMIDIKBD.setActionCommand("16");
 //        this.opeButtonMIDIKBD.setToolTipText(Resources.getResourceManager().getString("opeButtonMIDIKBD.ToolTip"));
-        this.opeButtonMIDIKBD.addActionListener(this::opeButtonMIDIKBD_Click);
+        this.opeButtonMIDIKBD.addActionListener(_ -> openMIDIKeyboard());
         this.opeButtonMIDIKBD.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonVST
@@ -3284,7 +3142,7 @@ public class FormMain extends JFrame {
         this.opeButtonVST.setName("opeButtonVST");
         this.opeButtonVST.setActionCommand("15");
 //        this.opeButtonVST.setToolTipText(Resources.getResourceManager().getString("opeButtonVST.ToolTip"));
-        this.opeButtonVST.addActionListener(this::opeButtonVST_Click);
+        this.opeButtonVST.addActionListener(_ -> dispVSTList());
         this.opeButtonVST.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonKBD
@@ -3295,7 +3153,7 @@ public class FormMain extends JFrame {
         this.opeButtonKBD.setName("opeButtonKBD");
         this.opeButtonKBD.setActionCommand("14");
 //        this.opeButtonKBD.setToolTipText(Resources.getResourceManager().getString("opeButtonKBD.ToolTip"));
-        this.opeButtonKBD.addActionListener(this::opeButtonKBD_Click);
+        this.opeButtonKBD.addActionListener(_ -> showContextMenu());
         this.opeButtonKBD.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonMixer
@@ -3306,7 +3164,7 @@ public class FormMain extends JFrame {
         this.opeButtonMixer.setName("opeButtonMixer");
         this.opeButtonMixer.setActionCommand("13");
 //        this.opeButtonMixer.setToolTipText(Resources.getResourceManager().getString("opeButtonMixer.ToolTip"));
-        this.opeButtonMixer.addActionListener(this::opeButtonMixer_Click);
+        this.opeButtonMixer.addActionListener(_ -> openMixer());
         this.opeButtonMixer.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonInformation
@@ -3317,7 +3175,7 @@ public class FormMain extends JFrame {
         this.opeButtonInformation.setName("opeButtonInformation");
         this.opeButtonInformation.setActionCommand("12");
 //        this.opeButtonInformation.setToolTipText(Resources.getResourceManager().getString("opeButtonInformation.ToolTip"));
-        this.opeButtonInformation.addActionListener(this::opeButtonInformation_Click);
+        this.opeButtonInformation.addActionListener(_ -> openInfo());
         this.opeButtonInformation.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonPlayList
@@ -3328,7 +3186,7 @@ public class FormMain extends JFrame {
         this.opeButtonPlayList.setName("opeButtonPlayList");
         this.opeButtonPlayList.setActionCommand("11");
 //        this.opeButtonPlayList.setToolTipText(Resources.getResourceManager().getString("opeButtonPlayList.ToolTip"));
-        this.opeButtonPlayList.addActionListener(this::opeButtonPlayList_Click);
+        this.opeButtonPlayList.addActionListener(_ -> dispPlayList());
         this.opeButtonPlayList.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonOpen
@@ -3339,7 +3197,7 @@ public class FormMain extends JFrame {
         this.opeButtonOpen.setName("opeButtonOpen");
         this.opeButtonOpen.setActionCommand("10");
 //        this.opeButtonOpen.setToolTipText(Resources.getResourceManager().getString("opeButtonOpen.ToolTip"));
-        this.opeButtonOpen.addActionListener(this::opeButtonOpen_Click);
+        this.opeButtonOpen.addActionListener(this::tsmiOpenFile_Click);
         this.opeButtonOpen.addMouseListener(this.opeButton_Mouse);
         //
         // opeButtonMode
@@ -3457,7 +3315,10 @@ public class FormMain extends JFrame {
     private JButton opeButtonPlayList;
     private JButton opeButtonOpen;
     private JButton opeButtonMode;
+    private JMenu visualizerMenu;
     private JMenuItem tsmiVisualizer;
+    private JMenuItem fmdspVisualizer;
+    private JMenuItem boidsVisualizer;
     private JMenuItem tsmiConsole;
     private FormConsole frmConsole;
 

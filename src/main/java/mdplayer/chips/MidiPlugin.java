@@ -73,6 +73,9 @@ public class MidiPlugin implements Plugin {
     /** the software synthesizer opened as a fallback when no MIDI out is configured */
     private Synthesizer fallbackSynth;
 
+    /** the software synthesizer the midi songs are heard on when no midi out is set */
+    static final String FALLBACK_SYNTHESIZER = "YmFm OPL3 MIDI Synthesizer";
+
     public MidiPlugin() {
         mds = new MDSound();
     }
@@ -299,7 +302,7 @@ logger.log(Level.DEBUG, "midi volume: gain=%.3f (master=%d, midi=%d)".formatted(
         private boolean open() {
             try {
                 if (fallbackSynth == null) {
-                    fallbackSynth = MidiSystem.getSynthesizer();
+                    fallbackSynth = fallbackSynthesizer();
                 }
                 if (!fallbackSynth.isOpen()) {
                     fallbackSynth.open();
@@ -312,6 +315,25 @@ logger.log(Level.DEBUG, "midi volume: gain=%.3f (master=%d, midi=%d)".formatted(
                 logger.log(Level.ERROR, e.getMessage(), e);
                 return false;
             }
+        }
+
+        /**
+         * The synthesizer named by {@code javax.sound.midi.Synthesizer}, else {@link #FALLBACK_SYNTHESIZER}
+         * by name. Not simply {@link MidiSystem#getSynthesizer()}: without the property that is the
+         * first one of whichever provider comes first on the class path, and the synthesizers of
+         * vavi-apps-mfiplayer (a faith dll booting jdosbox, an OPL3) or the sandbox come before
+         * the one the songs are balanced for.
+         */
+        private static Synthesizer fallbackSynthesizer() throws MidiUnavailableException {
+            if (System.getProperty("javax.sound.midi.Synthesizer") == null) {
+                for (MidiDevice.Info info : MidiSystem.getMidiDeviceInfo()) {
+                    if (info.getName().equals(FALLBACK_SYNTHESIZER) && MidiSystem.getMidiDevice(info) instanceof Synthesizer s) {
+                        return s;
+                    }
+                }
+                logger.log(Level.WARNING, "no " + FALLBACK_SYNTHESIZER + ", the default synthesizer instead");
+            }
+            return MidiSystem.getSynthesizer();
         }
 
         @Override

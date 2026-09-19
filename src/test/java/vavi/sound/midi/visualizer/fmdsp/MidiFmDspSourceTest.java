@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 
 /**
@@ -324,15 +325,25 @@ class MidiFmDspSourceTest {
         assertEquals(255, status(0).ticks);
         assertEquals(255, status(0).ticksLeft);
 
+        // a sleep can overrun badly on a busy machine (a ci runner), so the bounds come from the
+        // time that actually went by rather than from what was asked for
+        long t0 = System.nanoTime();
         Thread.sleep(120);
         noteOff(0, 60);
+        long held = System.nanoTime() - t0;
         Thread.sleep(80);
         noteOn(0, 62, 100);
+        long length = System.nanoTime() - t0;
 
         TrackStatus s = status(0);
-        // ~200 ms at 240 counts a second, and the key was down for the first 120 of them
-        assertTrue(s.ticks > 30 && s.ticks < 70, "measured " + s.ticks);
-        assertTrue(s.gate > 15 && s.gate < s.ticks, "measured " + s.gate);
+        // at 240 counts a second, the key down for the first part of it
+        int ticks = (int) (length * 240 / 1_000_000_000L);
+        int gate = (int) (held * 240 / 1_000_000_000L);
+        assertTrue(ticks >= 48, "slept short: " + ticks);
+        // past a second the bar rescales, and a stall that long says nothing about the meter
+        assumeTrue(ticks <= 255, "stalled for " + ticks);
+        assertTrue(Math.abs(s.ticks - ticks) <= 3, "measured " + s.ticks + ", elapsed " + ticks);
+        assertTrue(Math.abs(s.gate - gate) <= 3 && s.gate < s.ticks, "measured " + s.gate + ", held " + gate);
         assertTrue(s.ticksLeft <= s.ticks);
     }
 

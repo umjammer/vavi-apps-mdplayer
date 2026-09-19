@@ -7,7 +7,9 @@
 package mdplayer.driver.sid;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 import mdplayer.lib.sid.libsidplayfp.sidplayfp.SidTune;
 import mdplayer.lib.sid.libsidplayfp.sidplayfp.SidTuneInfo;
@@ -55,12 +57,14 @@ Debug.print("volume: " + volume);
     @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
     void test1() throws Exception {
 //        System.setProperty("javax.sound.sampled.SourceDataLine", "#WaveOut Mixer");
+//        Path wav = Path.of("tmp", "waveout_sid.wav");
+//        System.setProperty("vavi.sound.sampled.misc.waveout", wav.toString());
 
 Debug.println(sid);
         SidTestProgram.main(new String[]{sid});
 
 //        if ("#WaveOut Mixer".equals(System.getProperty("javax.sound.sampled.SourceDataLine")))
-//            Files.move(Path.of(System.getProperty("vavi.sound.sampled.misc.waveout")), Path.of("tmp", "waveout_sid.wav"), StandardCopyOption.REPLACE_EXISTING);
+//            assertTrue(Files.exists(wav));
     }
 
     @Test

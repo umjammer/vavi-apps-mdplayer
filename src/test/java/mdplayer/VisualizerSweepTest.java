@@ -54,7 +54,7 @@ class VisualizerSweepTest {
     }
 
     @Test
-    @EnabledIfSystemProperty(named = "vavi.test", matches = "local")
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "ai")
     void sweep() throws Exception {
         List<String> silent = new ArrayList<>();
         List<String> blank = new ArrayList<>();

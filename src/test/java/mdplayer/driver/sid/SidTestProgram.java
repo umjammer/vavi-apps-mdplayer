@@ -84,8 +84,7 @@ Debug.print("countdown");
         AudioFormat format = new AudioFormat(SamplingRate, 16, 2, true, false);
         line = AudioSystem.getSourceDataLine(format);
         line.open(format);
-        if (!"#WaveOut Mixer".equals(System.getProperty("javax.sound.sampled.SourceDataLine")))
-            volume(line, Double.parseDouble(System.getProperty("mdsound.volume", "0.2")));
+        volume(line, Double.parseDouble(System.getProperty("mdsound.volume", "0.2")));
         line.start();
 
         isPlaying = true;

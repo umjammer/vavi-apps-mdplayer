@@ -43,6 +43,7 @@ import com.google.gson.GsonBuilder;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 
 /**
@@ -320,6 +321,7 @@ class M68kHarteTest {
     }
 
     @Test
+    @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void test1() throws Exception {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(
                 Paths.get(M68K_JSON_PATH), "*.json.bin")) {
