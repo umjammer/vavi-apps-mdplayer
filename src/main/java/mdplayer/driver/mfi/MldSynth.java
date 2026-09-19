@@ -23,6 +23,7 @@ import javax.sound.sampled.AudioInputStream;
 
 import com.sun.media.sound.AudioSynthesizer;
 import vavi.sound.mfi.InvalidMfiDataException;
+import vavi.sound.mfi.MfiChip;
 import vavi.sound.mfi.faith.FaithType4Player;
 import vavi.sound.mfi.rohm.RohmAudioEngine;
 import vavi.sound.mfi.rohm.RohmMfiSynthesizer.RohmMfiReceiver;
@@ -75,14 +76,14 @@ public interface MldSynth extends AutoCloseable {
     /**
      * The synthesizer for a chip, or the one standing in for it.
      * <ul>
-     *  <li>{@link MldChip#YAMAHA}: Nuked OPL3 with the voices the file sends</li>
-     *  <li>{@link MldChip#FUETREK}: the fuetrek sound source, needs {@code rt_synth_4.dll}
+     *  <li>{@link MfiChip#YAMAHA}: Nuked OPL3 with the voices the file sends</li>
+     *  <li>{@link MfiChip#FUETREK}: the fuetrek sound source, needs {@code rt_synth_4.dll}
      *      ({@code -Dvavi.sound.mfi.faith.path}), Nuked OPL3 without it</li>
-     *  <li>{@link MldChip#ROHM}: the rohm sound source, needs {@code rt_synth_2.dll}
+     *  <li>{@link MfiChip#ROHM}: the rohm sound source, needs {@code rt_synth_2.dll}
      *      ({@code -Dvavi.sound.mfi.faith.path}), Gervill's general midi pcm without it</li>
      * </ul>
      */
-    static MldSynth forChip(MldChip chip) {
+    static MldSynth forChip(MfiChip chip) {
         String forced = System.getProperty(SYNTH_KEY);
         if (forced != null && !forced.isBlank()) {
             return byName(forced.strip().toLowerCase(Locale.ROOT));
