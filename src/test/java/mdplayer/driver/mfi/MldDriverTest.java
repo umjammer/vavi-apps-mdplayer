@@ -170,8 +170,8 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + f
     }
 
     @Test
-    void playsOnUcs() throws Exception {
-        playsThroughTheDriver("ucs", mld);
+    void playsOnFuetrek() throws Exception {
+        playsThroughTheDriver("fuetrek", mld);
     }
 
     @Test
