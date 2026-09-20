@@ -27,8 +27,11 @@ import javax.sound.midi.SysexMessage;
 import vavi.sound.mfi.InvalidMfiDataException;
 import vavi.sound.mfi.MfiChip;
 import vavi.sound.mfi.vavi.VaviMfiSynthesizer;
+import vavi.sound.mfi.vavi.sequencer.AudioDataSequencer;
+import vavi.sound.mobile.MobileExclusive;
 
 import static java.lang.System.getLogger;
+import static vavi.sound.midi.VaviMidiDeviceProvider.MANUFACTURER_ID;
 
 
 /**
@@ -180,13 +183,28 @@ public interface MldSynth extends AutoCloseable {
     class MfiReceiver implements MidiDeviceReceiver {
         private final Receiver receiver;
 
+        /** whether the audio data of an MFi 4 song goes to vavi-sound too, see the constructor */
+        private final boolean audioDataToo;
+
+        /** everything goes to vavi-sound */
         public MfiReceiver(Receiver receiver) {
+            this(receiver, true);
+        }
+
+        /**
+         * @param audioDataToo false: the audio data (adpcm) of an MFi 4 song is the
+         *        synthesizer's, which sounds it in the song, so it is not handed to
+         *        vavi-sound's {@link vavi.sound.mobile.AudioEngine} as well, which would play
+         *        it a second time beside the song
+         */
+        public MfiReceiver(Receiver receiver, boolean audioDataToo) {
             this.receiver = receiver;
+            this.audioDataToo = audioDataToo;
         }
 
         @Override
         public void send(MidiMessage message, long timeStamp) {
-            if (message instanceof SysexMessage sysex) {
+            if (message instanceof SysexMessage sysex && (audioDataToo || !isAudioData(sysex))) {
                 try {
                     VaviMfiSynthesizer.processSpecial(sysex, this);
                 } catch (InvalidMfiDataException | RuntimeException e) {
@@ -194,6 +212,27 @@ public interface MldSynth extends AutoCloseable {
                 }
             }
             receiver.send(message, timeStamp);
+        }
+
+        /**
+         * Whether it is one of the exclusives an MFi 4 song's audio data travels as, which
+         * vavi-sound hands to an {@link vavi.sound.mobile.AudioEngine}, packed
+         * {@code 45 7f <encode87(45 02 ...)> f7}.
+         */
+        private static boolean isAudioData(SysexMessage sysex) {
+            byte[] data = sysex.getData();
+            if (data.length < 2 || (data[0] & 0xff) != MANUFACTURER_ID
+                    || (data[1] & 0xff) != MobileExclusive.MIDI_SYSEX_FUNCTION_ID_PACKED) {
+                return false;
+            }
+            try {
+                byte[] unpacked = MobileExclusive.unpack(data);
+                return unpacked.length >= 2 && (unpacked[0] & 0xff) == MANUFACTURER_ID
+                        && (unpacked[1] & 0xff) == AudioDataSequencer.MFi_SYSEX_FUNCTION_ID_MFi4;
+            } catch (RuntimeException e) {
+                Holder.logger.log(Level.DEBUG, "unpack: " + e);
+                return false;
+            }
         }
 
         @Override

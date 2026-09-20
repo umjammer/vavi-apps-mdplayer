@@ -160,6 +160,13 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + f
         assumeTrue(Files.exists(necMld), necMld + " is missing");
         assertEquals(MfiChip.YAMAHA, MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(necMld)))).chip());
         playsThroughTheDriver(null, necMld);
+        // the opl3 stand in leaves the song's adpcm to vavi-sound's engine, sion sounds it itself
+        playsThroughTheDriver("nuked", necMld);
+    }
+
+    @Test
+    void playsOnSion() throws Exception {
+        playsThroughTheDriver("sion", mld);
     }
 
     @Test
@@ -234,8 +241,8 @@ System.err.println(chip + " → " + synth.getName());
     }
 
     /** @param synth null: the one for the chip */
-    private static void playsThroughTheDriver(String synth, Path mld) throws Exception {
-        assumeTrue(Files.exists(mld), mld + " is missing");
+    private static void playsThroughTheDriver(String synth, Path song) throws Exception {
+        assumeTrue(Files.exists(song), song + " is missing");
         if (synth != null) {
             MldSynth provider = MldSynth.providers().stream().filter(p -> p.getName().equals(synth)).findFirst().orElseThrow();
             assumeTrue(provider.isAvailable(), provider.getRequirement());
@@ -249,9 +256,9 @@ System.err.println(chip + " → " + synth.getName());
         // the adpcm of vavi-sound plays into a line of its own
         System.setProperty("vavi.sound.mobile.AudioEngine.volume", "0.02");
         try {
-            String filename = mld.toString();
+            String filename = song.toString();
             FileFormat format = FileFormat.getFileFormat(filename);
-            format.load(new BufferedInputStream(Files.newInputStream(mld)), null);
+            format.load(new BufferedInputStream(Files.newInputStream(song)), null);
 
             @SuppressWarnings("unchecked")
             BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
@@ -285,14 +292,15 @@ System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver
             plugin.close();
 
             byte[] b = pcm.toByteArray();
-            Path out = Path.of("tmp/mld-" + (synth != null ? synth : "auto") + ".wav");
+            Path out = Path.of("tmp/mld-" + (synth != null ? synth : "auto")
+                    + (song.equals(mld) ? "" : "-" + song.getFileName().toString().split("[ .]")[0]) + ".wav");
             Files.createDirectories(out.getParent());
             AudioFormat af = new AudioFormat(sampleRate, 16, 2, true, false);
             AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(b), af, b.length / 4),
                     AudioFileFormat.Type.WAVE, out.toFile());
 System.err.printf("%s: %.1fs of audio in %.1fs, peak %d -> %s%n", synth, rendered / (double) sampleRate, elapsed / 1000.0, peak, out);
             assertTrue(peak > 100, "silent: " + peak);
-            if (mld.equals(necMld)) {
+            if (song.equals(necMld) && "nuked".equals(synth)) {
                 // its adpcm (ainf 0x82) is played in the song, not to a line of its own
                 assertTrue(adpcm, "no adpcm went through the mixer");
             }

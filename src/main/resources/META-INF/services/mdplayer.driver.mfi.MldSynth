@@ -1,5 +1,6 @@
 mdplayer.driver.mfi.synth.Ma7MldSynth
 mdplayer.driver.mfi.synth.OpenDojaMldSynth$Ma3
+mdplayer.driver.mfi.synth.SionMldSynth
 mdplayer.driver.mfi.synth.NukedMldSynth
 mdplayer.driver.mfi.synth.UcsMldSynth
 mdplayer.driver.mfi.synth.OpenDojaMldSynth$Fuetrek
