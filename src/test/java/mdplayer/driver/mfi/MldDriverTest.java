@@ -31,7 +31,6 @@ import mdplayer.driver.FileFormat;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.mfi.MfiChip;
 import vavi.sound.mfi.MfiChip.Vendor;
-import vavi.sound.mfi.faith.FaithType4Player;
 import vavi.sound.mfi.rohm.RohmRom;
 import vavi.sound.mobile.AudioEngineMixer;
 import vavi.sound.visualizer.fmdsp.TrackId;
@@ -44,6 +43,7 @@ import static mdplayer.driver.mfi.MldDriver.condition;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -187,14 +187,58 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + f
         playsThroughTheDriver("gervill", mld);
     }
 
+    @Test
+    void playsOnMa7() throws Exception {
+        playsThroughTheDriver("ma7", mld);
+    }
+
+    @Test
+    void playsOnOpenDojaMa3() throws Exception {
+        playsThroughTheDriver("opendoja.ma3", mld);
+    }
+
+    @Test
+    void playsOnOpenDojaFuetrek() throws Exception {
+        playsThroughTheDriver("opendoja.fuetrek", mld);
+    }
+
+    /** a property picks one for a chip, or for every chip, and the best one available otherwise */
+    @Test
+    void aPropertyPicksTheSynthesizer() {
+        try {
+            System.setProperty(MldSynth.SYNTH_KEY + ".rohm", "nuked");
+            try (MldSynth synth = MldSynth.forChip(MfiChip.ROHM)) {
+                assertEquals("nuked", synth.getName());
+            }
+            System.setProperty(MldSynth.SYNTH_KEY, "gervill");
+            try (MldSynth synth = MldSynth.forChip(MfiChip.ROHM)) {
+                assertEquals("nuked", synth.getName(), "the chip's own wins");
+            }
+            try (MldSynth synth = MldSynth.forChip(MfiChip.YAMAHA)) {
+                assertEquals("gervill", synth.getName());
+            }
+            System.setProperty(MldSynth.SYNTH_KEY, "no such one");
+            assertThrows(IllegalArgumentException.class, () -> MldSynth.forChip(MfiChip.YAMAHA));
+        } finally {
+            System.clearProperty(MldSynth.SYNTH_KEY + ".rohm");
+            System.clearProperty(MldSynth.SYNTH_KEY);
+        }
+        for (MfiChip chip : MfiChip.values()) {
+            MldSynth best = MldSynth.providers().stream()
+                    .filter(p -> p.getChips().contains(chip) && p.isAvailable()).findFirst().orElseThrow();
+            try (MldSynth synth = MldSynth.forChip(chip)) {
+System.err.println(chip + " → " + synth.getName());
+                assertEquals(best.getName(), synth.getName());
+            }
+        }
+    }
+
     /** @param synth null: the one for the chip */
     private static void playsThroughTheDriver(String synth, Path mld) throws Exception {
         assumeTrue(Files.exists(mld), mld + " is missing");
-        if ("ucs".equals(synth)) {
-            assumeTrue(FaithType4Player.isAvailable(), "no rt_synth_4.dll, set -Dvavi.sound.mfi.faith.path");
-        }
-        if ("rohm".equals(synth)) {
-            assumeTrue(RohmRom.isAvailable(), "no rt_synth_2.dll, set -Dvavi.sound.mfi.faith.path");
+        if (synth != null) {
+            MldSynth provider = MldSynth.providers().stream().filter(p -> p.getName().equals(synth)).findFirst().orElseThrow();
+            assumeTrue(provider.isAvailable(), provider.getRequirement());
         }
 
         Setting setting = Setting.getInstance();
@@ -216,7 +260,7 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + f
 
             BaseDriver driver = plugin.getDriver();
             MldDriver mldDriver = assertInstanceOf(MldDriver.class, driver);
-System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver.getSynth().getName());
+System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver.getSynth().getDescription());
 
             int seconds = Integer.getInteger("mdplayer.mfi.test.seconds", 15);
             ByteArrayOutputStream pcm = new ByteArrayOutputStream();

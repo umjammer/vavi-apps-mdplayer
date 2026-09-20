@@ -205,7 +205,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         frac = 0;
         blockPos = blockLen = BLOCK;
         curL = curR = prevL = prevR = 0;
-logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getName());
+logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
     }
 
     /**
