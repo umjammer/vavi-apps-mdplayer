@@ -14,8 +14,8 @@ import java.util.function.Supplier;
 import mdplayer.ChipRegister;
 import mdplayer.driver.BaseDriver;
 import mdplayer.driver.mfi.MldChannels;
-import mdplayer.driver.mfi.MldChip;
 import mdplayer.driver.mfi.MldDriver;
+import vavi.sound.mfi.MfiChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
 
@@ -63,7 +63,7 @@ public class MldReader implements FmDspChipReader {
         return mld == null ? null : mld.getChannels();
     }
 
-    private MldChip chip() {
+    private MfiChip chip() {
         MldDriver mld = mld();
         return mld == null || mld.getDetection() == null ? null : mld.getDetection().chip();
     }
@@ -93,7 +93,7 @@ public class MldReader implements FmDspChipReader {
 
     /** the rows of the chip: the fm ones for Yamaha, the pcm ones for the others */
     private Group group() {
-        return chip() == MldChip.YAMAHA ? Group.FM : Group.PCM;
+        return chip() == MfiChip.YAMAHA ? Group.FM : Group.PCM;
     }
 
     @Override

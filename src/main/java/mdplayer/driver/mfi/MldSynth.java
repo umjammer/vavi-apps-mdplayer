@@ -7,52 +7,91 @@
 package mdplayer.driver.mfi;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiDeviceReceiver;
 import javax.sound.midi.MidiMessage;
-import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.SysexMessage;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
 
-import com.sun.media.sound.AudioSynthesizer;
 import vavi.sound.mfi.InvalidMfiDataException;
-import vavi.sound.mfi.faith.FaithType4Player;
-import vavi.sound.mfi.rohm.RohmAudioEngine;
-import vavi.sound.mfi.rohm.RohmMfiSynthesizer.RohmMfiReceiver;
-import vavi.sound.mfi.rohm.RohmRom;
-import vavi.sound.mfi.ucs.FuetrekRom;
-import vavi.sound.mfi.ucs.UcsAudioEngine;
-import vavi.sound.mfi.ucs.UcsMfiSynthesizer.UcsMfiReceiver;
+import vavi.sound.mfi.MfiChip;
 import vavi.sound.mfi.vavi.VaviMfiSynthesizer;
-import vavi.sound.midi.ymf262.NukedSynthesizer;
+import vavi.sound.mfi.vavi.sequencer.AudioDataSequencer;
+import vavi.sound.mobile.MobileExclusive;
 
 import static java.lang.System.getLogger;
+import static vavi.sound.midi.VaviMidiDeviceProvider.MANUFACTURER_ID;
 
 
 /**
  * A synthesizer an mfi is played on, rendering when it is asked to rather than into a line of
  * its own, so the song is mixed, recorded and paused like any other.
  * <p>
- * Every message is sent, and every frame rendered, on the thread of the player's render loop.
+ * This is a service provider interface: an implementation is listed in
+ * {@code META-INF/services/mdplayer.driver.mfi.MldSynth}, and {@link #forChip} picks one for the
+ * chip of a song. A system property can pick one by its {@link #getName() name} for one chip,
+ * {@code mdplayer.mfi.synth.yamaha=ma7}, or for every chip, {@code mdplayer.mfi.synth=gervill}.
+ * Without one, the {@link #isAvailable() available} synthesizer of the highest
+ * {@link #getPriority() priority} that {@link #getChips() sounds as the chip} is taken.
+ * <p>
+ * An instance the {@link ServiceLoader} makes is light, it only gets its sound source when it is
+ * {@link #open() opened}, once, for a song. Every message is sent, and every frame rendered, on
+ * the thread of the player's render loop.
  * <p>
  * The exclusives vavi-sound converts the machine dependent messages into (the adpcm, the UCS
- * waves) go through {@link VaviMfiSynthesizer#processSpecial}; the adpcm engines of vavi-sound
- * play into a line of their own, that part of a song is not mixed here.
+ * waves) go through {@link VaviMfiSynthesizer#processSpecial}, see {@link MfiReceiver}.
  *
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-09-19 nsano initial version <br>
+ *          0.01 2026-09-20 nsano service provider interface <br>
  */
 public interface MldSynth extends AutoCloseable {
 
-    /** system property: a synthesizer for every file, {@code nuked}, {@code ucs}, {@code rohm} or {@code gervill} */
+    /**
+     * system property: a synthesizer by its {@link #getName() name} for every file, or, with
+     * {@code .yamaha}, {@code .fuetrek} or {@code .rohm} after it, for the files of that chip
+     */
     String SYNTH_KEY = "mdplayer.mfi.synth";
+
+    // ---- the provider
+
+    /** what {@link #SYNTH_KEY} picks it by, lower case */
+    String getName();
+
+    /** for the play list and the log */
+    String getDescription();
+
+    /** the chips it is the sound of or stands in for */
+    Set<MfiChip> getChips();
+
+    /** of the synthesizers for a chip, the highest one available plays it */
+    int getPriority();
+
+    /** whether what it needs is here, the library or the rom */
+    default boolean isAvailable() {
+        return true;
+    }
+
+    /** what it needs when it is not {@link #isAvailable()}, for the log */
+    default String getRequirement() {
+        return "";
+    }
+
+    // ---- the synthesizer
+
+    /** gets the sound source, before anything else */
+    void open() throws IOException, MidiUnavailableException;
 
     /** where the messages go */
     Receiver getReceiver();
@@ -66,57 +105,69 @@ public interface MldSynth extends AutoCloseable {
      */
     void render(int[] left, int[] right, int frames);
 
-    /** for the play list and the log */
-    String getName();
-
     @Override
     void close();
 
-    /**
-     * The synthesizer for a chip, or the one standing in for it.
-     * <ul>
-     *  <li>{@link MldChip#YAMAHA}: Nuked OPL3 with the voices the file sends</li>
-     *  <li>{@link MldChip#FUETREK}: the fuetrek sound source, needs {@code rt_synth_4.dll}
-     *      ({@code -Dvavi.sound.mfi.faith.path}), Nuked OPL3 without it</li>
-     *  <li>{@link MldChip#ROHM}: the rohm sound source, needs {@code rt_synth_2.dll}
-     *      ({@code -Dvavi.sound.mfi.faith.path}), Gervill's general midi pcm without it</li>
-     * </ul>
-     */
-    static MldSynth forChip(MldChip chip) {
-        String forced = System.getProperty(SYNTH_KEY);
-        if (forced != null && !forced.isBlank()) {
-            return byName(forced.strip().toLowerCase(Locale.ROOT));
+    // ----
+
+    /** every synthesizer listed, fresh instances, highest priority first */
+    static List<MldSynth> providers() {
+        List<MldSynth> synths = new ArrayList<>();
+        var i = ServiceLoader.load(MldSynth.class).iterator();
+        while (true) {
+            try {
+                if (!i.hasNext()) break;
+                synths.add(i.next());
+            } catch (ServiceConfigurationError | LinkageError e) {
+                // a library it is made of is not on the class path
+                Holder.logger.log(Level.DEBUG, e.toString());
+            }
         }
-        return switch (chip) {
-            case YAMAHA -> new Nuked();
-            case FUETREK -> {
-                if (FaithType4Player.isAvailable()) {
-                    yield new Ucs();
-                }
-                Holder.logger.log(Level.WARNING, "no rt_synth_4.dll under " + FaithType4Player.toolsDirectory()
-                        + ", the fuetrek song is played by the OPL3; set -Dvavi.sound.mfi.faith.path=<dir>");
-                yield new Nuked();
-            }
-            case ROHM -> {
-                if (RohmRom.isAvailable()) {
-                    yield new Rohm();
-                }
-                Holder.logger.log(Level.WARNING, "no rt_synth_2.dll under " + FaithType4Player.toolsDirectory()
-                        + ", the rohm song is played by Gervill; set -Dvavi.sound.mfi.faith.path=<dir>");
-                yield new Gervill();
-            }
-        };
+        synths.sort(Comparator.comparingInt(MldSynth::getPriority).reversed());
+        return synths;
     }
 
-    /** @throws IllegalArgumentException unknown name */
-    static MldSynth byName(String name) {
-        return switch (name) {
-            case "nuked" -> new Nuked();
-            case "ucs" -> new Ucs();
-            case "rohm" -> new Rohm();
-            case "gervill" -> new Gervill();
-            default -> throw new IllegalArgumentException(SYNTH_KEY + ": " + name);
-        };
+    /**
+     * The synthesizer for a chip, the one {@link #SYNTH_KEY} names or the highest one available,
+     * opened.
+     *
+     * @throws IllegalArgumentException the name {@link #SYNTH_KEY} gives is not a synthesizer's
+     * @throws IllegalStateException the synthesizer named can not be opened, or no synthesizer can
+     */
+    static MldSynth forChip(MfiChip chip) {
+        List<MldSynth> synths = providers();
+
+        String name = System.getProperty(SYNTH_KEY + "." + chip.name().toLowerCase(Locale.ROOT));
+        if (name == null || name.isBlank()) {
+            name = System.getProperty(SYNTH_KEY);
+        }
+        if (name != null && !name.isBlank()) {
+            String key = name.strip().toLowerCase(Locale.ROOT);
+            MldSynth synth = synths.stream().filter(s -> s.getName().equals(key)).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(SYNTH_KEY + ": " + key + ", one of "
+                            + synths.stream().map(MldSynth::getName).collect(Collectors.joining(", "))));
+            try {
+                synth.open();
+                return synth;
+            } catch (IOException | MidiUnavailableException | RuntimeException e) {
+                throw new IllegalStateException(key + ": " + e.getMessage(), e);
+            }
+        }
+
+        for (MldSynth synth : synths) {
+            if (!synth.getChips().contains(chip)) continue;
+            if (!synth.isAvailable()) {
+                Holder.logger.log(Level.WARNING, "no " + synth.getName() + " for " + chip + ": " + synth.getRequirement());
+                continue;
+            }
+            try {
+                synth.open();
+                return synth;
+            } catch (IOException | MidiUnavailableException | RuntimeException e) {
+                Holder.logger.log(Level.WARNING, "no " + synth.getName() + " for " + chip + ": " + e, e);
+            }
+        }
+        throw new IllegalStateException("no synthesizer for " + chip);
     }
 
     /** for the logger of an interface */
@@ -126,18 +177,34 @@ public interface MldSynth extends AutoCloseable {
 
     /**
      * Hands the exclusives of vavi-sound's mfi (adpcm, machine dependent) to vavi-sound, and
-     * everything to the synthesizer, as {@link VaviMfiSynthesizer.VaviMfiReceiver} does.
+     * everything to the synthesizer, as {@link VaviMfiSynthesizer.VaviMfiReceiver} does. For a
+     * synthesizer that doesn't take them itself.
      */
     class MfiReceiver implements MidiDeviceReceiver {
         private final Receiver receiver;
 
-        MfiReceiver(Receiver receiver) {
+        /** whether the audio data of an MFi 4 song goes to vavi-sound too, see the constructor */
+        private final boolean audioDataToo;
+
+        /** everything goes to vavi-sound */
+        public MfiReceiver(Receiver receiver) {
+            this(receiver, true);
+        }
+
+        /**
+         * @param audioDataToo false: the audio data (adpcm) of an MFi 4 song is the
+         *        synthesizer's, which sounds it in the song, so it is not handed to
+         *        vavi-sound's {@link vavi.sound.mobile.AudioEngine} as well, which would play
+         *        it a second time beside the song
+         */
+        public MfiReceiver(Receiver receiver, boolean audioDataToo) {
             this.receiver = receiver;
+            this.audioDataToo = audioDataToo;
         }
 
         @Override
         public void send(MidiMessage message, long timeStamp) {
-            if (message instanceof SysexMessage sysex) {
+            if (message instanceof SysexMessage sysex && (audioDataToo || !isAudioData(sysex))) {
                 try {
                     VaviMfiSynthesizer.processSpecial(sysex, this);
                 } catch (InvalidMfiDataException | RuntimeException e) {
@@ -145,6 +212,27 @@ public interface MldSynth extends AutoCloseable {
                 }
             }
             receiver.send(message, timeStamp);
+        }
+
+        /**
+         * Whether it is one of the exclusives an MFi 4 song's audio data travels as, which
+         * vavi-sound hands to an {@link vavi.sound.mobile.AudioEngine}, packed
+         * {@code 45 7f <encode87(45 02 ...)> f7}.
+         */
+        private static boolean isAudioData(SysexMessage sysex) {
+            byte[] data = sysex.getData();
+            if (data.length < 2 || (data[0] & 0xff) != MANUFACTURER_ID
+                    || (data[1] & 0xff) != MobileExclusive.MIDI_SYSEX_FUNCTION_ID_PACKED) {
+                return false;
+            }
+            try {
+                byte[] unpacked = MobileExclusive.unpack(data);
+                return unpacked.length >= 2 && (unpacked[0] & 0xff) == MANUFACTURER_ID
+                        && (unpacked[1] & 0xff) == AudioDataSequencer.MFi_SYSEX_FUNCTION_ID_MFi4;
+            } catch (RuntimeException e) {
+                Holder.logger.log(Level.DEBUG, "unpack: " + e);
+                return false;
+            }
         }
 
         @Override
@@ -155,220 +243,6 @@ public interface MldSynth extends AutoCloseable {
         @Override
         public MidiDevice getMidiDevice() {
             return null;
-        }
-    }
-
-    /** the Yamaha FM stand in: Nuked OPL3, which takes the FM voices an mfi sends */
-    final class Nuked implements MldSynth {
-        private final NukedSynthesizer synthesizer = new NukedSynthesizer();
-        private final Receiver receiver;
-        private int[][] buffer = new int[2][0];
-
-        Nuked() {
-            synthesizer.openRenderer();
-            try {
-                receiver = new MfiReceiver(synthesizer.getReceiver());
-            } catch (MidiUnavailableException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-
-        @Override
-        public Receiver getReceiver() {
-            return receiver;
-        }
-
-        @Override
-        public int getSampleRate() {
-            return (int) synthesizer.getSampleRate();
-        }
-
-        @Override
-        public void render(int[] left, int[] right, int frames) {
-            if (buffer[0].length < frames) buffer = new int[2][frames];
-            synthesizer.render(buffer, frames);
-            System.arraycopy(buffer[0], 0, left, 0, frames);
-            System.arraycopy(buffer[1], 0, right, 0, frames);
-        }
-
-        @Override
-        public String getName() {
-            return "Nuked OPL3";
-        }
-
-        @Override
-        public void close() {
-            synthesizer.close();
-        }
-    }
-
-    /** the fuetrek sound source, the preset tones out of the authoring tool's dll */
-    final class Ucs implements MldSynth {
-        private final UcsAudioEngine engine;
-        private final Receiver receiver;
-        private byte[] pcm = new byte[0];
-
-        Ucs() {
-            try {
-                engine = new UcsAudioEngine(FuetrekRom.getInstance(), false);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            // it handles the vavi-sound exclusives (UCS waves, adpcm) itself
-            receiver = new UcsMfiReceiver(engine);
-        }
-
-        @Override
-        public Receiver getReceiver() {
-            return receiver;
-        }
-
-        @Override
-        public int getSampleRate() {
-            return UcsAudioEngine.SAMPLE_RATE;
-        }
-
-        @Override
-        public void render(int[] left, int[] right, int frames) {
-            if (pcm.length < frames * 4) pcm = new byte[frames * 4];
-            engine.render(pcm, frames);
-            for (int i = 0; i < frames; i++) {
-                left[i] = (short) ((pcm[i * 4] & 0xff) | (pcm[i * 4 + 1] << 8));
-                right[i] = (short) ((pcm[i * 4 + 2] & 0xff) | (pcm[i * 4 + 3] << 8));
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "FueTrek UCS";
-        }
-
-        @Override
-        public void close() {
-            receiver.close();
-            engine.close();
-        }
-    }
-
-    /** the rohm sound source, the rom out of the authoring tool's dll */
-    final class Rohm implements MldSynth {
-        private final RohmAudioEngine engine;
-        private final Receiver receiver;
-        private byte[] pcm = new byte[0];
-
-        Rohm() {
-            try {
-                engine = new RohmAudioEngine(RohmRom.getInstance(), false);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            // it handles the vavi-sound exclusives (the mfi values, adpcm) itself
-            receiver = new RohmMfiReceiver(engine);
-        }
-
-        @Override
-        public Receiver getReceiver() {
-            return receiver;
-        }
-
-        @Override
-        public int getSampleRate() {
-            return RohmAudioEngine.SAMPLE_RATE;
-        }
-
-        @Override
-        public void render(int[] left, int[] right, int frames) {
-            if (pcm.length < frames * 4) pcm = new byte[frames * 4];
-            engine.render(pcm, frames);
-            for (int i = 0; i < frames; i++) {
-                left[i] = (short) ((pcm[i * 4] & 0xff) | (pcm[i * 4 + 1] << 8));
-                right[i] = (short) ((pcm[i * 4 + 2] & 0xff) | (pcm[i * 4 + 3] << 8));
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "Rohm";
-        }
-
-        @Override
-        public void close() {
-            receiver.close();
-            engine.close();
-        }
-    }
-
-    /**
-     * Gervill, the general midi pcm synthesizer of the jdk, standing in for the rohm sound
-     * source when its dll is not there.
-     */
-    final class Gervill implements MldSynth {
-        private static final int RATE = 44100;
-        private final AudioSynthesizer synthesizer;
-        private final AudioInputStream stream;
-        private final Receiver receiver;
-        private byte[] pcm = new byte[0];
-
-        Gervill() {
-            try {
-                AudioSynthesizer found = null;
-                for (MidiDevice.Info info : MidiSystem.getMidiDeviceInfo()) {
-                    if (info.getName().equals("Gervill") && MidiSystem.getMidiDevice(info) instanceof AudioSynthesizer s) {
-                        found = s;
-                        break;
-                    }
-                }
-                if (found == null) throw new IllegalStateException("no Gervill");
-                synthesizer = found;
-                stream = synthesizer.openStream(new AudioFormat(RATE, 16, 2, true, false), null);
-                receiver = new MfiReceiver(synthesizer.getReceiver());
-            } catch (MidiUnavailableException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-
-        @Override
-        public Receiver getReceiver() {
-            return receiver;
-        }
-
-        @Override
-        public int getSampleRate() {
-            return RATE;
-        }
-
-        @Override
-        public void render(int[] left, int[] right, int frames) {
-            if (pcm.length < frames * 4) pcm = new byte[frames * 4];
-            int n = 0;
-            try {
-                while (n < frames * 4) {
-                    int r = stream.read(pcm, n, frames * 4 - n);
-                    if (r < 0) break;
-                    n += r;
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            for (int i = 0; i < frames; i++) {
-                if (i * 4 + 3 < n) {
-                    left[i] = (short) ((pcm[i * 4] & 0xff) | (pcm[i * 4 + 1] << 8));
-                    right[i] = (short) ((pcm[i * 4 + 2] & 0xff) | (pcm[i * 4 + 3] << 8));
-                } else {
-                    left[i] = right[i] = 0;
-                }
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "Gervill (for Rohm)";
-        }
-
-        @Override
-        public void close() {
-            receiver.close();
-            synthesizer.close();
         }
     }
 }

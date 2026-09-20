@@ -28,20 +28,22 @@ import mdplayer.Setting;
 import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
 import mdplayer.driver.FileFormat;
-import mdplayer.driver.mfi.MldChip.Vendor;
 import musicDriverInterface.MetaData.Tag;
-import vavi.sound.mfi.faith.FaithType4Player;
-import vavi.sound.mfi.rohm.RohmRom;
+import vavi.sound.mfi.MfiChip;
+import vavi.sound.mfi.MfiChip.Vendor;
 import vavi.sound.mobile.AudioEngineMixer;
+import vavi.sound.rohm.RohmRom;
 import vavi.sound.visualizer.fmdsp.TrackId;
 import vavi.sound.visualizer.fmdsp.TrackStatus;
 import vavi.util.event.GenericEvent;
 
 import org.junit.jupiter.api.Test;
 
+import static mdplayer.driver.mfi.MldDriver.condition;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -77,23 +79,23 @@ class MldDriverTest {
 
     @Test
     void theDatabaseSaysWhichChipAPhoneHas() {
-        assertEquals(MldChip.YAMAHA, MldChip.byModel("N505i").chip());
-        assertEquals(MldChip.YAMAHA, MldChip.byModel("so504i").chip());
-        assertEquals(MldChip.FUETREK, MldChip.byModel("SH901iC").chip());
-        assertEquals(MldChip.ROHM, MldChip.byModel("F901iC").chip());
-        assertEquals("BU8709KN", MldChip.byModel("F901iC").part());
+        assertEquals(MfiChip.YAMAHA, MfiChip.byModel("N505i").chip());
+        assertEquals(MfiChip.YAMAHA, MfiChip.byModel("so504i").chip());
+        assertEquals(MfiChip.FUETREK, MfiChip.byModel("SH901iC").chip());
+        assertEquals(MfiChip.ROHM, MfiChip.byModel("F901iC").chip());
+        assertEquals("BU8709KN", MfiChip.byModel("F901iC").part());
     }
 
     @Test
     void aMakerAndAVersionSayWhichChip() {
-        assertEquals(MldChip.YAMAHA, Vendor.NEC.chip(0x0400, 4));
-        assertEquals(MldChip.ROHM, Vendor.SHARP.chip(0x0300, 3));
-        assertEquals(MldChip.FUETREK, Vendor.SHARP.chip(0x0301, 3));
-        assertEquals(MldChip.ROHM, Vendor.FUJITSU.chip(0x0400, 4));
-        assertEquals(MldChip.YAMAHA, Vendor.FUJITSU.chip(0x0100, 1));
-        assertEquals(MldChip.FUETREK, Vendor.PANASONIC.chip(0x0301, 3));
-        assertEquals(MldChip.ROHM, Vendor.PANASONIC.chip(0x0400, 4));
-        assertEquals(MldChip.YAMAHA, Vendor.SONY.chip(0x0301, 3));
+        assertEquals(MfiChip.YAMAHA, Vendor.NEC.chip(0x0400, 4));
+        assertEquals(MfiChip.ROHM, Vendor.SHARP.chip(0x0300, 3));
+        assertEquals(MfiChip.FUETREK, Vendor.SHARP.chip(0x0301, 3));
+        assertEquals(MfiChip.ROHM, Vendor.FUJITSU.chip(0x0400, 4));
+        assertEquals(MfiChip.YAMAHA, Vendor.FUJITSU.chip(0x0100, 1));
+        assertEquals(MfiChip.FUETREK, Vendor.PANASONIC.chip(0x0301, 3));
+        assertEquals(MfiChip.ROHM, Vendor.PANASONIC.chip(0x0400, 4));
+        assertEquals(MfiChip.YAMAHA, Vendor.SONY.chip(0x0301, 3));
     }
 
     /** the ringtones of a phone come out as the chip of that phone */
@@ -112,14 +114,14 @@ System.err.println(dir + " is missing");
             return;
         }
 
-        Map<MldChip, Integer> count = new EnumMap<>(MldChip.class);
+        Map<MfiChip, Integer> count = new EnumMap<>(MfiChip.class);
         try (Stream<Path> s = Files.list(dir)) {
             for (Path p : s.filter(p -> p.toString().toLowerCase().endsWith(".mld")).toList()) {
-                count.merge(MldChip.detect(MldFile.decode(Files.readAllBytes(p))).chip(), 1, Integer::sum);
+                count.merge(MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(p)))).chip(), 1, Integer::sum);
             }
         }
 System.err.println(a[0] + ": " + count);
-        MldChip expected = MldChip.valueOf(a[1]);
+        MfiChip expected = MfiChip.valueOf(a[1]);
         int total = count.values().stream().mapToInt(Integer::intValue).sum();
         assertTrue(count.getOrDefault(expected, 0) * 10 >= total * 9, a[0] + ": " + count);
     }
@@ -135,7 +137,7 @@ System.err.println(a[0] + ": " + count);
         var md = new MldDriver().retrieveMetaData(b);
         assertNotNull(md);
         assertEquals(Objects.requireNonNullElse(file.getTitle(), ""), md.getFirst(Tag.Title));
-System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupport());
+System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + file.getSupport());
     }
 
     @Test
@@ -156,8 +158,15 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
     @Test
     void playsTheNecMachineDependentOnes() throws Exception {
         assumeTrue(Files.exists(necMld), necMld + " is missing");
-        assertEquals(MldChip.YAMAHA, MldChip.detect(MldFile.decode(Files.readAllBytes(necMld))).chip());
+        assertEquals(MfiChip.YAMAHA, MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(necMld)))).chip());
         playsThroughTheDriver(null, necMld);
+        // the opl3 stand in leaves the song's adpcm to vavi-sound's engine, sion sounds it itself
+        playsThroughTheDriver("nuked", necMld);
+    }
+
+    @Test
+    void playsOnSion() throws Exception {
+        playsThroughTheDriver("sion", mld);
     }
 
     @Test
@@ -176,7 +185,7 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
         assumeTrue(RohmRom.isAvailable(), "no rt_synth_2.dll, set -Dvavi.sound.mfi.faith.path");
         Path rohm = corpus.resolve("Ringtones from Cuebus F901iC/110_8981100010347092588F.MLD");
         assumeTrue(Files.exists(rohm), rohm + " is missing");
-        assertEquals(MldChip.ROHM, MldChip.detect(MldFile.decode(Files.readAllBytes(rohm))).chip());
+        assertEquals(MfiChip.ROHM, MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(rohm)))).chip());
         playsThroughTheDriver(null, rohm);
     }
 
@@ -185,14 +194,58 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
         playsThroughTheDriver("gervill", mld);
     }
 
-    /** @param synth null: the one for the chip */
-    private static void playsThroughTheDriver(String synth, Path mld) throws Exception {
-        assumeTrue(Files.exists(mld), mld + " is missing");
-        if ("ucs".equals(synth)) {
-            assumeTrue(FaithType4Player.isAvailable(), "no rt_synth_4.dll, set -Dvavi.sound.mfi.faith.path");
+    @Test
+    void playsOnMa7() throws Exception {
+        playsThroughTheDriver("ma7", mld);
+    }
+
+    @Test
+    void playsOnOpenDojaMa3() throws Exception {
+        playsThroughTheDriver("opendoja.ma3", mld);
+    }
+
+    @Test
+    void playsOnOpenDojaFuetrek() throws Exception {
+        playsThroughTheDriver("opendoja.fuetrek", mld);
+    }
+
+    /** a property picks one for a chip, or for every chip, and the best one available otherwise */
+    @Test
+    void aPropertyPicksTheSynthesizer() {
+        try {
+            System.setProperty(MldSynth.SYNTH_KEY + ".rohm", "nuked");
+            try (MldSynth synth = MldSynth.forChip(MfiChip.ROHM)) {
+                assertEquals("nuked", synth.getName());
+            }
+            System.setProperty(MldSynth.SYNTH_KEY, "gervill");
+            try (MldSynth synth = MldSynth.forChip(MfiChip.ROHM)) {
+                assertEquals("nuked", synth.getName(), "the chip's own wins");
+            }
+            try (MldSynth synth = MldSynth.forChip(MfiChip.YAMAHA)) {
+                assertEquals("gervill", synth.getName());
+            }
+            System.setProperty(MldSynth.SYNTH_KEY, "no such one");
+            assertThrows(IllegalArgumentException.class, () -> MldSynth.forChip(MfiChip.YAMAHA));
+        } finally {
+            System.clearProperty(MldSynth.SYNTH_KEY + ".rohm");
+            System.clearProperty(MldSynth.SYNTH_KEY);
         }
-        if ("rohm".equals(synth)) {
-            assumeTrue(RohmRom.isAvailable(), "no rt_synth_2.dll, set -Dvavi.sound.mfi.faith.path");
+        for (MfiChip chip : MfiChip.values()) {
+            MldSynth best = MldSynth.providers().stream()
+                    .filter(p -> p.getChips().contains(chip) && p.isAvailable()).findFirst().orElseThrow();
+            try (MldSynth synth = MldSynth.forChip(chip)) {
+System.err.println(chip + " → " + synth.getName());
+                assertEquals(best.getName(), synth.getName());
+            }
+        }
+    }
+
+    /** @param synth null: the one for the chip */
+    private static void playsThroughTheDriver(String synth, Path song) throws Exception {
+        assumeTrue(Files.exists(song), song + " is missing");
+        if (synth != null) {
+            MldSynth provider = MldSynth.providers().stream().filter(p -> p.getName().equals(synth)).findFirst().orElseThrow();
+            assumeTrue(provider.isAvailable(), provider.getRequirement());
         }
 
         Setting setting = Setting.getInstance();
@@ -203,9 +256,9 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
         // the adpcm of vavi-sound plays into a line of its own
         System.setProperty("vavi.sound.mobile.AudioEngine.volume", "0.02");
         try {
-            String filename = mld.toString();
+            String filename = song.toString();
             FileFormat format = FileFormat.getFileFormat(filename);
-            format.load(new BufferedInputStream(Files.newInputStream(mld)), null);
+            format.load(new BufferedInputStream(Files.newInputStream(song)), null);
 
             @SuppressWarnings("unchecked")
             BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
@@ -214,7 +267,7 @@ System.err.println(mld + ": " + MldChip.detect(file) + ", supt: " + file.getSupp
 
             BaseDriver driver = plugin.getDriver();
             MldDriver mldDriver = assertInstanceOf(MldDriver.class, driver);
-System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver.getSynth().getName());
+System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver.getSynth().getDescription());
 
             int seconds = Integer.getInteger("mdplayer.mfi.test.seconds", 15);
             ByteArrayOutputStream pcm = new ByteArrayOutputStream();
@@ -239,14 +292,15 @@ System.err.println(synth + ": " + mldDriver.getDetection() + " → " + mldDriver
             plugin.close();
 
             byte[] b = pcm.toByteArray();
-            Path out = Path.of("tmp/mld-" + (synth != null ? synth : "auto") + ".wav");
+            Path out = Path.of("tmp/mld-" + (synth != null ? synth : "auto")
+                    + (song.equals(mld) ? "" : "-" + song.getFileName().toString().split("[ .]")[0]) + ".wav");
             Files.createDirectories(out.getParent());
             AudioFormat af = new AudioFormat(sampleRate, 16, 2, true, false);
             AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(b), af, b.length / 4),
                     AudioFileFormat.Type.WAVE, out.toFile());
 System.err.printf("%s: %.1fs of audio in %.1fs, peak %d -> %s%n", synth, rendered / (double) sampleRate, elapsed / 1000.0, peak, out);
             assertTrue(peak > 100, "silent: " + peak);
-            if (mld.equals(necMld)) {
+            if (song.equals(necMld) && "nuked".equals(synth)) {
                 // its adpcm (ainf 0x82) is played in the song, not to a line of its own
                 assertTrue(adpcm, "no adpcm went through the mixer");
             }
@@ -266,7 +320,7 @@ System.err.printf("%s: %.1fs of audio in %.1fs, peak %d -> %s%n", synth, rendere
         if (Files.exists(yamaha)) {
             assertTrue(litRows(yamaha, "FM") > 0);
         }
-        assertEquals("YAMAHA MA-3", MldChip.byModel("N504i").name());
+        assertEquals("YAMAHA MA-3", MfiChip.byModel("N504i").name());
     }
 
     /** @return how many rows of the named kind (by {@link TrackId} name prefix) showed a key */
@@ -312,7 +366,7 @@ System.err.println(file.getFileName() + ": lit " + lit);
     void everyFileGetsAChip() throws IOException {
         assumeTrue(Files.isDirectory(corpus), corpus + " is missing");
 
-        Map<MldChip, Integer> count = new EnumMap<>(MldChip.class);
+        Map<MfiChip, Integer> count = new EnumMap<>(MfiChip.class);
         List<Path> files;
         try (Stream<Path> s = Files.walk(corpus)) {
             files = s.filter(p -> p.toString().toLowerCase().endsWith(".mld")).toList();
@@ -320,7 +374,7 @@ System.err.println(file.getFileName() + ": lit " + lit);
         for (Path p : files) {
             byte[] b = Files.readAllBytes(p);
             if (!MldFile.isMfi(b)) continue;
-            count.merge(MldChip.detect(MldFile.decode(b)).chip(), 1, Integer::sum);
+            count.merge(MfiChip.detect(condition(MldFile.decode(b))).chip(), 1, Integer::sum);
         }
 System.err.println(corpus + ": " + count);
         assertTrue(count.values().stream().mapToInt(Integer::intValue).sum() > 0);

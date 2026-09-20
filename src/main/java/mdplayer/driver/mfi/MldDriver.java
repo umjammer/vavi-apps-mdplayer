@@ -27,6 +27,8 @@ import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
+import vavi.sound.mfi.MfiChip;
+import vavi.sound.mfi.MfiChip.Condition;
 import vavi.sound.midi.mfi.MfiMidiFileReader;
 import vavi.sound.mobile.AudioEngineMixer;
 
@@ -38,7 +40,7 @@ import static java.lang.System.getLogger;
  * <p>
  * The song is read by vavi-sound into a midi sequence and played here, against the samples
  * rendered, on a synthesizer of vavi-apps-mfiplayer picked for the sound chip of the phone the
- * file was made for ({@link MldChip}, {@link MldSynth}). Nothing goes through
+ * file was made for ({@link MfiChip}, {@link MldSynth}). Nothing goes through
  * {@link mdplayer.chips.MidiPlugin}: the midi out of the other midi drivers is the listener's,
  * and an mfi only sounds right on its own sound source. Like the smaf and sid drivers this
  * overrides {@link #render} instead of feeding a chip.
@@ -59,7 +61,7 @@ public class MldDriver extends BaseDriver {
     /** a message and the output frame it is due at */
     record Event(long frame, MidiMessage message) {}
 
-    private MldChip.Detection detection;
+    private MfiChip.Detection detection;
 
     /** what the messages sent have left the channels at, for the visualizer */
     private final MldChannels channels = new MldChannels();
@@ -107,7 +109,7 @@ public class MldDriver extends BaseDriver {
 logger.log(Level.DEBUG, "not an mfi: " + e);
             return null;
         }
-        MldChip.Detection d = MldChip.detect(file);
+        MfiChip.Detection d = MfiChip.detect(condition(file));
 
         MetaData md = new MetaData();
         String title = file.getTitle() != null ? file.getTitle() : "";
@@ -125,6 +127,10 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         return md;
     }
 
+    static Condition condition(MldFile file) {
+        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion());
+    }
+
     private static void set(MetaData md, Tag tag, String value) {
         if (value != null && !value.isEmpty()) {
             md.set(tag, value);
@@ -132,7 +138,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
     }
 
     /** the chip found out for the song, nullable before {@link #init} */
-    public MldChip.Detection getDetection() {
+    public MfiChip.Detection getDetection() {
         return detection;
     }
 
@@ -170,7 +176,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         metaData = retrieveMetaData(dataBuf);
 
         MldFile file = MldFile.decode(dataBuf);
-        detection = MldChip.detect(file);
+        detection = MfiChip.detect(condition(file));
 
         int outputRate = setting.getOutputDevice().getSampleRate();
         Sequence sequence;
@@ -199,7 +205,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         frac = 0;
         blockPos = blockLen = BLOCK;
         curL = curR = prevL = prevR = 0;
-logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getName());
+logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
     }
 
     /**

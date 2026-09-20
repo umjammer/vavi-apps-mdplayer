@@ -240,7 +240,7 @@ output
 tmp/
 *.resx
 local.properties
-AGENTS.md
+MISSION.md
 mgsdrv.properties
 mxdrv.properties
 src/test/java/mdplayer/driver/fmp/fmp.properties
