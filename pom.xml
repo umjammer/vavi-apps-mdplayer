@@ -253,6 +253,7 @@
         </plugins>
       </build>
     </profile>
+
     <profile>
       <!-- nested (jar in jar, NOT uber) runnable jar, `java -jar` ready:
            mvn -P nested package -> target/${project.artifactId}-${project.version}-app.jar
@@ -440,7 +441,7 @@
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound</artifactId>
-      <version>1.1.2</version>
+      <version>1.1.3</version>
     </dependency>
     <dependency>
       <groupId>com.github.umjammer</groupId>
@@ -556,9 +557,20 @@
     </dependency>
 
     <dependency>
-      <groupId>com.github.umjammer</groupId>
+      <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-apps-mfiplayer</artifactId>
-      <version>1.0.10</version>
+      <version>1.0.12</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
+      <artifactId>vavi-sound-sion</artifactId>
+      <version>0.0.3</version>
       <exclusions>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
@@ -605,22 +617,6 @@
         <exclusion>
           <artifactId>vavi-net-auth-amazon</artifactId>
           <groupId>com.github.umjammer.vavi-net-auth</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
-      <artifactId>vavi-sound-sandbox</artifactId>
-      <version>1.0.21</version>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.github.umjammer</groupId>
-          <artifactId>vavi-sound</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jogamp.jogl</groupId>
-          <artifactId>jogl-all-main</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
