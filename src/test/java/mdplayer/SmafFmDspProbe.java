@@ -18,6 +18,7 @@ import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
 import mdplayer.driver.FileFormat;
 import mdplayer.driver.smaf.SmafDriver;
+import mdplayer.driver.smaf.SmafPlugin;
 import mdplayer.lib.smaf.MmfToolPlayer;
 import mdplayer.lib.smaf.SmafScore;
 import mdplayer.lib.smaf.SmafTelemetry;
@@ -27,6 +28,8 @@ import vavi.sound.visualizer.fmdsp.FmDspVisualizer;
 import vavi.sound.visualizer.fmdsp.RightMode;
 import vavi.sound.visualizer.fmdsp.TrackId;
 import vavi.sound.visualizer.fmdsp.TrackStatus;
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 
 /**
@@ -51,6 +54,9 @@ class SmafFmDspProbe {
                 Path.of(MmfToolPlayer.toolDirectory().getPath(), "test.mmf").toString());
         int seconds = Integer.getInteger("probe.seconds", 20);
         String out = System.getProperty("probe.out", "tmp/smaf-frame.png");
+
+        // SmafPlugin builds SmafDriver2 now; this probe is the emulated player's, see the readme
+        assumeTrue(SmafPlugin.DRIVER == SmafDriver.class, "SmafPlugin builds " + SmafPlugin.DRIVER.getSimpleName());
 
         Setting setting = Setting.getInstance();
         setting.getOutputDevice().setDeviceType(Common.DEV_Null);

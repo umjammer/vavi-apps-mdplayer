@@ -47,7 +47,7 @@ openDoja's give an `openStream()`, Gervill is an `AudioSynthesizer` (`StreamMldS
 ## The visualizer
 
 None of the synthesizers says what it is sounding. But every message of the song goes past
-`MldDriver` on its way to one, so `MldChannels` keeps the sixteen channels as the song leaves
+`MldDriver` on its way to one, so `MidiChannels` keeps the sixteen channels as the song leaves
 them, and `mdplayer.fmdsp.MldReader` puts them on the fmdsp rows. A Yamaha song goes on the FM
 rows and a FueTrek or Rohm one on the PCM rows, taken in the order the channels first sound.
 The meters follow velocity × volume × expression. The analyzer bars are measured off the mixer,
@@ -55,6 +55,11 @@ because the song is rendered there. The chip is named in upper case (`YAMAHA MA-
 
 A song whose tune lives only in NEC machine dependent messages (`02 TRANSPARENT.mld`) sends no
 midi note, so it lights no row. The bars still move with its sound.
+
+`MidiChannels`, `mdplayer.driver.MidiSchedule` (the sequence flattened onto the output clock) and
+`mdplayer.fmdsp.MidiChannelsReader` (the rows themselves) are shared with the smaf driver, which
+plays a converted sequence on a sound source of its own the same way - see
+`mdplayer/driver/smaf/readme.md`.
 
 ## TODO
 

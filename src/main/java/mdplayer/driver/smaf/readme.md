@@ -2,7 +2,38 @@
 
 smaf (.mmf) driver
 
-## Usage
+There are two of them, and `SmafPlugin` builds `SmafDriver2`.
+
+| driver        | sound source                                     | needs                         |
+|---------------|--------------------------------------------------|-------------------------------|
+| `SmafDriver2` | the yamaha MA-7 in pure java                     | `libM7_EmuSmw7.so`            |
+| `SmafDriver`  | mmftoolc.exe on an emulated PC (jdosbox)         | mmftool and its yamaha dlls   |
+
+## SmafDriver2, the MA-7 in pure java
+
+vavi-sound reads the song into a midi sequence (`vavi.sound.midi.smaf.SmafMidiFileReader`) and the
+driver plays it, against the samples it renders, on `vavi.sound.midi.smaf.SmafMa7Synthesizer` of
+vavi-apps-mfiplayer - the MA-7 emulator of yamaha's `libM7_EmuSmw7.so` reading a sequence's
+exclusives as smaf ones. It is opened without a line of its own (`openStream`), so the song is
+mixed, recorded and paused like any other rendered format.
+
+That is one sound source for every generation the format has: an MA-1, MA-2, MA-3, MA-5 or Uta
+song is played by the MA-7, which is what a later phone did with it too. The file's own generation
+is kept in the metadata as the "System" (`SMAF MA-3`); what `Tag.Chip` names - the fmdsp header,
+the window title - is the MA-7, because that is what makes the sound.
+
+The rom is read out of the installed library, which is nobody's to ship:
+`-Dvavi.sound.ma7.path=<libM7_EmuSmw7.so, or the apk it is in>`, default `tmp/libM7_EmuSmw7.so`.
+Without it the song cannot start and says so.
+
+The stream waves of a song ("Mwa\*", "Awa\*") are the one thing the MA-7 has nothing of yet. They
+are played by the adpcm engines of vavi-sound and mixed into what this renders
+(`AudioEngineMixer`), so they sound in the song and not beside it, the way the mfi driver does it.
+
+There is nothing to emulate at chip speed here and no emulated PC to keep fed, so a song starts at
+once and renders many times faster than real time.
+
+## SmafDriver, the emulated player
 
 There is no MA-2/MA-3/MA-5 emulator to write chip registers to, so this plays the real thing:
 [mmftool](https://github.com/murachue/mmftool) driving Yamaha's `M5_Emu*.dll` on an emulated PC
@@ -30,17 +61,36 @@ MA-1/2/3 and Uta are synthesized at 48000 — there is nothing to gain by loweri
 `rate.ma5` back to 48000 makes that song *behind* for its whole length, so it then has to start
 on a ten second cushion instead of three; that follows the rate by itself and is not a setting.
 
+The player must run with `-XX:+UseParallelGC` (the `run` profile does): the emulated PC is one
+guest cpu on one host thread, pinned at 100% of a core for the whole song, and g1's write
+barriers cost that thread about 5% for concurrency it never needs. No other core can help — x86
+emulation of one guest cpu is serial, which is why a 24 core host shows 12% and still struggles.
+
+### going back to it
+
+Three lines, all of them marked:
+
+* `SmafPlugin` — the type parameter, the `driverVirtual = ...` line in `prepare` (the old one is
+  commented out under it), the `stopPlayer()` line in `stop`, and the `DRIVER` constant the tests
+  of the driver that is not in use skip themselves against.
+
+Nothing else moves. Both fmdsp readers stay registered and each one only ever answers for its own
+driver, and `SmafDriverTest` / `SmafFmDspProbe` come back out of skip by themselves.
+
 ## The visualizer
 
-There is no chip to read and nothing goes past on its way out either: the dll is handed the file
-and sequences it itself, answering nothing but a position. So the display is driven by the score,
-which mmftool has already parsed for its own piano roll and writes out before it starts playing -
-notes with the length they are held for, and the controls that decide how loud they are and where.
-`SmafTelemetry` reads that, `SmafScore` says what is sounding at a given moment, and `SmafReader`
-puts it on the fmdsp rows. The analyzer bars are not part of this: SMAF audio goes through
-mdplayer's own mixer, so they are measured off the sound itself the way every rendered format's are.
+`SmafDriver2` shows the notes the way the mfi driver does: nothing goes past on its way out of the
+MA-7 either, but every message of the song goes past the driver on its way *in*, so `MidiChannels`
+keeps the sixteen channels as the song leaves them and `Smaf2Reader` puts them on the fm rows -
+see `mdplayer.fmdsp.MidiChannelsReader`, which is shared with the mfi driver's `MldReader`.
 
-What makes it line up with what is heard is that every line the guest prints is stamped, on its
+`SmafDriver` cannot do that - the dll is handed the file and sequences it itself, answering nothing
+but a position - so its display is driven by the score, which mmftool has already parsed for its
+own piano roll and writes out before it starts playing: notes with the length they are held for,
+and the controls that decide how loud they are and where. `SmafTelemetry` reads that, `SmafScore`
+says what is sounding at a given moment, and `SmafReader` puts it on the fmdsp rows.
+
+What makes that line up with what is heard is that every line the guest prints is stamped, on its
 way out of the emulator, with how much audio it had produced when it wrote it (jdosbox's
 `StdioSink`). A position and a stamp together say "song time P is output frame F", which is the
 one thing that cannot be worked out from this end - the silence a player writes while it loads and
@@ -52,7 +102,5 @@ from it, so the score is moved back onto that clock as it arrives - see `SmafSco
 Without that the display runs ahead of the music by however far in the file the song starts, which
 for the sample song is 2.2 seconds.
 
-The player must run with `-XX:+UseParallelGC` (the `run` profile does): the emulated PC is one
-guest cpu on one host thread, pinned at 100% of a core for the whole song, and g1's write
-barriers cost that thread about 5% for concurrency it never needs. No other core can help — x86
-emulation of one guest cpu is serial, which is why a 24 core host shows 12% and still struggles.
+The analyzer bars are not either reader's business: SMAF audio goes through mdplayer's own mixer,
+so they are measured off the sound itself the way every rendered format's are.

@@ -4,7 +4,7 @@
  * Programmed by Naohide Sano
  */
 
-package mdplayer.driver.mfi;
+package mdplayer.driver;
 
 import java.util.Arrays;
 import javax.sound.midi.MidiMessage;
@@ -12,16 +12,22 @@ import javax.sound.midi.ShortMessage;
 
 
 /**
- * The sixteen midi channels as the messages {@link MldDriver} sends to its synthesizer have left
- * them, for the visualizer: none of the synthesizers reports what it is sounding, and every
- * message of an mfi goes past here on its way to one, so what is kept here is exact.
+ * The sixteen midi channels as the messages a driver sends to its synthesizer have left them, for
+ * the visualizer: none of those synthesizers reports what it is sounding, and every message of the
+ * song goes past here on its way to one, so what is kept here is exact.
+ * <p>
+ * Kept by the drivers that play a converted sequence on a sound source of their own - the mfi one
+ * ({@link mdplayer.driver.mfi.MldDriver}) and the smaf one
+ * ({@link mdplayer.driver.smaf.SmafDriver2}) - and read by
+ * {@link mdplayer.fmdsp.MidiChannelsReader}.
  * <p>
  * Written on the render thread, read on the drawing one; a torn read is a frame of a stale value.
  *
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-09-19 nsano initial version <br>
+ *          0.01 2026-09-21 nsano moved out of the mfi driver, the smaf one keeps one too <br>
  */
-public class MldChannels {
+public class MidiChannels {
 
     public static final int CHANNELS = 16;
 
@@ -41,7 +47,7 @@ public class MldChannels {
     private final int[] modulations = new int[CHANNELS];
     private final int[] bends = new int[CHANNELS];
 
-    public MldChannels() {
+    public MidiChannels() {
         reset();
     }
 

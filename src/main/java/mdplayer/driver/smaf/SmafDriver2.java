@@ -4,8 +4,9 @@
  * Programmed by Naohide Sano
  */
 
-package mdplayer.driver.mfi;
+package mdplayer.driver.smaf;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -15,8 +16,11 @@ import java.util.List;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiMessage;
+import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequence;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
 
 import mdplayer.Common.EnmModel;
 import mdplayer.driver.BaseDriver;
@@ -24,32 +28,37 @@ import mdplayer.driver.BasePlugin;
 import mdplayer.driver.MidiChannels;
 import mdplayer.driver.MidiSchedule;
 import mdplayer.driver.MidiSchedule.Event;
+import mdplayer.lib.smaf.SmafFile;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
-import vavi.sound.mfi.MfiChip;
-import vavi.sound.mfi.MfiChip.Condition;
-import vavi.sound.midi.mfi.MfiMidiFileReader;
+import vavi.sound.midi.smaf.SmafMa7Synthesizer;
+import vavi.sound.midi.smaf.SmafMidiFileReader;
+import vavi.sound.mobile.AudioEngine;
 import vavi.sound.mobile.AudioEngineMixer;
 
 import static java.lang.System.getLogger;
 
 
 /**
- * MFi (".mld", i-mode ringtone) driver.
+ * SMAF (".mmf") driver, played in pure java on the yamaha MA-7.
  * <p>
- * The song is read by vavi-sound into a midi sequence and played here, against the samples
- * rendered, on a synthesizer of vavi-apps-mfiplayer picked for the sound chip of the phone the
- * file was made for ({@link MfiChip}, {@link MldSynth}). Nothing goes through
- * {@link mdplayer.chips.MidiPlugin}: the midi out of the other midi drivers is the listener's,
- * and an mfi only sounds right on its own sound source. Like the smaf and sid drivers this
- * overrides {@link #render} instead of feeding a chip.
+ * The song is read by vavi-sound into a midi sequence ({@link SmafMidiFileReader}) and played here,
+ * against the samples rendered, on {@link SmafMa7Synthesizer} of vavi-apps-mfiplayer - the MA-7
+ * emulator of yamaha's {@code libM7_EmuSmw7.so} with the smaf reading of a sequence's exclusives.
+ * That is one sound source for every SMAF generation: an MA-1/2/3/5 song is played by the MA-7,
+ * which is what a later phone did with it too. Like the mfi and sid drivers this overrides
+ * {@link #render} instead of feeding a chip.
+ * <p>
+ * This is what {@link SmafPlugin} builds. {@link SmafDriver}, which plays the real thing -
+ * mmftoolc.exe on an emulated PC - is still here and still works; see the readme for how to go
+ * back to it.
  *
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
- * @version 0.00 2026-09-19 nsano initial version <br>
+ * @version 0.00 2026-09-21 nsano initial version <br>
  */
-public class MldDriver extends BaseDriver {
+public class SmafDriver2 extends BaseDriver {
 
-    private static final Logger logger = getLogger(MldDriver.class.getName());
+    private static final Logger logger = getLogger(SmafDriver2.class.getName());
 
     /** how long a song rings on after its last event [s] */
     private static final double TAIL_SECONDS = 2;
@@ -57,11 +66,11 @@ public class MldDriver extends BaseDriver {
     /** the frames the synthesizer renders at a time, a message waits at most this long */
     private static final int BLOCK = 32;
 
-    private MfiChip.Detection detection;
-
     /** what the messages sent have left the channels at, for the visualizer */
     private final MidiChannels channels = new MidiChannels();
-    private MldSynth synth;
+
+    private SmafMa7Synthesizer synthesizer;
+    private AudioInputStream stream;
     private Receiver receiver;
 
     private List<Event> events = List.of();
@@ -74,12 +83,14 @@ public class MldDriver extends BaseDriver {
     // the synthesizer's rate to the output rate
     private double step = 1;
     private double frac;
-    private int[] left = new int[BLOCK], right = new int[BLOCK];
-    private int blockPos = BLOCK, blockLen = BLOCK;
+    private final int[] left = new int[BLOCK], right = new int[BLOCK];
+    private int blockPos = BLOCK;
+    /** what {@link #stream} gave and {@link #nextSourceFrame} has not turned into frames yet */
+    private final byte[] pcm = new byte[BLOCK * 4];
 
     /**
-     * whether the adpcm of vavi-sound's engines is mixed in here, rather than played to a line
-     * of their own beside the song, see {@link AudioEngineMixer#attach()}
+     * whether the stream waves of vavi-sound's engines are mixed in here, rather than played to a
+     * line of their own beside the song, see {@link AudioEngineMixer#attach()}
      */
     private boolean mixing;
     private int outputRate;
@@ -87,44 +98,41 @@ public class MldDriver extends BaseDriver {
     private int mixedFrames;
     private int curL, curR, prevL, prevR;
 
-    public MldDriver(BasePlugin<? extends BaseDriver> plugin) {
+    public SmafDriver2(BasePlugin<? extends BaseDriver> plugin) {
         super(plugin);
     }
 
-    public MldDriver() {
+    public SmafDriver2() {
         this(null); // gross
     }
 
     @Override
     public MetaData retrieveMetaData(byte[] buf, Object... args) {
-        if (!MldFile.isMfi(buf)) return null;
-        MldFile file;
+        SmafFile smaf;
         try {
-            file = MldFile.decode(buf);
-        } catch (RuntimeException e) {
-logger.log(Level.DEBUG, "not an mfi: " + e);
+            smaf = SmafFile.decode(buf);
+        } catch (IOException e) {
+logger.log(Level.DEBUG, "not a smaf: " + e.getMessage());
             return null;
         }
-        MfiChip.Detection d = MfiChip.detect(condition(file));
 
         MetaData md = new MetaData();
-        String title = file.getTitle() != null ? file.getTitle() : "";
+        String title = smaf.getTitle() != null ? smaf.getTitle() : "";
         md.set(Tag.Title, title);
         md.set(Tag.TitleJ, title);
-        set(md, Tag.Maker, file.getCopyright());
-        set(md, Tag.Converter, file.getSupport());
-        set(md, Tag.Note, file.getProtector());
-        set(md, Tag.ReleaseDate, file.getDate());
+        set(md, Tag.Composer, smaf.getComposer());
+        set(md, Tag.ComposerJ, smaf.getComposer());
+        set(md, Tag.Maker, smaf.getCopyright());
+        set(md, Tag.Note, smaf.getComment());
         md.set(Tag.NumberOfSongs, "1");
-        // no mdsound chip is registered, this is what names it on the fmdsp header
-        md.set(Tag.Chip, d.name());
+        // the generation the file was made for, which is not what sounds it any more
+        md.set(Tag.GameSystem, "SMAF " + smaf.getFormat().label);
+        // whatever generation that is, the MA-7 is what plays it here; the driver registers no
+        // chip, so this is what names the sound source on the fmdsp header
+        md.set(Tag.Chip, SmafFile.Format.MA7.label);
 
         this.metaData = md;
         return md;
-    }
-
-    static Condition condition(MldFile file) {
-        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion());
     }
 
     private static void set(MetaData md, Tag tag, String value) {
@@ -133,19 +141,14 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         }
     }
 
-    /** the chip found out for the song, nullable before {@link #init} */
-    public MfiChip.Detection getDetection() {
-        return detection;
-    }
-
     /** the channels as the song has left them so far */
     public MidiChannels getChannels() {
         return channels;
     }
 
     /** the synthesizer playing the song, nullable */
-    public MldSynth getSynth() {
-        return synth;
+    public SmafMa7Synthesizer getSynthesizer() {
+        return synthesizer;
     }
 
     @Override
@@ -171,13 +174,11 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
 
         metaData = retrieveMetaData(dataBuf);
 
-        MldFile file = MldFile.decode(dataBuf);
-        detection = MfiChip.detect(condition(file));
-
         int outputRate = setting.getOutputDevice().getSampleRate();
         Sequence sequence;
-        try {
-            sequence = new MfiMidiFileReader().getSequence(new ByteArrayInputStream(dataBuf));
+        // the reader wants to look at the first four bytes and put them back
+        try (BufferedInputStream is = new BufferedInputStream(new ByteArrayInputStream(dataBuf))) {
+            sequence = new SmafMidiFileReader().getSequence(is);
         } catch (InvalidMidiDataException e) {
             throw new IllegalArgumentException(e);
         } catch (IOException e) {
@@ -193,15 +194,38 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
 
         stopSynth();
         this.outputRate = outputRate;
-        // the adpcm (and the UCS waves) the song starts, mixed into what is rendered here
+        // none of the stream waves the song before stored is this song's
+        AudioEngine.resetAll();
+        // the stream waves the song starts, mixed into what is rendered here
         mixing = AudioEngineMixer.attach();
-        synth = MldSynth.forChip(detection.chip());
-        receiver = synth.getReceiver();
-        step = (double) synth.getSampleRate() / outputRate;
+        openSynth();
         frac = 0;
-        blockPos = blockLen = BLOCK;
+        blockPos = BLOCK;
         curL = curR = prevL = prevR = 0;
-logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
+    }
+
+    /** the sound source, opened without a line of its own so that this renders it */
+    private void openSynth() {
+        SmafMa7Synthesizer synthesizer = new SmafMa7Synthesizer();
+        AudioInputStream stream;
+        Receiver receiver;
+        try {
+            stream = synthesizer.openStream();
+            receiver = synthesizer.getReceiver();
+        } catch (MidiUnavailableException | RuntimeException e) {
+            synthesizer.close();
+            if (mixing) {
+                mixing = false;
+                AudioEngineMixer.detach();
+            }
+            throw new IllegalStateException("cannot open the MA-7: " + e.getMessage(), e);
+        }
+        AudioFormat format = stream.getFormat();
+        this.synthesizer = synthesizer;
+        this.stream = stream;
+        this.receiver = receiver;
+        this.step = (double) format.getSampleRate() / outputRate;
+logger.log(Level.INFO, "smaf: " + synthesizer.getDeviceInfo().getName() + ", " + format);
     }
 
     /** closes the synthesizer of the song */
@@ -210,14 +234,22 @@ logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
             mixing = false;
             AudioEngineMixer.detach();
         }
-        if (synth != null) {
-            try {
-                synth.close();
-            } catch (RuntimeException e) {
-logger.log(Level.DEBUG, "close: " + e);
-            }
-            synth = null;
+        if (synthesizer != null) {
+            close(receiver::close);
+            close(synthesizer::close);
+            close(stream::close);
+            synthesizer = null;
+            stream = null;
             receiver = null;
+        }
+    }
+
+    /** one of the three the song leaves behind, whatever the one before made of it */
+    private static void close(AutoCloseable closeable) {
+        try {
+            closeable.close();
+        } catch (Exception e) {
+logger.log(Level.DEBUG, "close: " + e);
         }
     }
 
@@ -252,10 +284,26 @@ logger.log(Level.DEBUG, "send: " + e);
 
     /** the synthesizer's next frame */
     private void nextSourceFrame() {
-        if (blockPos >= blockLen) {
-            synth.render(left, right, BLOCK);
+        if (blockPos >= BLOCK) {
+            int n = 0;
+            try {
+                while (n < pcm.length) {
+                    int r = stream.read(pcm, n, pcm.length - n);
+                    if (r <= 0) break;
+                    n += r;
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            // the stream has no end, but a closed one gives nothing: silence is the right answer
+            for (int i = n; i < pcm.length; i++) {
+                pcm[i] = 0;
+            }
+            for (int i = 0; i < BLOCK; i++) {
+                left[i] = (short) ((pcm[i * 4] & 0xff) | (pcm[i * 4 + 1] << 8));
+                right[i] = (short) ((pcm[i * 4 + 2] & 0xff) | (pcm[i * 4 + 3] << 8));
+            }
             blockPos = 0;
-            blockLen = BLOCK;
         }
         curL = left[blockPos];
         curR = right[blockPos];
@@ -264,7 +312,7 @@ logger.log(Level.DEBUG, "send: " + e);
 
     @Override
     public int render(short[] b, int offset, int length) {
-        if (synth == null) {
+        if (synthesizer == null) {
             return length;
         }
 
@@ -272,8 +320,8 @@ logger.log(Level.DEBUG, "send: " + e);
         for (int i = 0; i < length - 1; i += 2) {
             if (!stopped) {
                 if (mixing && next < events.size() && events.get(next).frame() <= position) {
-                    // what sounds before a message is mixed before the message is sent: an
-                    // adpcm it starts starts on this frame
+                    // what sounds before a message is mixed before the message is sent: a stream
+                    // it starts starts on this frame
                     mixAdpcm(b, offset, i / 2);
                 }
                 dispatch();
@@ -315,7 +363,7 @@ logger.log(Level.DEBUG, "send: " + e);
         return length;
     }
 
-    /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
+    /** mixes the stream waves into the frames rendered since it was last, up to {@code frames} */
     private void mixAdpcm(short[] b, int offset, int frames) {
         if (frames > mixedFrames) {
             AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate);
