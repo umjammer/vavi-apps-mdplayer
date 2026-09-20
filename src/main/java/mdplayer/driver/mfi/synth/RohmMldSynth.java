@@ -12,11 +12,11 @@ import java.util.Set;
 import javax.sound.midi.Receiver;
 
 import mdplayer.driver.mfi.MldSynth;
+import vavi.sound.faith.FaithRom;
 import vavi.sound.mfi.MfiChip;
-import vavi.sound.mfi.faith.FaithType4Player;
-import vavi.sound.mfi.rohm.RohmAudioEngine;
 import vavi.sound.mfi.rohm.RohmMfiSynthesizer.RohmMfiReceiver;
-import vavi.sound.mfi.rohm.RohmRom;
+import vavi.sound.rohm.RohmAudioEngine;
+import vavi.sound.rohm.RohmRom;
 
 
 /**
@@ -58,7 +58,7 @@ public class RohmMldSynth implements MldSynth {
 
     @Override
     public String getRequirement() {
-        return "rt_synth_2.dll under " + FaithType4Player.toolsDirectory() + ", set -Dvavi.sound.mfi.faith.path=<dir>";
+        return "rt_synth_2.dll under " + FaithRom.toolsDirectory() + ", set -Dvavi.sound.faith.path=<dir>";
     }
 
     @Override

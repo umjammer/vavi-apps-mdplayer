@@ -179,7 +179,7 @@ class TestCase {
 //            System.setProperty("muap.dir.sud", muapDirSud);
 
             // mfi
-            System.setProperty("vavi.sound.mfi.ma7.path", ma7Path);
+            System.setProperty("vavi.sound.ma7.path", ma7Path);
         }
 
         if (System.getProperty("os.name").startsWith("Mac") && effects != null) {
@@ -204,7 +204,7 @@ Debug.println("settings\n" +
         "mdplayer.mgs.dir: " + System.getProperty("mdplayer.mgs.dir") + "\n" +
         "mdplayer.ndp.dir: " + System.getProperty("mdplayer.ndp.dir") + "\n" +
         "mdplayer.musica.dir: " + System.getProperty("mdplayer.musica.dir") + "\n" +
-        "vavi.sound.mfi.ma7.path: " + System.getProperty("vavi.sound.mfi.ma7.path") + "\n" +
+        "vavi.sound.ma7.path: " + System.getProperty("vavi.sound.ma7.path") + "\n" +
         "muap.dir.dta: " + System.getProperty("muap.dir.dta") + "\n" +
         "muap.dir.pcm: " + System.getProperty("muap.dir.pcm") + "\n" +
         "mdplayer.variant.pcm8: " + System.getProperty("mdplayer.variant.pcm8") + "\n" +

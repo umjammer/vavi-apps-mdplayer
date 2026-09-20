@@ -12,8 +12,8 @@ import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Synthesizer;
 import javax.sound.sampled.AudioInputStream;
 
+import vavi.sound.ma7.Ma7Rom;
 import vavi.sound.mfi.MfiChip;
-import vavi.sound.mfi.ma7.Ma7Rom;
 import vavi.sound.midi.ma7.Ma7Synthesizer;
 
 
