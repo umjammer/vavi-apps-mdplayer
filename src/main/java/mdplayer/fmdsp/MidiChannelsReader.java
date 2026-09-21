@@ -133,8 +133,10 @@ public abstract class MidiChannelsReader implements FmDspChipReader {
         // a key struck and let go between two snapshots is still shown struck, once
         boolean sounding = channels.sounding(ch) || struck;
 
-        // the pcm rows are titled ADPCM and PPZ8 after the PC-98 by default, which these are not
-        if (group == Group.PCM) out.name = "PCM";
+        // named whichever group it is: a row without a name leaves the level meters without labels,
+        // and the visualizer then draws the PC-98 strip (FM1 FM4 SSG RHY ADP PPZ) - none of which but
+        // the FM is anything these sound sources have. The pcm rows would be ADPCM and PPZ8 likewise
+        out.name = group == Group.PCM ? "PCM" : "FM";
         out.num = ch + 1; // the midi channel, wherever the slot map put it
         out.pcmCh = ch + 1;
         out.sounding = sounding;
