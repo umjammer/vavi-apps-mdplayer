@@ -90,7 +90,7 @@ public class DmgReader extends ChipReader {
     }
 
     private boolean sounding(int ch) {
-        if (info.isEmpty()) return false;
+        if (info == null || info.isEmpty()) return false;
         Object playing = info.get("channels." + ch + ".playing");
         return playing instanceof Boolean b && b;
     }

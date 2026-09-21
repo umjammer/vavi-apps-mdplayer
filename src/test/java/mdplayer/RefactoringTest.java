@@ -30,6 +30,7 @@ import vavi.util.properties.annotation.Property;
 import vavi.util.properties.annotation.PropsEntity;
 
 
+// set "vavi.sound.visualizer.fmdsp.fontRom" prevents this test from message dialog showing
 @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
 @PropsEntity(url = "file:local.properties")
 class RefactoringTest {
