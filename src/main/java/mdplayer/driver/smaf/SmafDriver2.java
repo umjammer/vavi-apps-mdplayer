@@ -209,7 +209,9 @@ logger.log(Level.DEBUG, "not a smaf: " + e.getMessage());
         AudioInputStream stream;
         Receiver receiver;
         try {
-            stream = synthesizer.openStream();
+            // the streams mixed in by the synthesizer, not by this: unmixed they play to lines of
+            // their own in wall clock time, which this, rendering ahead, is not in step with
+            stream = synthesizer.openStream(true);
             receiver = synthesizer.getReceiver();
         } catch (MidiUnavailableException | RuntimeException e) {
             synthesizer.close();

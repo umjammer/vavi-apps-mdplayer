@@ -27,8 +27,10 @@ The rom is read out of the installed library, which is nobody's to ship:
 Without it the song cannot start and says so.
 
 The stream waves of a song ("Mwa\*", "Awa\*") are the one thing the MA-7 has nothing of yet. They
-are played by the adpcm engines of vavi-sound and mixed into what this renders
-(`AudioEngineMixer`), so they sound in the song and not beside it, the way the mfi driver does it.
+are played by the adpcm engines of vavi-sound and mixed in by the synthesizer (`openStream(true)`,
+`AudioEngineMixer`) on its bus, before the master volume and the clamp, so they sound in the song
+and not beside it. Opened by `openStream()` they would not be mixed by anyone and would play to lines
+of their own in wall clock time - out of step with a song rendered ahead of real time.
 
 There is nothing to emulate at chip speed here and no emulated PC to keep fed, so a song starts at
 once and renders many times faster than real time.
