@@ -49,6 +49,15 @@ import static java.lang.System.getLogger;
  */
 public class MldDriver extends BaseDriver {
 
+    /**
+     * How loud the stream waves are against the song. They come at the level they were stored at
+     * ({@link AudioEngineMixer}), so the level is this driver's to choose, and what it chooses is
+     * what the volume of a line of their own used to make of them - the same property and the same
+     * default - so that nothing sounds different here and a setting of it still works.
+     */
+    private static final double ADPCM_GAIN =
+            Double.parseDouble(System.getProperty("vavi.sound.mobile.AudioEngine.volume", "0.2"));
+
     private static final Logger logger = getLogger(MldDriver.class.getName());
 
     /** how long a song rings on after its last event [s] */
@@ -318,7 +327,7 @@ logger.log(Level.DEBUG, "send: " + e);
     /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
     private void mixAdpcm(short[] b, int offset, int frames) {
         if (frames > mixedFrames) {
-            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate);
+            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate, ADPCM_GAIN);
             mixedFrames = frames;
         }
     }

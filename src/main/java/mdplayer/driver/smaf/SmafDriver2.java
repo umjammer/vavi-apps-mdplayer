@@ -19,6 +19,7 @@ import javax.sound.midi.MidiMessage;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequence;
+import javax.sound.midi.SysexMessage;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 
@@ -48,6 +49,10 @@ import static java.lang.System.getLogger;
  * That is one sound source for every SMAF generation: an MA-1/2/3/5 song is played by the MA-7,
  * which is what a later phone did with it too. Like the mfi and sid drivers this overrides
  * {@link #render} instead of feeding a chip.
+ * <p>
+ * The stream waves of a song are mixed into the song by the synthesizer itself, on its own bus and
+ * before it cuts anything to 16 bit, so this does not mix them and only asks for the room the sum
+ * needs, see {@link #headroom}.
  * <p>
  * This is what {@link SmafPlugin} builds. {@link SmafDriver}, which plays the real thing -
  * mmftoolc.exe on an emulated PC - is still here and still works; see the readme for how to go
@@ -88,14 +93,10 @@ public class SmafDriver2 extends BaseDriver {
     /** what {@link #stream} gave and {@link #nextSourceFrame} has not turned into frames yet */
     private final byte[] pcm = new byte[BLOCK * 4];
 
-    /**
-     * whether the stream waves of vavi-sound's engines are mixed in here, rather than played to a
-     * line of their own beside the song, see {@link AudioEngineMixer#attach()}
-     */
-    private boolean mixing;
+    /** what the song is scaled by so that the sound source and its streams fit in 16 bit */
+    private static final double HEADROOM = 0.5;
+
     private int outputRate;
-    /** the frames of the buffer being rendered the adpcm has been mixed into */
-    private int mixedFrames;
     private int curL, curR, prevL, prevR;
 
     public SmafDriver2(BasePlugin<? extends BaseDriver> plugin) {
@@ -196,8 +197,6 @@ logger.log(Level.DEBUG, "not a smaf: " + e.getMessage());
         this.outputRate = outputRate;
         // none of the stream waves the song before stored is this song's
         AudioEngine.resetAll();
-        // the stream waves the song starts, mixed into what is rendered here
-        mixing = AudioEngineMixer.attach();
         openSynth();
         frac = 0;
         blockPos = BLOCK;
@@ -214,10 +213,6 @@ logger.log(Level.DEBUG, "not a smaf: " + e.getMessage());
             receiver = synthesizer.getReceiver();
         } catch (MidiUnavailableException | RuntimeException e) {
             synthesizer.close();
-            if (mixing) {
-                mixing = false;
-                AudioEngineMixer.detach();
-            }
             throw new IllegalStateException("cannot open the MA-7: " + e.getMessage(), e);
         }
         AudioFormat format = stream.getFormat();
@@ -225,15 +220,35 @@ logger.log(Level.DEBUG, "not a smaf: " + e.getMessage());
         this.stream = stream;
         this.receiver = receiver;
         this.step = (double) format.getSampleRate() / outputRate;
+        headroom(receiver);
 logger.log(Level.INFO, "smaf: " + synthesizer.getDeviceInfo().getName() + ", " + format);
+    }
+
+    /**
+     * The room the song needs to fit in 16 bit.
+     * <p>
+     * The sound source alone fills 16 bit - that is what it is for, it was the whole output of a
+     * phone - and the stream waves of a song are mixed in level with it, so the sum wants scaling
+     * before it is cut. The universal master volume is that scaling and the synthesizer applies it
+     * to the sum, before it cuts anything, so this is real room and not a quieter distortion.
+     * <p>
+     * Half is what a song whose streams peak together with the sound source needs ("GuitarMan.mmf"
+     * peaks at 32641 of 32767 with it); a song whose peaks fall apart has room to spare.
+     */
+    private void headroom(Receiver receiver) {
+        int v = (int) (HEADROOM * 16383);
+        try {
+            SysexMessage volume = new SysexMessage();
+            volume.setMessage(0xf0, new byte[] {
+                    0x7f, 0x7f, 0x04, 0x01, (byte) (v & 0x7f), (byte) ((v >> 7) & 0x7f), (byte) 0xf7}, 7);
+            receiver.send(volume, -1);
+        } catch (InvalidMidiDataException e) {
+logger.log(Level.DEBUG, "headroom: " + e);
+        }
     }
 
     /** closes the synthesizer of the song */
     public void stopSynth() {
-        if (mixing) {
-            mixing = false;
-            AudioEngineMixer.detach();
-        }
         if (synthesizer != null) {
             close(receiver::close);
             close(synthesizer::close);
@@ -316,14 +331,8 @@ logger.log(Level.DEBUG, "send: " + e);
             return length;
         }
 
-        mixedFrames = 0;
         for (int i = 0; i < length - 1; i += 2) {
             if (!stopped) {
-                if (mixing && next < events.size() && events.get(next).frame() <= position) {
-                    // what sounds before a message is mixed before the message is sent: a stream
-                    // it starts starts on this frame
-                    mixAdpcm(b, offset, i / 2);
-                }
                 dispatch();
             }
             int l, r;
@@ -347,7 +356,7 @@ logger.log(Level.DEBUG, "send: " + e);
             b[offset + i + 1] = (short) Math.clamp(r, Short.MIN_VALUE, Short.MAX_VALUE);
 
             position++;
-            if (position >= end && !(mixing && AudioEngineMixer.isPlaying())) {
+            if (position >= end && !AudioEngineMixer.isPlaying()) {
                 stopped = true;
             }
 
@@ -356,18 +365,6 @@ logger.log(Level.DEBUG, "send: " + e);
                 fireEventHappened(this, "wave.buffer", (short) l, (short) r);
             }
         }
-        if (mixing) {
-            mixAdpcm(b, offset, length / 2);
-        }
-
         return length;
-    }
-
-    /** mixes the stream waves into the frames rendered since it was last, up to {@code frames} */
-    private void mixAdpcm(short[] b, int offset, int frames) {
-        if (frames > mixedFrames) {
-            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate);
-            mixedFrames = frames;
-        }
     }
 }
