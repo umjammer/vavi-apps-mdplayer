@@ -175,6 +175,11 @@ logger.log(Level.DEBUG, "fmc7: compiled %d bytes of mml into %d, %d warnings"
                 .set("speaker", "pcspeaker", "false")
                 .set("speaker", "tandy", "off")
                 .set("speaker", "disney", "false")
+                // no midi out either: "default" opens MidiSystem.getSynthesizer() for every machine, which
+                // is whatever synthesizer SPI is on the class path (SiON refuses a second one, the MFi
+                // ones boot a machine of their own)
+                .set("midi", "mpu401", "none")
+                .set("midi", "mididevice", "none")
                 .set("joystick", "joysticktype", "none")
                 .set("cpu", "cycles", "max")
                 // nothing here is paced by anything: there is no audio to keep up with, and the

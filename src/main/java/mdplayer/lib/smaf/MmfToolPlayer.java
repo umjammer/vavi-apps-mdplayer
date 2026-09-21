@@ -287,6 +287,11 @@ public class MmfToolPlayer {
                 .set("speaker", "pcspeaker", "false")
                 .set("speaker", "tandy", "off")
                 .set("speaker", "disney", "false")
+                // no midi out either: "default" opens MidiSystem.getSynthesizer() for every machine, which
+                // is whatever synthesizer SPI is on the class path (SiON refuses a second one, the MFi
+                // ones boot a machine of their own)
+                .set("midi", "mpu401", "none")
+                .set("midi", "mididevice", "none")
                 .set("joystick", "joysticktype", "none")
                 .set("cpu", "cycles", CYCLES)
                 // dosbox's "max" holds the emulated cpu to about 90% of what the host will give
