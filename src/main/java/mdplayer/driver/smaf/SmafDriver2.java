@@ -367,4 +367,9 @@ logger.log(Level.DEBUG, "send: " + e);
         }
         return length;
     }
+
+    @Override
+    public String getName() {
+        return "SMAF";
+    }
 }
