@@ -64,6 +64,8 @@ import mdsound.MDSound;
  *   mvn -o test-compile
  *   java -cp <cp> mdplayer.tool.VolumeBalanceCalibrator [--dry-run] [--seconds N]
  * }</pre>
+ * To add drivers to a set a full run already leveled, without re-measuring everything, give the
+ * level that run landed on: {@code --only MLD,SMAF --target-dbfs -21.8}.
  */
 final class VolumeBalanceCalibrator {
 
@@ -104,6 +106,10 @@ final class VolumeBalanceCalibrator {
     /** when non-empty, only these driver tokens are calibrated */
     private static Set<String> only = Set.of();
 
+    /** when set, the full-mix output level [dBFS] every driver is leveled to instead of the one
+     *  {@link #levelingTarget} picks: lets an {@code --only} run join the set a full run leveled */
+    private static Double targetDbfs = null;
+
     /** explicit extra sample files (pathSep-separated) added on top of the local.properties scan */
     private static String[] extraFiles = new String[0];
 
@@ -115,6 +121,7 @@ final class VolumeBalanceCalibrator {
             case "--seconds" -> seconds = Integer.parseInt(args[++i]);
             case "--max-samples" -> maxSamplesPerDriver = Integer.parseInt(args[++i]);
             case "--only" -> only = Set.of(args[++i].split(","));
+            case "--target-dbfs" -> targetDbfs = Double.parseDouble(args[++i]);
             case "--files" -> extraFiles = args[++i].split(java.io.File.pathSeparator);
             default -> { System.err.println("unknown arg: " + args[i]); return; }
             }
@@ -159,8 +166,10 @@ final class VolumeBalanceCalibrator {
 
         // phase 2: global leveling. See levelingTarget() for how the common target is picked.
         List<DriverResult> usable = results.stream().filter(r -> r.mixRms() >= MIN_MEAS_FLOOR).toList();
-        double target = levelingTarget(usable);
-        if (!only.isEmpty())
+        double target = targetDbfs != null
+                ? 32767.0 * Math.pow(10.0, targetDbfs / 20.0) / MASTER_BASE_GAIN
+                : levelingTarget(usable);
+        if (!only.isEmpty() && targetDbfs == null)
             System.out.println("\n!! --only in effect: leveling within this subset only (not globally consistent)");
         System.out.printf("%n==== global leveling target = %.1f rms (%.1f dBFS out) ====%n",
                 target, dbfs(target * MASTER_BASE_GAIN));
@@ -322,6 +331,7 @@ final class VolumeBalanceCalibrator {
                             mix.midi() > 0 ? "renders no chip audio (MIDI-only song)" : "silent");
                     continue;
                 }
+                System.out.printf("  %-24s mix rms=%8.1f peak=%6.0f%n", sample.getFileName(), mix.full(), mix.peak());
                 mixes.add(mix);
             } catch (Exception ignore) {}
         }
@@ -542,6 +552,11 @@ final class VolumeBalanceCalibrator {
             String v = p.getProperty(key);
             if (v != null && !v.isEmpty()) System.setProperty(key, v);
         }
+        // the MA-7 rom SMAF plays on (and MFi may): local.properties names it under the project's
+        // key, the synthesizer reads its own, as TestCase#setup maps it
+        String ma7 = p.getProperty("mdplayer.ma7.path");
+        if (ma7 != null && !ma7.isEmpty() && System.getProperty("vavi.sound.ma7.path") == null)
+            System.setProperty("vavi.sound.ma7.path", ma7);
     }
 
     /** every existing, non-directory file referenced in local.properties (commented lines included) */
