@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Balance>
-   <MasterVolume>-25</MasterVolume>
+   <MasterVolume>-3</MasterVolume>
    <MidiVolume>0</MidiVolume>
+   <MasterVolumeSub type="fuetrek:fuetrek">-26</MasterVolumeSub>
+   <MasterVolumeSub type="fuetrek:gervill">-30</MasterVolumeSub>
+   <MasterVolumeSub type="fuetrek:opendoja.fuetrek">-25</MasterVolumeSub>
+   <MasterVolumeSub type="rohm:gervill">-22</MasterVolumeSub>
+   <MasterVolumeSub type="rohm:rohm">0</MasterVolumeSub>
+   <MasterVolumeSub type="yamaha:gervill">-32</MasterVolumeSub>
+   <MasterVolumeSub type="yamaha:ma7">-24</MasterVolumeSub>
+   <MasterVolumeSub type="yamaha:nuked">-20</MasterVolumeSub>
+   <MasterVolumeSub type="yamaha:opendoja.ma3">-12</MasterVolumeSub>
+   <MasterVolumeSub type="yamaha:sion">-31</MasterVolumeSub>
    <YM2612Volume>0</YM2612Volume>
    <SN76489Volume>0</SN76489Volume>
    <RF5C68Volume>0</RF5C68Volume>

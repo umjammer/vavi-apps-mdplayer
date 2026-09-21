@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiMessage;
@@ -21,6 +24,7 @@ import javax.sound.midi.Sequence;
 import mdplayer.Common.EnmModel;
 import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.MasterVolumeSub;
 import mdplayer.driver.MidiChannels;
 import mdplayer.driver.MidiSchedule;
 import mdplayer.driver.MidiSchedule.Event;
@@ -47,13 +51,15 @@ import static java.lang.System.getLogger;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-09-19 nsano initial version <br>
  */
-public class MldDriver extends BaseDriver {
+public class MldDriver extends BaseDriver implements MasterVolumeSub {
 
     /**
      * How loud the stream waves are against the song. They come at the level they were stored at
      * ({@link AudioEngineMixer}), so the level is this driver's to choose, and what it chooses is
      * what the volume of a line of their own used to make of them - the same property and the same
-     * default - so that nothing sounds different here and a setting of it still works.
+     * default - so that nothing sounds different here and a setting of it still works. It is
+     * scaled by the synthesizer's {@link #getMasterVolumeSubType() sub master volume} too, so a song keeps its
+     * balance of waves to notes on every synthesizer.
      */
     private static final double ADPCM_GAIN =
             Double.parseDouble(System.getProperty("vavi.sound.mobile.AudioEngine.volume", "0.2"));
@@ -72,6 +78,8 @@ public class MldDriver extends BaseDriver {
     private final MidiChannels channels = new MidiChannels();
     private MldSynth synth;
     private Receiver receiver;
+    /** the preset's {@code <MasterVolumeSub>} of the synthesizer playing, see {@link #getMasterVolumeSubType()} */
+    private double gain = 1.0;
 
     private List<Event> events = List.of();
     private int next;
@@ -206,11 +214,47 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         mixing = AudioEngineMixer.attach();
         synth = MldSynth.forChip(detection.chip());
         receiver = synth.getReceiver();
+        // the synthesizers are ~17 dB apart for the same songs: more than the driver's one
+        // MasterVolume can level, and applied after the clamp below it could only make it worse
+        gain = Math.pow(10.0, setting.getBalance().getMasterVolumeSub(getMasterVolumeSubType()) / 40.0);
         step = (double) synth.getSampleRate() / outputRate;
         frac = 0;
         blockPos = blockLen = BLOCK;
         curL = curR = prevL = prevR = 0;
 logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
+    }
+
+    /** {@code "yamaha:ma7"}: the chip, and the {@link MldSynth#getName() synthesizer} playing it */
+    @Override
+    public String getMasterVolumeSubType() {
+        if (detection == null || synth == null) return null;
+        return group(detection.chip()) + ":" + synth.getName();
+    }
+
+    /** the synthesizers available that sound as the chip of the song */
+    @Override
+    public List<String> getMasterVolumeSubTypes() {
+        if (detection == null) return List.of();
+        String current = getMasterVolumeSubType();
+        List<String> types = new ArrayList<>();
+        if (current != null) types.add(current);
+        for (MldSynth s : MldSynth.providers()) {
+            if (!s.getChips().contains(detection.chip()) || !s.isAvailable()) continue;
+            String type = group(detection.chip()) + ":" + s.getName();
+            if (!types.contains(type)) types.add(type);
+        }
+        return types;
+    }
+
+    /** {@code mdplayer.mfi.synth.<chip>=<synthesizer>} */
+    @Override
+    public Map<String, String> masterVolumeSubProperties(String type) {
+        String[] gv = type.split(":", 2);
+        return Map.of(MldSynth.SYNTH_KEY + "." + gv[0], gv[1]);
+    }
+
+    private static String group(MfiChip chip) {
+        return chip.name().toLowerCase(Locale.ROOT);
     }
 
     /** closes the synthesizer of the song */
@@ -304,6 +348,9 @@ logger.log(Level.DEBUG, "send: " + e);
                 r = (int) (prevR + (curR - prevR) * frac);
             }
 
+            // leveled before the clamp: the loud synthesizers reach full scale as they are
+            l = (int) (l * gain);
+            r = (int) (r * gain);
             b[offset + i] = (short) Math.clamp(l, Short.MIN_VALUE, Short.MAX_VALUE);
             b[offset + i + 1] = (short) Math.clamp(r, Short.MIN_VALUE, Short.MAX_VALUE);
 
@@ -327,7 +374,7 @@ logger.log(Level.DEBUG, "send: " + e);
     /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
     private void mixAdpcm(short[] b, int offset, int frames) {
         if (frames > mixedFrames) {
-            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate, ADPCM_GAIN);
+            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate, ADPCM_GAIN * gain);
             mixedFrames = frames;
         }
     }

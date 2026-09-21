@@ -27,6 +27,7 @@ import mdplayer.Setting;
 import mdplayer.driver.BaseDriver;
 import mdplayer.driver.FileFormat;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.MasterVolumeSub;
 import mdsound.MDSound;
 
 /**
@@ -64,6 +65,11 @@ import mdsound.MDSound;
  *   mvn -o test-compile
  *   java -cp <cp> mdplayer.tool.VolumeBalanceCalibrator [--dry-run] [--seconds N]
  * }</pre>
+ * A driver that renders its songs on one of several sound sources ({@link MasterVolumeSub}, the mfi
+ * driver) also gets a {@code <MasterVolumeSub type="yamaha:ma7">} per source, see
+ * {@link #measureSubMasters}: {@code --sub-dir <dirs>} picks the songs for it at random from
+ * directories rather than the driver's few samples, {@code --sub-count N} of each group (12).
+ * <p>
  * To add drivers to a set a full run already leveled, without re-measuring everything, give the
  * level that run landed on: {@code --only MLD,SMAF --target-dbfs -21.8}.
  */
@@ -110,6 +116,16 @@ final class VolumeBalanceCalibrator {
      *  {@link #levelingTarget} picks: lets an {@code --only} run join the set a full run leveled */
     private static Double targetDbfs = null;
 
+    /** where the songs {@link #measureSubMasters} levels the sound sources of a
+     *  {@link MasterVolumeSub} driver with are picked from (pathSep-separated); none: the driver's samples */
+    private static String[] subDirs = new String[0];
+
+    /** songs of each {@code MasterVolumeSub} group measured, on every type of it */
+    private static int subCount = 12;
+
+    /** consecutive songs that bring no new group before the {@link #subDirs} search stops */
+    private static final int SUB_GIVE_UP = 200;
+
     /** explicit extra sample files (pathSep-separated) added on top of the local.properties scan */
     private static String[] extraFiles = new String[0];
 
@@ -122,6 +138,8 @@ final class VolumeBalanceCalibrator {
             case "--max-samples" -> maxSamplesPerDriver = Integer.parseInt(args[++i]);
             case "--only" -> only = Set.of(args[++i].split(","));
             case "--target-dbfs" -> targetDbfs = Double.parseDouble(args[++i]);
+            case "--sub-dir" -> subDirs = args[++i].split(java.io.File.pathSeparator);
+            case "--sub-count" -> subCount = Integer.parseInt(args[++i]);
             case "--files" -> extraFiles = args[++i].split(java.io.File.pathSeparator);
             default -> { System.err.println("unknown arg: " + args[i]); return; }
             }
@@ -286,6 +304,10 @@ final class VolumeBalanceCalibrator {
             return null;
         }
 
+        // sound sources the driver picks per song, which no chip of the mixer plays
+        // (only a driver that renders its songs itself can be one: a chip driver is leveled per chip)
+        Map<String, Integer> subs = chipTags.isEmpty() ? measureSubMasters(driver, playable) : Map.of();
+
         // average (linear) each chip's active RMS across samples
         Map<Class<? extends mdplayer.Chip>, Double> avgRms = new LinkedHashMap<>();
         for (var e : chipRms.entrySet()) {
@@ -300,6 +322,7 @@ final class VolumeBalanceCalibrator {
         double tRef = median(avgRms.values());
 
         Setting.Balance balance = new Setting.Balance();
+        subs.forEach(balance::setMasterVolumeSub);
         System.out.printf("  --- %s balance (reference chip active rms=%.1f) ---%n", driver, tRef);
         for (var chip : chipTags.keySet()) {
             Double rms = avgRms.get(chip);
@@ -344,6 +367,112 @@ final class VolumeBalanceCalibrator {
         return new DriverResult(driver, balance, mixRms, mixPeak, xml);
     }
 
+    /**
+     * Levels the sound sources of a {@link MasterVolumeSub} driver against each other: the same
+     * songs are played on every type of their group (the mfi driver: every synthesizer that sounds
+     * as the chip of the song), {@link #subCount} songs of each group, and each type is brought to
+     * the median rms of the quietest group's own type -- down, not up, since the loud ones reach
+     * full scale before the driver's clamp, which no {@code MasterVolume} after it can undo.
+     * A song that makes no sound on its own type (only machine dependent data) is passed over.
+     *
+     * @param samples the driver's samples, the songs when no {@link #subDirs} is given
+     * @return type to its {@code MasterVolumeSub}, empty for any other driver
+     */
+    private static Map<String, Integer> measureSubMasters(String driver, List<Path> samples) throws Exception {
+        if (samples.isEmpty()) return Map.of();
+        BasePlugin<? extends BaseDriver> probe = build(samples.getFirst());
+        boolean sub = probe.getDriver() instanceof MasterVolumeSub;
+        close(probe);
+        if (!sub) return Map.of();
+
+        List<Path> pool = new ArrayList<>();
+        if (subDirs.length == 0) {
+            pool.addAll(samples);
+        } else {
+            for (String d : subDirs) {
+                try (var files = Files.walk(Path.of(d))) {
+                    files.filter(Files::isRegularFile).filter(f -> driver.equals(driverToken(f))).forEach(pool::add);
+                }
+            }
+            java.util.Collections.shuffle(pool, new java.util.Random(1)); // the same songs every run
+        }
+        System.out.printf("  --- %s sub master volumes: %d song(s) of each group, from %d%n", driver, subCount, pool.size());
+
+        Map<String, Integer> perGroup = new TreeMap<>();
+        Map<String, List<Double>> rms = new TreeMap<>();
+        Set<String> own = new LinkedHashSet<>(); // the type each group plays on by default
+        int fruitless = 0;
+        for (Path song : pool) {
+            if (!perGroup.isEmpty() && perGroup.values().stream().allMatch(n -> n >= subCount) && ++fruitless > SUB_GIVE_UP) break;
+            List<String> types;
+            MasterVolumeSub asker;
+            try {
+                BasePlugin<? extends BaseDriver> plugin = build(song);
+                try {
+                    asker = (MasterVolumeSub) plugin.getDriver();
+                    types = asker.getMasterVolumeSubTypes();
+                    if (types.isEmpty()) continue;
+                    String group = group(types.getFirst());
+                    if (!perGroup.containsKey(group)) fruitless = 0;
+                    if (perGroup.getOrDefault(group, 0) >= subCount) continue;
+                    double r = renderMeas(plugin).full();
+                    if (r < SILENCE_RMS) continue;
+                    perGroup.merge(group, 1, Integer::sum);
+                    own.add(types.getFirst());
+                    rms.computeIfAbsent(types.getFirst(), k -> new ArrayList<>()).add(r);
+                    System.out.printf("  %-24s %-22s rms=%8.1f%n", song.getFileName(), types.getFirst(), r);
+                } finally {
+                    close(plugin);
+                }
+            } catch (Exception e) {
+                System.out.printf("  %-24s measurement failed (%s), skipped%n", song.getFileName(), e);
+                continue;
+            }
+            // the same song on the others of its group
+            for (String type : types.subList(1, types.size())) {
+                Map<String, String> props = asker.masterVolumeSubProperties(type);
+                Map<String, String> saved = new LinkedHashMap<>();
+                props.forEach((k, v) -> { saved.put(k, System.getProperty(k)); System.setProperty(k, v); });
+                try {
+                    BasePlugin<? extends BaseDriver> plugin = build(song);
+                    try {
+                        String playing = ((MasterVolumeSub) plugin.getDriver()).getMasterVolumeSubType();
+                        if (!type.equals(playing)) continue; // it would not open, another stood in
+                        double r = renderMeas(plugin).full();
+                        rms.computeIfAbsent(type, k -> new ArrayList<>()).add(r);
+                        System.out.printf("  %-24s %-22s rms=%8.1f%n", "", type, r);
+                    } finally {
+                        close(plugin);
+                    }
+                } catch (Exception e) {
+                    System.out.printf("  %-24s %-22s failed (%s)%n", "", type, e);
+                } finally {
+                    saved.forEach((k, v) -> { if (v == null) System.clearProperty(k); else System.setProperty(k, v); });
+                }
+            }
+        }
+
+        Map<String, Double> medians = new TreeMap<>();
+        rms.forEach((t, v) -> medians.put(t, median(v)));
+        // broken measurements must not drag every other type down to them
+        double ref = own.stream().map(medians::get).filter(m -> m != null && m >= MIN_MEAS_FLOOR)
+                .mapToDouble(Double::doubleValue).min().orElse(0);
+        Map<String, Integer> subs = new TreeMap<>();
+        for (var e : medians.entrySet()) {
+            int v = ref <= 0 || e.getValue() < MIN_MEAS_FLOOR ? 0 : clampVol((int) Math.round(40.0 * Math.log10(ref / e.getValue())));
+            subs.put(e.getKey(), v);
+            System.out.printf("      %-22s n=%2d median rms=%8.1f  MasterVolumeSub=%4d%s%n", e.getKey(), rms.get(e.getKey()).size(),
+                    e.getValue(), v, own.contains(e.getKey()) ? "  (a group's own)" : "");
+        }
+        return subs;
+    }
+
+    /** {@code "yamaha:ma7"} -> {@code "yamaha"} */
+    private static String group(String type) {
+        int i = type.indexOf(':');
+        return i < 0 ? type : type.substring(0, i);
+    }
+
     /** honor --dry-run / missing-file and otherwise save + pretty-print the preset */
     private static void writeXml(String driver, Setting.Balance balance, Path xml) throws Exception {
         if (dryRun) {
@@ -369,8 +498,15 @@ final class VolumeBalanceCalibrator {
 
     /** build + prepare a fresh plugin for the sample (so each render starts from the top) */
     static BasePlugin<? extends BaseDriver> build(Path sample) throws Exception {
+        return build(sample, Map.of());
+    }
+
+    /** @param subs the {@code MasterVolumeSub}s to play with, the driver reads them when it is prepared */
+    static BasePlugin<? extends BaseDriver> build(Path sample, Map<String, Integer> subs) throws Exception {
         // fresh, all-zero balance so no leftover mute from a previous measurement leaks in
-        Setting.getInstance().setBalance(new Setting.Balance());
+        Setting.Balance fresh = new Setting.Balance();
+        subs.forEach(fresh::setMasterVolumeSub);
+        Setting.getInstance().setBalance(fresh);
         FileFormat format = FileFormat.getFileFormat(sample.toString());
         // Archives.getInputStream transparently decompresses .vgz/.zip/.lzh (VGM/ZGM need it), and for
         // a plain file returns the BufferedInputStream(FileInputStream) so SoundUtil.getSource can still
@@ -432,7 +568,7 @@ final class VolumeBalanceCalibrator {
 
     /** render the full mix with the balance's per-chip gains applied and measure it */
     private static Meas measureMix(Path sample, Setting.Balance balance) throws Exception {
-        BasePlugin<? extends BaseDriver> plugin = build(sample);
+        BasePlugin<? extends BaseDriver> plugin = build(sample, balance.getMasterVolumeSubs());
         try {
             for (var e : plugin.getChipInstances().entrySet()) {
                 Set<String> tags = new LinkedHashSet<>();

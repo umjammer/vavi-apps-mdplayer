@@ -13,10 +13,12 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import mdplayer.Common.EnmInstFormat;
@@ -38,6 +40,7 @@ import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
+import tools.jackson.dataformat.xml.ser.ToXmlGenerator;
 
 import static java.lang.System.getLogger;
 
@@ -2071,6 +2074,34 @@ public class Setting implements Serializable, Cloneable {
             midiVolume = outRange(value) ? 0 : value;
         }
 
+        private final Map<String, Integer> masterVolumeSubs = new TreeMap<>();
+
+        /**
+         * A master volume for one of the sound sources a driver plays its songs on, in the same
+         * 2&times;dB unit, on top of {@link #getMasterVolume}.
+         * <p>
+         * Some drivers render their songs themselves on one of several sound sources, picked per
+         * song (the mfi driver: a synthesizer per chip), which are far apart in level and which
+         * the mixer can't tell apart, as no chip of it plays them. This levels them against each
+         * other, applied by the driver, before its output is clamped to 16 bits.
+         *
+         * @param type {@code "group:variant"}, the driver's {@link mdplayer.driver.MasterVolumeSub#getMasterVolumeSubType()},
+         *        {@code "yamaha:ma7"}
+         * @return 0 for a type without one
+         */
+        public int getMasterVolumeSub(String type) {
+            return masterVolumeSubs.getOrDefault(type, 0);
+        }
+
+        public void setMasterVolumeSub(String type, int value) {
+            masterVolumeSubs.put(type, outRange(value) ? 0 : value);
+        }
+
+        /** every {@link #getMasterVolumeSub} set, by type */
+        public Map<String, Integer> getMasterVolumeSubs() {
+            return Collections.unmodifiableMap(masterVolumeSubs);
+        }
+
         private final Map<String, Integer> volumes = new HashMap<>();
 
         private static boolean outRange(int v) {
@@ -2190,6 +2221,19 @@ public class Setting implements Serializable, Cloneable {
                 gen.writeStartObject();
                 gen.writeNumberProperty("MasterVolume", b.getMasterVolume());
                 gen.writeNumberProperty("MidiVolume", b.getMidiVolume());
+                // <MasterVolumeSub type="yamaha:ma7">-28</MasterVolumeSub>, one per type
+                for (var e : b.masterVolumeSubs.entrySet()) {
+                    gen.writeName("MasterVolumeSub");
+                    gen.writeStartObject();
+                    if (gen instanceof ToXmlGenerator x) x.setNextIsAttribute(true);
+                    gen.writeStringProperty("type", e.getKey());
+                    if (gen instanceof ToXmlGenerator x) {
+                        x.setNextIsAttribute(false);
+                        x.setNextIsUnwrapped(true);
+                    }
+                    gen.writeNumberProperty("value", e.getValue());
+                    gen.writeEndObject();
+                }
                 for (VolEntry e : VOL_TABLE) {
                     gen.writeNumberProperty(e.element(), b.volumes.getOrDefault(getKey(e.tag(), e.chip()), 0));
                 }
@@ -2211,6 +2255,7 @@ public class Setting implements Serializable, Cloneable {
                         switch (name) {
                         case "MasterVolume", "masterVolume" -> b.setMasterVolume(p.getValueAsInt());
                         case "MidiVolume", "midiVolume" -> b.setMidiVolume(p.getValueAsInt());
+                        case "MasterVolumeSub" -> readMasterVolumeSub(p, b);
                         case "GimicOPNVolume" -> b.setGimicOPNVolume(p.getValueAsInt());
                         case "GimicOPNAVolume" -> b.setGimicOPNAVolume(p.getValueAsInt());
                         default -> {
@@ -2227,6 +2272,26 @@ public class Setting implements Serializable, Cloneable {
                 }
                 return b;
             }
+        }
+
+        /** {@code type} is the attribute, the value the element's text ({@code ""}), or {@code value} elsewhere than in xml */
+        private static void readMasterVolumeSub(JsonParser p, Balance b) {
+            if (p.currentToken() != JsonToken.START_OBJECT) {
+                p.skipChildren();
+                return;
+            }
+            String type = null;
+            Integer value = null;
+            while (p.nextToken() != JsonToken.END_OBJECT) {
+                String name = p.currentName();
+                p.nextToken();
+                switch (name) {
+                case "type" -> type = p.getValueAsString();
+                case "", "value" -> value = p.getValueAsInt();
+                default -> p.skipChildren();
+                }
+            }
+            if (type != null && value != null) b.setMasterVolumeSub(type, value);
         }
 
         private int _GimicOPNVolume = 0;
@@ -2262,6 +2327,7 @@ public class Setting implements Serializable, Cloneable {
             Balance balance = new Balance();
             balance.masterVolume = this.masterVolume;
             balance.midiVolume = this.midiVolume;
+            balance.masterVolumeSubs.putAll(this.masterVolumeSubs);
             balance.volumes.putAll(this.volumes);
 
             balance._GimicOPNVolume = this._GimicOPNVolume;

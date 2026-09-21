@@ -68,10 +68,10 @@ plays a converted sequence on a sound source of its own the same way - see
   `rt_synth_2.dll`, bit exact to it
 * ~~the adpcm of vavi-sound's `AudioEngine`s plays into a line of its own, not through the mixer~~
   ... `AudioEngineMixer` (vavi-sound 1.1.2): the driver mixes it in, starting on the frame of its message
-* ~~level: nothing is calibrated yet~~ ... `DefaultVolumeBalance_MLD.xml` `MasterVolume` -25, leveled to the
-  set's -21.8 dBFS by `VolumeBalanceCalibrator --only MLD --target-dbfs -21.8`. One master for every synthesizer:
-  songs on one synthesizer spread as wide (MA-7 2196..7703 rms) as the synthesizers do
-* level: UCS and MA-7 still reach full scale inside the driver, before the master volume
-  (`Assault_FT.mld` clamps 0.14% of its samples)
+* ~~level: nothing is calibrated yet~~ ... the synthesizers are ~13-17 dB apart for the same songs, so each
+  `chip:synthesizer` has a `<MasterVolumeSub type="yamaha:ma7">` in `DefaultVolumeBalance_MLD.xml`, applied by the
+  driver before its 16 bit clamp (`MldDriver` is a `mdplayer.driver.MasterVolumeSub`). They and the `MasterVolume`
+  are measured by `VolumeBalanceCalibrator --only MLD --target-dbfs -21.8 --seconds 15 --sub-dir <mfi dir>`:
+  12 songs of each chip played on every synthesizer available for it, each brought to rohm's median
 * loop points (`0xdd`): a song plays once
 * ~~make synthesizer changeable `openDoja`, `SiON` etc.~~ ... `MldSynth` service providers, `SiON` is still to come
