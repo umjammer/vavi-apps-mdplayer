@@ -122,7 +122,7 @@ public class MldDriver extends BaseDriver implements MasterVolumeSub {
 logger.log(Level.DEBUG, "not an mfi: " + e);
             return null;
         }
-        MfiChip.Detection d = MfiChip.detect(condition(file));
+        detection = MfiChip.detect(condition(file));
 
         MetaData md = new MetaData();
         String title = file.getTitle() != null ? file.getTitle() : "";
@@ -134,7 +134,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         set(md, Tag.ReleaseDate, file.getDate());
         md.set(Tag.NumberOfSongs, "1");
         // no mdsound chip is registered, this is what names it on the fmdsp header
-        md.set(Tag.Chip, d.name());
+        md.set(Tag.Chip, detection.name());
 
         this.metaData = md;
         return md;
@@ -187,9 +187,6 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         speedCounter = 0;
 
         metaData = retrieveMetaData(dataBuf);
-
-        MldFile file = MldFile.decode(dataBuf);
-        detection = MfiChip.detect(condition(file));
 
         int outputRate = setting.getOutputDevice().getSampleRate();
         Sequence sequence;

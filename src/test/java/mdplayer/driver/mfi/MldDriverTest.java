@@ -141,6 +141,41 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + f
     }
 
     @Test
+    void randomChipMatchesMetadataAndDetection() throws Exception {
+        Path chopin = Path.of("../../vavi/vavi-sound/tmp/samples/mbox_Chopin_wakare.mld");
+        assumeTrue(Files.exists(chopin), chopin + " is missing");
+
+        String prev = System.getProperty("mdplayer.mfi.chip.default");
+        System.setProperty("mdplayer.mfi.chip.default", "random");
+        try {
+            for (int i = 0; i < 10; i++) {
+                FileFormat format = FileFormat.getFileFormat(chopin.toString());
+                format.load(new BufferedInputStream(Files.newInputStream(chopin)), null);
+
+                @SuppressWarnings("unchecked")
+                BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
+                plugin.setParams(format, Map.of("fileName", chopin.toString()));
+                plugin.prepare();
+
+                MldDriver driver = (MldDriver) plugin.getDriver();
+                assertNotNull(driver.getDetection());
+                assertNotNull(driver.metaData);
+                assertEquals(driver.getDetection().name(), driver.metaData.getFirst(Tag.Chip));
+
+                ChipFmDspSource source = new ChipFmDspSource();
+                source.bind(plugin);
+                assertEquals(driver.getDetection().name(), source.chips());
+
+                plugin.stop();
+                plugin.close();
+            }
+        } finally {
+            if (prev != null) System.setProperty("mdplayer.mfi.chip.default", prev);
+            else System.clearProperty("mdplayer.mfi.chip.default");
+        }
+    }
+
+    @Test
     void theFormatIsFoundByItsHeader() throws Exception {
         assumeTrue(Files.exists(mld), mld + " is missing");
 
