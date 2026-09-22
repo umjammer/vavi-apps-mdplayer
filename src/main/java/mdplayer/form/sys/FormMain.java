@@ -75,6 +75,7 @@ import mdplayer.Common;
 import mdplayer.Common.EnmModel;
 import mdplayer.form.FrameBuffer;
 import mdplayer.form.View;
+import mdplayer.form.VisualizerProvider;
 import mdplayer.form.kb.chip.FormRegTest;
 import mdplayer.form.kb.ViewProvider;
 import mdplayer.form.KeyboardHook;
@@ -128,7 +129,7 @@ public class FormMain extends JFrame {
         return ym2612Midi.ym2612Midi;
     }
 
-    static final Point empty = new Point(0, 0);
+    public static final Point empty = new Point(0, 0);
 
     private BufferedImage pbRf5c164Screen;
     private FrameBuffer mainScreen = new FrameBuffer();
@@ -156,9 +157,6 @@ public class FormMain extends JFrame {
 //    private frmVSTeffectList frmVSTeffectList = null;
 
     private FormMixer2 frmMixer2 = null;
-    private FormVisWave frmVisWave = new FormVisWave();
-    private FormFmdsp frmFmdsp = new FormFmdsp();
-    private FormBoids frmBoids = new FormBoids();
     private FormVSTeffectList frmVSTeffectList;
 
     /** every chip/panel view the providers contribute, in provider order, indexed primary/secondary */
@@ -442,8 +440,8 @@ public class FormMain extends JFrame {
 
                 visVolumeMaster = Math.max(Math.abs(left.intValue()), Math.abs(right.intValue()));
 
-                if (frmVisWave != null) {
-                    frmVisWave.push(left.shortValue(), right.shortValue());
+                for (VisualizerProvider p : VisualizerProvider.providers()) {
+                    p.push(left.shortValue(), right.shortValue());
                 }
                 if (frmMixer2 != null && !frmMixer2.isClosed) {
                     // the mixer's master meter is the loudest of what just came out
@@ -511,7 +509,7 @@ public class FormMain extends JFrame {
         if (setting.getLocation().getOPlayList()) dispPlayList();
         if (setting.getLocation().getOInfo()) openInfo();
         if (setting.getLocation().getOMixer()) openMixer();
-        if (setting.getLocation().getOpenVisWave()) frmVisWave.open();
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.restore(this);
         if (setting.getLocation().getOpenVSTeffectList()) openVSTeffectList();
 
         for (Map.Entry<ViewProvider, View[]> e : views.entrySet()) {
@@ -878,7 +876,6 @@ public class FormMain extends JFrame {
         setting.getLocation().setOInfo(false);
         setting.getLocation().setOPlayList(false);
         setting.getLocation().setOMixer(false);
-        setting.getLocation().setOpenVisWave(false);
         setting.getLocation().clearOpen();
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 04");
@@ -916,9 +913,7 @@ public class FormMain extends JFrame {
             }
         }
 
-        frmVisWave.close();
-        frmFmdsp.close(audio);
-        frmBoids.close(audio);
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.close();
 
         setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
         if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
@@ -1302,9 +1297,6 @@ public class FormMain extends JFrame {
 
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
-        frmFmdsp.init();
-        frmBoids.init();
-        frmVisWave.init(this);
 
         reqAllScreenInit = false;
     }
@@ -1696,8 +1688,7 @@ public class FormMain extends JFrame {
 
     public void pause() {
         audio.pause();
-        frmFmdsp.pause(audio);
-        frmBoids.pause(audio);
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.pause(audio);
     }
 
     private void fadeout() {
@@ -1797,6 +1788,9 @@ public class FormMain extends JFrame {
                     }
                 }
             }
+
+            // before a sample is rendered, so they take the chips as the last song left them
+            for (VisualizerProvider p : VisualizerProvider.providers()) p.start(audio);
 
             startAudio();
 
@@ -2448,7 +2442,7 @@ public class FormMain extends JFrame {
         }
     }
 
-    static void checkAndSetForm(JFrame frm) {
+    public static void checkAndSetForm(JFrame frm) {
         frm.pack();
         Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
         Rectangle rc = new Rectangle(frm.getLocation(), frm.getSize());
@@ -2757,9 +2751,6 @@ public class FormMain extends JFrame {
         this.tsmiChangeZoomX4 = new JMenuItem();
         this.registerDumpDisplayToolStripMenuItem = new JMenu();
         this.visualizerMenu = new JMenu();
-        this.tsmiVisualizer = new JMenuItem();
-        this.fmdspVisualizer = new JMenuItem();
-        this.boidsVisualizer = new JMenuItem();
         this.tsmiConsole = new JMenuItem();
         this.opeButtonSetting = new JButton();
         this.toolTip1 = new JToolTip();
@@ -2991,19 +2982,16 @@ public class FormMain extends JFrame {
         this.registerDumpDisplayToolStripMenuItem.setIcon(new ImageIcon(Common.getImage("empty")));
         this.registerDumpDisplayToolStripMenuItem.setName("registerDumpDisplayToolStripMenuItem");
         //
-        // tsmiVisualizer
+        // visualizerMenu, one item per VisualizerProvider
         //
         this.visualizerMenu.setIcon(new ImageIcon(Common.getImage("empty")));
         this.visualizerMenu.setName("visualizer");
-        this.tsmiVisualizer.setName("tsmiVisualizer");
-        this.tsmiVisualizer.addActionListener(_ -> frmVisWave.open());
-        this.fmdspVisualizer.setName("fmdspVisualizer");
-        this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
-        this.boidsVisualizer.setName("boidsVisualizer");
-        this.boidsVisualizer.addActionListener(_ -> frmBoids.open(audio, this::pause));
-        this.visualizerMenu.add(this.tsmiVisualizer);
-        this.visualizerMenu.add(this.fmdspVisualizer);
-        this.visualizerMenu.add(this.boidsVisualizer);
+        for (VisualizerProvider p : VisualizerProvider.providers()) {
+            JMenuItem item = new JMenuItem(p.menuText());
+            item.setName("tsmiVis" + p.id());
+            item.addActionListener(_ -> p.open(this));
+            this.visualizerMenu.add(item);
+        }
         //
         // tsmiConsole
         //
@@ -3316,9 +3304,6 @@ public class FormMain extends JFrame {
     private JButton opeButtonOpen;
     private JButton opeButtonMode;
     private JMenu visualizerMenu;
-    private JMenuItem tsmiVisualizer;
-    private JMenuItem fmdspVisualizer;
-    private JMenuItem boidsVisualizer;
     private JMenuItem tsmiConsole;
     private FormConsole frmConsole;
 
