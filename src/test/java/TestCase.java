@@ -389,7 +389,7 @@ Debug.println("close");
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
     void testX() throws Exception {
-        mdplayer.Program.main(new String[] {file});
+        mdplayer.Program.main(new String[] {});
 
         CountDownLatch cdl = new CountDownLatch(1);
         cdl.await();

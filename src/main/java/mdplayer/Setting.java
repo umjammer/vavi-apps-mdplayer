@@ -2632,6 +2632,33 @@ public class Setting implements Serializable, Cloneable {
             viewOpen.clear();
         }
 
+        /** the main window's play mode: 0 in order, 1 at random, 2 all songs loop, 3 one song loop */
+        private int playMode = 0;
+        public int getPlayMode() {
+            return playMode;
+        }
+        public void setPlayMode(int value) {
+            playMode = value;
+        }
+
+        /** which titles the play list shows: "all", "en" or "ja" */
+        private String playListLang = "all";
+        public String getPlayListLang() {
+            return playListLang;
+        }
+        public void setPlayListLang(String value) {
+            playListLang = value;
+        }
+
+        /** the play list's column widths at x1, comma separated in column order, empty for the designer's */
+        private String playListColumnWidths = "";
+        public String getPlayListColumnWidths() {
+            return playListColumnWidths;
+        }
+        public void setPlayListColumnWidths(String value) {
+            playListColumnWidths = value;
+        }
+
         @Override
         public Location clone() {
             Location location = new Location();
@@ -2655,6 +2682,9 @@ public class Setting implements Serializable, Cloneable {
 
             location.viewPos = new HashMap<>(this.viewPos);
             location.viewOpen = new HashMap<>(this.viewOpen);
+            location.playMode = this.playMode;
+            location.playListLang = this.playListLang;
+            location.playListColumnWidths = this.playListColumnWidths;
 
             return location;
         }

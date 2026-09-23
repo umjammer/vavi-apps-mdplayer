@@ -226,18 +226,19 @@ public class FormMain extends JFrame {
     private boolean flgReinit = false;
     private boolean reqAllScreenInit = true;
 
+    /** a swing tool tip is one line unless it is html, so these are */
     private static final String[] modeTip = {
-            "Mode\nNow:Step\nNext:Random",
-            "Mode\nNow:Random\nNext:Loop",
-            "Mode\nNow:Loop\nNext:LoopOne",
-            "Mode\nNow:LoopOne\nNext:Step",
+            "<html>Play mode<br>Now: Step (in order, stop after the last song)<br>Next: Random</html>",
+            "<html>Play mode<br>Now: Random<br>Next: Loop (all songs)</html>",
+            "<html>Play mode<br>Now: Loop (all songs)<br>Next: Loop one song</html>",
+            "<html>Play mode<br>Now: Loop one song<br>Next: Step</html>",
     };
 
     private static final String[] zoomTip = {
-            "Zoom\nNow:x1\nNext:x2",
-            "Zoom\nNow:x2\nNext:x3",
-            "Zoom\nNow:x3\nNext:x4",
-            "Zoom\nNow:x4\nNext:x1",
+            "<html>Zoom<br>Now: x1<br>Next: x2</html>",
+            "<html>Zoom<br>Now: x2<br>Next: x3</html>",
+            "<html>Zoom<br>Now: x3<br>Next: x4</html>",
+            "<html>Zoom<br>Now: x4<br>Next: x1</html>",
     };
 
     //private FileSystemWatcher watcher = null;
@@ -533,6 +534,7 @@ public class FormMain extends JFrame {
         frameSizeW = this.getWidth() - this.getSize().width;
         frameSizeH = this.getHeight() - this.getSize().height;
 
+        newButtonMode[9] = Math.clamp(setting.getLocation().getPlayMode(), 0, 3);
         changeZoom();
         opeButtonMode.setToolTipText(modeTip[newButtonMode[9]]);
         lstOpeButtonControl = new JButton[] {
@@ -890,6 +892,10 @@ public class FormMain extends JFrame {
         Setting.Location location = setting.getLocation();
 
         location.setPMain(getLocation());
+        location.setPlayMode(newButtonMode[9]);
+
+        // the list's titles and column widths are kept whether it is open or not
+        if (frmPlayList != null) frmPlayList.storeViewState();
 
         boolean playList = frmPlayList != null && !frmPlayList.isClosed;
         location.setOPlayList(playList);
@@ -1942,6 +1948,7 @@ public class FormMain extends JFrame {
         newButtonMode[9]++;
         if (newButtonMode[9] > 3) newButtonMode[9] = 0;
         opeButtonMode.setToolTipText(modeTip[newButtonMode[9]]);
+        setting.getLocation().setPlayMode(newButtonMode[9]);
     }
 
     private static final Preferences prefs = Preferences.userNodeForPackage(FormMain.class);

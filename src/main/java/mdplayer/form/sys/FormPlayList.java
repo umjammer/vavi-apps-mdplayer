@@ -154,6 +154,7 @@ public class FormPlayList extends JFrame {
         attach(PlayList.load(null));
 
         restoreBounds();
+        restoreViewState();
     }
 
     /** Makes the table show {@code pl}. */
@@ -845,6 +846,38 @@ public class FormPlayList extends JFrame {
     private void storeBounds() {
         setting.getLocation().setPPlayList(getLocation());
         setting.getLocation().setPPlayListWH(getSize());
+        storeViewState();
+    }
+
+    /** Puts back which titles were shown and how wide the columns were. */
+    private void restoreViewState() {
+        switch (setting.getLocation().getPlayListLang()) {
+        case "en" -> tsbEnglish.setSelected(true);
+        case "ja" -> tsbJapanese.setSelected(true);
+        default -> tsbAll.setSelected(true);
+        }
+
+        String widths = setting.getLocation().getPlayListColumnWidths();
+        if (widths != null && !widths.isEmpty()) {
+            String[] parts = widths.split(",");
+            for (int i = 0; i < parts.length && i < baseWidths.length; i++) {
+                try {
+                    int w = Integer.parseInt(parts[i].trim());
+                    if (w > 0) baseWidths[i] = w;
+                } catch (NumberFormatException e) {
+                    logger.log(Level.DEBUG, "bad play list column width: " + parts[i]);
+                }
+            }
+        }
+        updateColumnVisibility();
+    }
+
+    /** Puts which titles are shown and the columns' widths into the settings. */
+    public void storeViewState() {
+        setting.getLocation().setPlayListLang(tsbEnglish.isSelected() ? "en" : tsbJapanese.isSelected() ? "ja" : "all");
+        setting.getLocation().setPlayListColumnWidths(Arrays.stream(baseWidths)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(",")));
     }
 
     @Override
