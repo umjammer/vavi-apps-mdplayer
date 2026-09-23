@@ -22,6 +22,7 @@ import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import mdplayer.Common.EnmInstFormat;
+import mdplayer.chips.Pcm8Chip;
 import mdplayer.driver.Plugin;
 import mdplayer.driver.mndrv.MNDPlugin;
 import mdplayer.driver.mxdrv.MDXPlugin;
@@ -483,7 +484,8 @@ public class Setting implements Serializable, Cloneable {
 
     public static class MxDrv implements Serializable, Cloneable {
 
-        public int pcm8Type = Integer.getInteger("mdplayer.variant.pcm8", 1);
+        /** the song decides by default: see {@link mdplayer.driver.mxdrv.Pcm8Detector} */
+        public int pcm8Type = Integer.getInteger("mdplayer.variant.pcm8", Pcm8Chip.AUTO);
         public int pcm8ppsOption = -1;
 
         @Override
@@ -3096,6 +3098,10 @@ public class Setting implements Serializable, Cloneable {
      * Which of the two X68000 PCM back ends the song being played uses: {@code 0} is X68Sound's own
      * PCM8, {@code 1} is PCM8PP.
      * <p>
+     * {@link Pcm8Chip#AUTO} is resolved here, so nobody downstream ever sees it: for an MDX the
+     * song itself says which one it needs ({@link MDXPlugin#detectedPcm8Type()}), ZMUSIC and RCS
+     * have nothing like that and keep PCM8PP, their default before there was an auto.
+     * <p>
      * The chips are shared singletons - one {@link mdplayer.chips.Pcm8Chip} serves ZMS, MDX and RCS
      * alike - while the setting is per driver, so the chip cannot read a section of its own. It asks
      * the plugin that registered it instead, and the plugin that answers is the one whose
@@ -3106,9 +3112,9 @@ public class Setting implements Serializable, Cloneable {
      */
     public int pcm8Type(Plugin plugin) {
         return switch (plugin) {
-            case MDXPlugin _ -> mxDrv.pcm8Type;
-            case RCSPlugin _ -> rcs.pcm8type;
-            default -> zMusic.pcm8Type;
+            case MDXPlugin p -> mxDrv.pcm8Type == Pcm8Chip.AUTO ? p.detectedPcm8Type() : mxDrv.pcm8Type;
+            case RCSPlugin _ -> rcs.pcm8type == Pcm8Chip.AUTO ? Pcm8Chip.PCM8PP : rcs.pcm8type;
+            default -> zMusic.pcm8Type == Pcm8Chip.AUTO ? Pcm8Chip.PCM8PP : zMusic.pcm8Type;
         };
     }
 

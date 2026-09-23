@@ -178,7 +178,7 @@ public class MxDriver extends BaseDriver {
      * @param mdxSize OUT
      * @param pdxFileName OUT
      */
-    private static void makeMdxBuf(byte[] buf, byte[][] mdx, int[] mdxSize, String[] pdxFileName) {
+    static void makeMdxBuf(byte[] buf, byte[][] mdx, int[] mdxSize, String[] pdxFileName) {
         // a song packed by LZX.X keeps its header and hides its sequence behind a 68000 stub, so
         // it has to be expanded before any of the rest of this can read it (returns buf as it is
         // for a song that is not packed)
@@ -347,6 +347,9 @@ public class MxDriver extends BaseDriver {
             logger.log(Level.WARNING, "pdxFileName: %s, pdx: %s".formatted(pdxFileName[0], pdx[0]));
             throw new IllegalStateException("Failed to load PCM file [%s].".formatted(pdxFileName[0]));
         }
+
+        // PCM8PP takes a wider F than stock MXDRV passes on, see Pcm8Detector
+        mxdrv.pcmFormatMask = setting.pcm8Type(plugin) == Pcm8Chip.PCM8PP ? 0xfc : 0x1c;
 
         int ret;
         if (model == EnmModel.VirtualModel) {
