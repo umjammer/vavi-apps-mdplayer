@@ -61,6 +61,39 @@ public class Common {
      *
      * @return 0 origin
      */
+    /**
+     * Turns a WinForms filter spec, {@code "VGM files(*.vgm;*.vgz)|*.vgm;*.vgz|MDX files(*.mdx)|*.mdx"},
+     * into file chooser filters, in order. Directories are always accepted so that they can be
+     * browsed into.
+     */
+    public static List<FileFilter> toFileFilters(String spec) {
+        List<FileFilter> filters = new ArrayList<>();
+        String[] p = spec.split("\\|");
+        for (int i = 0; i + 1 < p.length; i += 2) {
+            String description = p[i].trim();
+            List<String> exts = new ArrayList<>();
+            for (String pattern : p[i + 1].split(";")) {
+                pattern = pattern.trim().toLowerCase();
+                if (pattern.startsWith("*")) pattern = pattern.substring(1);
+                if (!pattern.isEmpty()) exts.add(pattern);
+            }
+            filters.add(new FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    if (f.isDirectory()) return true;
+                    String name = f.getName().toLowerCase();
+                    return exts.contains(".*") || exts.stream().anyMatch(name::endsWith);
+                }
+
+                @Override
+                public String getDescription() {
+                    return description;
+                }
+            });
+        }
+        return filters;
+    }
+
     public static int getFilterIndex(JFileChooser fc) {
         FileFilter[] filters = fc.getChoosableFileFilters();
         for (int i = 0; i < filters.length; i++) {

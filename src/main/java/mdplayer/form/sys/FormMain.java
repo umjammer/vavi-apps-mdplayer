@@ -755,6 +755,10 @@ public class FormMain extends JFrame {
             }
         }
 
+        if (frmPlayList != null) {
+            frmPlayList.setZoom(zoom);
+        }
+
         if (frmMixer2 != null && !frmMixer2.isClosed) {
             openMixer();
             openMixer();
@@ -890,6 +894,8 @@ public class FormMain extends JFrame {
             setting.getLocation().setPPlayListWH(new Dimension(frmPlayList.getWidth(), frmPlayList.getHeight()));
             frmPlayList.setVisible(false);
             setting.getLocation().setOPlayList(true);
+        } else {
+            setting.getLocation().setOPlayList(false);
         }
         if (frmInfo != null && !frmInfo.isClosed) {
             setting.getLocation().setPInfo(frmInfo.getLocation());
@@ -1723,6 +1729,7 @@ public class FormMain extends JFrame {
             fn = new String[] {""};
             playFn = frmPlayList.setStart(-2); // first
         }
+        if (playFn == null) return; // nothing could be added
 
         reqAllScreenInit = true;
 
@@ -1869,20 +1876,7 @@ public class FormMain extends JFrame {
     private String[] fileOpen(boolean isMultiSelection) {
         JFileChooser ofd = new JFileChooser();
 
-        Arrays.stream(rb2.getString("cntSupportFile").split("\\s")).forEach(l -> {
-            String[] p = l.split("\\|");
-            ofd.setFileFilter(new FileFilter() {
-                @Override
-                public boolean accept(File f) {
-                    return f.getName().toLowerCase().endsWith(p[1]);
-                }
-
-                @Override
-                public String getDescription() {
-                    return p[0];
-                }
-            });
-        });
+        Common.toFileFilters(rb2.getString("cntSupportFile")).forEach(ofd::setFileFilter);
         String lastPath = prefs.get("mdplayer.lasPath", null);
         if (lastPath != null) ofd.setCurrentDirectory(new File(lastPath));
         ofd.setDialogTitle("Select a file");
