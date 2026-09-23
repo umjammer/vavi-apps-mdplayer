@@ -179,7 +179,7 @@
     </profile>
 
     <profile>
-      <!-- mvn -P calibrate antrun:run -Dseconds='2' -->
+      <!-- mvn -P calibrate antrun:run-Dseconds=20 -Dargs=' -​-only MLD,SMAF,FMP7 -​-target-dbfs -21.8' -->
       <id>calibrate</id>
       <properties>
         <args>--dry-run</args>
@@ -436,12 +436,12 @@
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-util-archive</artifactId>
-      <version>1.1.13</version>
+      <version>1.1.14</version>
     </dependency>
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound</artifactId>
-      <version>1.1.3</version>
+      <version>1.1.7</version>
     </dependency>
     <dependency>
       <groupId>com.github.umjammer</groupId>
@@ -452,7 +452,7 @@
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-mdsound</artifactId>
-      <version>0.0.27</version>
+      <version>0.0.28</version>
       <exclusions>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
@@ -464,12 +464,22 @@
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-mdi</artifactId>
       <version>0.0.9</version>
+      <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-mucom88</artifactId>
       <version>0.0.13</version>
       <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
           <artifactId>vavi-sound</artifactId>
@@ -481,6 +491,10 @@
       <artifactId>vavi-sound-pmd</artifactId>
       <version>0.0.13</version>
       <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
           <artifactId>vavi-sound</artifactId>
@@ -492,6 +506,10 @@
       <artifactId>vavi-sound-moon</artifactId>
       <version>0.0.12</version>
       <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
           <artifactId>vavi-sound</artifactId>
@@ -503,6 +521,10 @@
       <artifactId>vavi-sound-muap</artifactId>
       <version>0.0.9</version>
       <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
           <artifactId>vavi-sound</artifactId>
@@ -513,6 +535,12 @@
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-mdsdrv</artifactId>
       <version>0.4.10</version>
+      <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -548,19 +576,27 @@
     <dependency>
       <groupId>com.github.umjammer.vavi-apps-dosbox</groupId> <!-- com.acclash.jdosbox / com.github.umjammer.vavi-apps-dosbox -->
       <artifactId>jdosbox</artifactId>
-      <version>0.74.36v</version>
+      <version>0.74.37v</version>
     </dependency>
     <dependency>
       <groupId>com.github.umjammer.vavi-apps-dosbox</groupId> <!-- com.acclash.jdosbox / com.github.umjammer.vavi-apps-dosbox -->
       <artifactId>jdosbox-win</artifactId>
-      <version>0.74.36v</version>
+      <version>0.74.37v</version>
     </dependency>
 
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-apps-mfiplayer</artifactId>
-      <version>1.0.12</version>
+      <version>1.0.15</version>
       <exclusions>
+        <exclusion> <!-- the local mdsound above -->
+          <groupId>com.github.umjammer</groupId>
+          <artifactId>vavi-sound-mdsound</artifactId>
+        </exclusion>
+        <exclusion> <!-- the local jdosbox above -->
+          <groupId>com.github.umjammer.vavi-apps-dosbox</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
           <artifactId>vavi-sound</artifactId>
