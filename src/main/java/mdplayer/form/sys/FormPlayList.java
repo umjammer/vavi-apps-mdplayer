@@ -38,9 +38,12 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
+import java.util.Objects;
 import java.util.Random;
 import java.util.ResourceBundle;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
@@ -124,8 +127,17 @@ public class FormPlayList extends JFrame {
     private final Deque<PlayList.Music> randomStack = new ArrayDeque<>();
     private boolean isInitialOpenFolder = true;
 
-    /** the file extensions a drop or a folder is searched for */
-    private static final List<String> sext = List.of(".vgm;.vgz;.zip;.lzh;.nrd;.xgm;.zgm;.s98;.nsf;.hes;.sid;.mnd;.mgs;.mdr;.mdx;.mub;.muc;.m;.m2;.mz;.mml;.mid;.rcp;.wav;.mp3;.aiff;.m3u".split(";"));
+    /**
+     * the file extensions a drop or a folder is searched for: whatever a registered
+     * {@link FileFormat} reads, so a new driver's files can be dropped as soon as it is registered
+     */
+    private static final Set<String> sext = ServiceLoader.load(FileFormat.class).stream()
+            .map(ServiceLoader.Provider::get)
+            .map(FileFormat::getExtensions)
+            .filter(Objects::nonNull)
+            .flatMap(Arrays::stream)
+            .map(ex -> ex.toLowerCase(Locale.ROOT))
+            .collect(Collectors.toUnmodifiableSet());
 
     /** the column being sorted by and which way, -1 while the list is in the order it was made */
     private int sortColumn = -1;
