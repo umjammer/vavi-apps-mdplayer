@@ -8,6 +8,7 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.Insets;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
@@ -888,7 +889,8 @@ public class FormPlayList extends JFrame {
     }
 
     /**
-     * Scales the window as the other windows are, fonts, rows, columns and tool bar icons.
+     * Scales the tool bar as the other windows are. The list and its menu stay at x1: they are
+     * text to read, and a zoomed list shows only a few songs.
      *
      * @param zoom the main window's zoom, 1 to 4
      */
@@ -898,40 +900,28 @@ public class FormPlayList extends JFrame {
         this.zoom = zoom;
 
         Font font = baseFont.deriveFont(baseFont.getSize2D() * zoom);
-        dgvList.setFont(font);
-        dgvList.getTableHeader().setFont(font);
-        dgvList.setRowHeight(baseRowHeight * zoom);
-        applyZoom(cmsPlayList, font);
         for (Component c : toolStrip1.getComponents()) {
             c.setFont(font);
             if (c instanceof AbstractButton b && b.getClientProperty(BASE_ICON) instanceof BufferedImage image) {
                 b.setIcon(scaled(image, zoom));
             }
         }
-        updateColumnVisibility();
 
         if (old != zoom) {
-            Dimension d = getSize();
-            Dimension min = new Dimension(400 * zoom, 120 * zoom);
+            // the window keeps its size, only growing so that the zoomed tool bar fits
+            Dimension bar = toolStrip1.getPreferredSize();
+            Insets in = getInsets();
+            Dimension min = new Dimension(Math.max(400, bar.width + in.left + in.right), 120 + bar.height);
             setMinimumSize(min);
-            Dimension size = new Dimension(Math.max(min.width, d.width * zoom / old), Math.max(min.height, d.height * zoom / old));
-            setPreferredSize(size);
-            setSize(size);
+            Dimension d = getSize();
+            if (d.width < min.width || d.height < min.height) {
+                Dimension size = new Dimension(Math.max(min.width, d.width), Math.max(min.height, d.height));
+                setPreferredSize(size);
+                setSize(size);
+            }
         }
         revalidate();
         repaint();
-    }
-
-    private static void applyZoom(JComponent c, Font font) {
-        c.setFont(font);
-        for (Component child : c.getComponents()) {
-            if (child instanceof JMenu m) {
-                applyZoom(m.getPopupMenu(), font);
-                m.setFont(font);
-            } else if (child instanceof JComponent jc) {
-                applyZoom(jc, font);
-            }
-        }
     }
 
     private static ImageIcon scaled(BufferedImage image, int zoom) {
@@ -1077,16 +1067,16 @@ public class FormPlayList extends JFrame {
         setColumnVisibility(cols.clmDuration, true);
     }
 
-    /** the columns' widths at x1, as the user left them */
+    /** the columns' widths, as the user left them; the list is not zoomed */
     private final int[] baseWidths = new int[cols.values().length];
 
     private void setColumnVisibility(cols column, boolean visible) {
         TableColumn col = dgvList.getColumnModel().getColumn(column.ordinal());
         if (visible) {
-            col.setMinWidth(15 * zoom);
+            col.setMinWidth(15);
             col.setMaxWidth(Integer.MAX_VALUE);
-            col.setPreferredWidth(baseWidths[column.ordinal()] * zoom);
-            col.setWidth(baseWidths[column.ordinal()] * zoom);
+            col.setPreferredWidth(baseWidths[column.ordinal()]);
+            col.setWidth(baseWidths[column.ordinal()]);
         } else {
             col.setMinWidth(0);
             col.setMaxWidth(0);
@@ -1199,12 +1189,12 @@ public class FormPlayList extends JFrame {
         for (cols column : cols.values()) {
             baseWidths[column.ordinal()] = designWidth(column);
         }
-        // the width a column is dragged to is kept, so that it survives hiding it and zooming
+        // the width a column is dragged to is kept, so that it survives hiding it
         this.dgvList.getColumnModel().addColumnModelListener(new javax.swing.event.TableColumnModelListener() {
             @Override public void columnMarginChanged(javax.swing.event.ChangeEvent e) {
                 TableColumn resizing = dgvList.getTableHeader().getResizingColumn();
                 if (resizing != null && resizing.getWidth() > 0) {
-                    baseWidths[resizing.getModelIndex()] = Math.max(1, resizing.getWidth() / zoom);
+                    baseWidths[resizing.getModelIndex()] = Math.max(1, resizing.getWidth());
                 }
             }
             @Override public void columnAdded(javax.swing.event.TableColumnModelEvent e) {}
@@ -1373,7 +1363,6 @@ public class FormPlayList extends JFrame {
         });
 
         baseFont = dgvList.getFont();
-        baseRowHeight = dgvList.getRowHeight();
         setZoom(setting.getOther().getZoom());
         updateHeaders();
     }
@@ -1409,7 +1398,6 @@ public class FormPlayList extends JFrame {
     }
 
     private Font baseFont;
-    private int baseRowHeight;
 
     private JTable dgvList;
     private JPopupMenu cmsPlayList;

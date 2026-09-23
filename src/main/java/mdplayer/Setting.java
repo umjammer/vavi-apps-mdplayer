@@ -2650,7 +2650,7 @@ public class Setting implements Serializable, Cloneable {
             playListLang = value;
         }
 
-        /** the play list's column widths at x1, comma separated in column order, empty for the designer's */
+        /** the play list's column widths, comma separated in column order, empty for the designer's */
         private String playListColumnWidths = "";
         public String getPlayListColumnWidths() {
             return playListColumnWidths;
