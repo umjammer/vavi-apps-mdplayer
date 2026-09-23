@@ -1156,8 +1156,8 @@ public class FormPlayList extends JFrame {
         this.tsbAddFolder = new JButton();
         this.tsbUp = new JButton();
         this.tsbDown = new JButton();
-        this.tsbAll = new JToggleButton("ALL");
-        this.tsbEnglish = new JToggleButton("EN");
+        this.tsbAll = new JToggleButton();
+        this.tsbEnglish = new JToggleButton();
         this.tsbJapanese = new JToggleButton();
         ButtonGroup langGroup = new ButtonGroup();
         langGroup.add(tsbAll);
@@ -1325,10 +1325,10 @@ public class FormPlayList extends JFrame {
         this.tsbUp.addActionListener(this::tsbUp_Click);
         button(this.tsbDown, "tsbDown", "downPL", "Move the selected songs down (Alt+Down)");
         this.tsbDown.addActionListener(this::tsbDown_Click);
-        button(this.tsbAll, "tsbAll", null, "Show both English and Japanese titles");
+        button(this.tsbAll, "tsbAll", "allPL", "Show both English and Japanese titles");
         this.tsbAll.addActionListener(e -> updateColumnVisibility());
         this.tsbAll.setSelected(true);
-        button(this.tsbEnglish, "tsbEnglish", null, "Show English titles");
+        button(this.tsbEnglish, "tsbEnglish", "engPL", "Show English titles");
         this.tsbEnglish.addActionListener(e -> updateColumnVisibility());
         button(this.tsbJapanese, "tsbJapanese", "japPL", "Show Japanese titles");
         this.tsbJapanese.addActionListener(e -> updateColumnVisibility());
