@@ -29,8 +29,11 @@ import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
 import mdplayer.driver.FileFormat;
 import musicDriverInterface.MetaData.Tag;
+import vavi.sound.fuetrek.UcsWaveBank;
 import vavi.sound.mfi.MfiChip;
 import vavi.sound.mfi.MfiChip.Vendor;
+import vavi.sound.mfi.fuetrek.UcsFunction;
+import vavi.sound.mfi.vavi.sequencer.MachineDependentFunction;
 import vavi.sound.mobile.AudioEngineMixer;
 import vavi.sound.rohm.RohmRom;
 import vavi.sound.visualizer.fmdsp.TrackId;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.Test;
 
 import static mdplayer.driver.mfi.MldDriver.condition;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -55,6 +59,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * system properties
  * <ul>
  *  <li>{@code mdplayer.mfi.test.mld} ... the song to render</li>
+ *  <li>{@code mdplayer.mfi.test.adpcm} ... a song with adpcm, default {@code Judgment_ft.mld} of mfiplayer</li>
  *  <li>{@code mdplayer.mfi.test.corpus} ... the directory of the ringtones named after the phones
  *      they are of, default {@code ~/Public/np2/mfi/Ringtones (MLD)}</li>
  * </ul>
@@ -73,6 +78,10 @@ class MldDriverTest {
      * stream pcm) only the Yamaha stand in takes
      */
     static final Path necMld = Path.of("../../vavi/vavi-sound/tmp/samples/n703id/02 TRANSPARENT.mld");
+
+    /** a fuetrek song with adpcm from its first note on, for 6 seconds */
+    static final Path adpcmMld = Path.of(System.getProperty("mdplayer.mfi.test.adpcm",
+            "../../vavi/vavi-apps-mfiplayer/tmp/ucs/Judgment_ft.mld"));
 
     static final Path corpus = Path.of(System.getProperty("mdplayer.mfi.test.corpus",
             System.getProperty("user.home") + "/Public/np2/mfi/Ringtones (MLD)"));
@@ -242,6 +251,95 @@ System.err.println(mld + ": " + MfiChip.detect(condition(file, mld.getFileName()
     @Test
     void playsOnOpenDojaFuetrek() throws Exception {
         playsThroughTheDriver("opendoja.fuetrek", mld);
+    }
+
+    /**
+     * The adpcm of a song is about as loud against its notes on every synthesizer: it was scaled
+     * by the synthesizer's sub master volume too, which put it 14 dB under the notes on fuetrek.
+     */
+    @Test
+    void theAdpcmIsLevelWithTheNotesOnFuetrek() throws Exception {
+        theAdpcmIsLevelWithTheNotes("fuetrek");
+    }
+
+    @Test
+    void theAdpcmIsLevelWithTheNotesOnRohm() throws Exception {
+        theAdpcmIsLevelWithTheNotes("rohm");
+    }
+
+    private static void theAdpcmIsLevelWithTheNotes(String synth) throws Exception {
+        assumeTrue(Files.exists(adpcmMld), adpcmMld + " is missing");
+        MldSynth provider = MldSynth.providers().stream().filter(p -> p.getName().equals(synth)).findFirst().orElseThrow();
+        assumeTrue(provider.isAvailable(), provider.getRequirement());
+
+        String prev = System.getProperty(MldDriver.ADPCM_KEY);
+        short[] notes, both;
+        try {
+            System.setProperty(MldDriver.ADPCM_KEY, "0");
+            notes = render(synth, adpcmMld, 6);
+            System.clearProperty(MldDriver.ADPCM_KEY);
+            both = render(synth, adpcmMld, 6);
+        } finally {
+            if (prev != null) System.setProperty(MldDriver.ADPCM_KEY, prev);
+            else System.clearProperty(MldDriver.ADPCM_KEY);
+        }
+        double n = 0, a = 0;
+        for (int i = 0; i < notes.length; i++) {
+            n += (double) notes[i] * notes[i];
+            double d = both[i] - notes[i];
+            a += d * d;
+        }
+        double db = 10 * Math.log10(a / n);
+System.err.printf("%s: adpcm %.1f dB against the notes%n", synth, db);
+        assertTrue(db > -6 && db < 12, "adpcm " + db + " dB against the notes");
+    }
+
+    /**
+     * The UCS waves of a fuetrek song (its vocoder voice of {@code Judgment_ft.mld}) reach the
+     * sound source: vavi-sound has read only functions of the same ids and once of the same class
+     * names as mfiplayer's, which put them there, and the class path had vavi-sound's first.
+     */
+    @Test
+    void theUcsWavesReachTheSoundSource() throws Exception {
+        assertInstanceOf(UcsFunction.class, MachineDependentFunction.Factory.findFunction("112.16"));
+        assertInstanceOf(UcsFunction.class, MachineDependentFunction.Factory.findFunction("64.16"));
+
+        assumeTrue(Files.exists(adpcmMld), adpcmMld + " is missing");
+        MldSynth provider = MldSynth.providers().stream().filter(p -> p.getName().equals("fuetrek")).findFirst().orElseThrow();
+        assumeTrue(provider.isAvailable(), provider.getRequirement());
+        render("fuetrek", adpcmMld, 1);
+        assertFalse(UcsWaveBank.getInstance().tone(2, 1).isEmpty(), "no UCS wave");
+    }
+
+    /** the first seconds of a song through the driver, 16 bit stereo */
+    private static short[] render(String synth, Path song, int seconds) throws Exception {
+        Setting setting = Setting.getInstance();
+        setting.getOutputDevice().setDeviceType(Common.DEV_Null);
+        int sampleRate = setting.getOutputDevice().getSampleRate();
+
+        System.setProperty(MldSynth.SYNTH_KEY, synth);
+        try {
+            String filename = song.toString();
+            FileFormat format = FileFormat.getFileFormat(filename);
+            format.load(new BufferedInputStream(Files.newInputStream(song)), null);
+
+            @SuppressWarnings("unchecked")
+            BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
+            plugin.setParams(format, Map.of("fileName", filename));
+            plugin.prepare();
+
+            short[] pcm = new short[sampleRate * seconds * 2];
+            BaseDriver driver = plugin.getDriver();
+            for (int i = 0; i < pcm.length; i += 2048) {
+                driver.render(pcm, i, Math.min(2048, pcm.length - i));
+            }
+
+            plugin.stop();
+            plugin.close();
+            return pcm;
+        } finally {
+            System.clearProperty(MldSynth.SYNTH_KEY);
+        }
     }
 
     /** a property picks one for a chip, or for every chip, and the best one available otherwise */

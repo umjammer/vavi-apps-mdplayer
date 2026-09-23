@@ -12,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -54,15 +55,20 @@ import static java.lang.System.getLogger;
 public class MldDriver extends BaseDriver implements MasterVolumeSub {
 
     /**
-     * How loud the stream waves are against the song. They come at the level they were stored at
-     * ({@link AudioEngineMixer}), so the level is this driver's to choose, and what it chooses is
-     * what the volume of a line of their own used to make of them - the same property and the same
-     * default - so that nothing sounds different here and a setting of it still works. It is
-     * scaled by the synthesizer's {@link #getMasterVolumeSubType() sub master volume} too, so a song keeps its
-     * balance of waves to notes on every synthesizer.
+     * system property: how loud the stream waves (adpcm) are against the song, default 0.2. They
+     * come at the level they were stored at ({@link AudioEngineMixer}), so the level is this
+     * driver's to choose, and what it chooses is what the volume of a line of their own used to
+     * make of them - the same property and the same default - so that a setting of it still works.
+     * <p>
+     * They are added to the song after the synthesizer's
+     * {@link #getMasterVolumeSubType() sub master volume}, not before: that levels the
+     * synthesizers to each other (they are ~13 dB apart), and the waves are the song's, the same
+     * on every one of them. Scaled by it too they lost 13 dB on fuetrek and 10 on nuked
+     * ({@code Judgment_ft.mld}'s were 9 dB under its notes, they are 4 over now, on fuetrek and on
+     * rohm alike). So a song keeps its balance of waves to notes on every synthesizer. They are
+     * added before the cut to 16 bit, which happens once.
      */
-    private static final double ADPCM_GAIN =
-            Double.parseDouble(System.getProperty("vavi.sound.mobile.AudioEngine.volume", "0.2"));
+    public static final String ADPCM_KEY = "vavi.sound.mobile.AudioEngine.volume";
 
     private static final Logger logger = getLogger(MldDriver.class.getName());
 
@@ -93,6 +99,13 @@ public class MldDriver extends BaseDriver implements MasterVolumeSub {
     private double frac;
     private int[] left = new int[BLOCK], right = new int[BLOCK];
     private int blockPos = BLOCK, blockLen = BLOCK;
+
+    /** the frames of the buffer being rendered, the synthesizer leveled and the adpcm, before the clamp */
+    private int[] busL = new int[0], busR = new int[0];
+    /** the adpcm of a part of {@link #busL}, {@link #busR} */
+    private int[] adpcmL = new int[0], adpcmR = new int[0];
+    /** see {@link #ADPCM_KEY} */
+    private double adpcm = 0.2;
 
     /**
      * whether the adpcm of vavi-sound's engines is mixed in here, rather than played to a line
@@ -216,6 +229,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         this.outputRate = outputRate;
         // the adpcm (and the UCS waves) the song starts, mixed into what is rendered here
         mixing = AudioEngineMixer.attach();
+        adpcm = Double.parseDouble(System.getProperty(ADPCM_KEY, "0.2"));
         synth = MldSynth.forChip(detection.chip());
         receiver = synth.getReceiver();
         // the synthesizers are ~17 dB apart for the same songs: more than the driver's one
@@ -325,13 +339,18 @@ logger.log(Level.DEBUG, "send: " + e);
             return length;
         }
 
+        int frames = length / 2;
+        if (busL.length < frames) {
+            busL = new int[frames];
+            busR = new int[frames];
+        }
         mixedFrames = 0;
-        for (int i = 0; i < length - 1; i += 2) {
+        for (int f = 0; f < frames; f++) {
             if (!stopped) {
                 if (mixing && next < events.size() && events.get(next).frame() <= position) {
                     // what sounds before a message is mixed before the message is sent: an
                     // adpcm it starts starts on this frame
-                    mixAdpcm(b, offset, i / 2);
+                    mixAdpcm(f);
                 }
                 dispatch();
             }
@@ -351,12 +370,9 @@ logger.log(Level.DEBUG, "send: " + e);
                 l = (int) (prevL + (curL - prevL) * frac);
                 r = (int) (prevR + (curR - prevR) * frac);
             }
-
             // leveled before the clamp: the loud synthesizers reach full scale as they are
-            l = (int) (l * gain);
-            r = (int) (r * gain);
-            b[offset + i] = (short) Math.clamp(l, Short.MIN_VALUE, Short.MAX_VALUE);
-            b[offset + i + 1] = (short) Math.clamp(r, Short.MIN_VALUE, Short.MAX_VALUE);
+            busL[f] = (int) (l * gain);
+            busR[f] = (int) (r * gain);
 
             position++;
             if (position >= end && !(mixing && AudioEngineMixer.isPlaying())) {
@@ -364,22 +380,39 @@ logger.log(Level.DEBUG, "send: " + e);
             }
 
             processOneFrame();
-            if (isWatched()) {
-                fireEventHappened(this, "wave.buffer", (short) l, (short) r);
-            }
         }
         if (mixing) {
-            mixAdpcm(b, offset, length / 2);
+            mixAdpcm(frames);
+        }
+
+        for (int f = 0; f < frames; f++) {
+            short l = (short) Math.clamp(busL[f], Short.MIN_VALUE, Short.MAX_VALUE);
+            short r = (short) Math.clamp(busR[f], Short.MIN_VALUE, Short.MAX_VALUE);
+            b[offset + f * 2] = l;
+            b[offset + f * 2 + 1] = r;
+            if (isWatched()) {
+                fireEventHappened(this, "wave.buffer", l, r);
+            }
         }
 
         return length;
     }
 
-    /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
-    private void mixAdpcm(short[] b, int offset, int frames) {
-        if (frames > mixedFrames) {
-            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate, ADPCM_GAIN * gain);
-            mixedFrames = frames;
+    /** adds the adpcm to the frames of the bus rendered since it was last, up to {@code frames} */
+    private void mixAdpcm(int frames) {
+        int n = frames - mixedFrames;
+        if (n <= 0) return;
+        if (adpcmL.length < n) {
+            adpcmL = new int[n];
+            adpcmR = new int[n];
         }
+        Arrays.fill(adpcmL, 0, n, 0);
+        Arrays.fill(adpcmR, 0, n, 0);
+        AudioEngineMixer.render(adpcmL, adpcmR, n, outputRate, adpcm);
+        for (int i = 0; i < n; i++) {
+            busL[mixedFrames + i] += adpcmL[i];
+            busR[mixedFrames + i] += adpcmR[i];
+        }
+        mixedFrames = frames;
     }
 }
