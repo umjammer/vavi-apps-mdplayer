@@ -44,11 +44,7 @@ public class FormC140 extends FormChipBase<FormC140.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("C140", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("C140", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("C140", chipId, getLocation());
             isClosed = true;
         }
 

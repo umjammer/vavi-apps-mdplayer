@@ -58,6 +58,7 @@ this is a fork of [MDPlayer](https://github.com/kuma4649/MDPlayer)
 | WMA                             |                  |       →        |    -     | spi                   | [vavi-sound-sandbox](https://github.com/umjammer/vavi-sound-sandbox)                           |                                                                                   |
 | FLAC                            |                  |       →        |    -     | spi                   | [vavi-sound-flac](https://github.com/umjammer/vavi-sound-flac)                                 |                                                                                   |
 | SMAF                            | YAMAHA           |       ✅️       |    -     | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [mmftool](https://github.com/umjammer/mmftool) | ~~adapt fmdsp visualizer ... difficult~~                                          |
+| SMAF                            | YAMAHA MA-7      |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         |                                                                                   |
 | OWI/MWI                         | Windows FMP7     |       ✅️       |    ✅️    | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [FMP7](http://fmpdoc.fmp.jp/fmp7/)             |                                                                                   |
 | MLD                             | DoCoMo MFi       |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         |                                                                                   |
 
@@ -138,6 +139,11 @@ when using this project with vgm, gbs spi, apply the settings below to avoid con
 - `vavi.sound.sampled.spi.mod.sid` ... to disable `vavi-sound-mod` sid spi, set `false`
 - `vavi.sound.sampled.spi.ymfm` ... to disable `vavi-sound-ymfm` vgm spi, set `false`
 
+#### gui
+
+- `mdplayer.setting.dir` ... folder for `Setting.xml` (and the play list, tone pallet), default `~/.config/kuma/mdplayer`. `RobotTest` uses `target/test-setting`
+- `mdplayer.raiseTogether` ... when one of the player's windows comes to the front, bring the others up with it, set `false` to disable
+
 #### pmd
 
 - `mdplayer.pmd.pmd` ... pmd driver options
@@ -206,7 +212,7 @@ you can select a chip implementation variant by number.
 | YMF262  | mdplayer.variant.ymF262  | 0: dosbox, 1: mame, 2: nuked, 3: cozendey, 4: ymfm                  |
 | Qsound  | mdplayer.variant.qsound  | 0: qsound-ctr, 1: qsound                                            |
 | C140    | mdplayer.variant.c140    | 0: c140, 1: c219                                                    |
-| PCM8    | mdplayer.variant.pcm8    | 0: x68sound, 1: wachoman                                            |
+| PCM8    | mdplayer.variant.pcm8    | 0: x68sound, 1: wachoman (pcm8pp), -1: auto (mdx: by `F`, default)  |
 | MPCM    | mdplayer.variant.mpcm    | 0: x68sound, 1: wachoman                                            |
 
 ### Sample Player
@@ -304,9 +310,12 @@ you can select a chip implementation variant by number.
  * settings ...  demolish each driver and chips
  * ~~midi + dls/sf2~~ (should not be supported, it's normal midi responsibility)
  * visualizer for spi
- * android emulator: app + server ↔ mlplayer
+ * ~~android emulator: app + server ↔ mlplayer~~
  * ~~wine + custom audio dev ... capture from that~~ ... chose proprietary way
- * boids from gui is still weird
+ * ~~boids from gui is still weird~~
+ * ~~calibration works for each Y/F/R inside mfi?~~
+ * abstract m3u, zip
+ * ~~fuetrek adpcm, check rohm also~~
 
 ---
 

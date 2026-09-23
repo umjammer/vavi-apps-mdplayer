@@ -50,11 +50,7 @@ public class FormY8950 extends FormChipBase<FormY8950.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("Y8950", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("Y8950", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("Y8950", chipId, getLocation());
             isClosed = true;
         }
 

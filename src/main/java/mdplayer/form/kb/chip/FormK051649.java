@@ -79,11 +79,7 @@ public class FormK051649 extends FormChipBase<FormK051649.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("K051649", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("K051649", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("K051649", chipId, getLocation());
             isClosed = true;
         }
 

@@ -51,11 +51,7 @@ public class FormN106 extends FormChipBase<FormN106.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("N106", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("N106", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("N106", chipId, getLocation());
             isClosed = true;
         }
 

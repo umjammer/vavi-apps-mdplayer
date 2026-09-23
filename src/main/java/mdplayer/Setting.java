@@ -13,13 +13,16 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import mdplayer.Common.EnmInstFormat;
+import mdplayer.chips.Pcm8Chip;
 import mdplayer.driver.Plugin;
 import mdplayer.driver.mndrv.MNDPlugin;
 import mdplayer.driver.mxdrv.MDXPlugin;
@@ -38,6 +41,7 @@ import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
+import tools.jackson.dataformat.xml.ser.ToXmlGenerator;
 
 import static java.lang.System.getLogger;
 
@@ -480,7 +484,8 @@ public class Setting implements Serializable, Cloneable {
 
     public static class MxDrv implements Serializable, Cloneable {
 
-        public int pcm8Type = Integer.getInteger("mdplayer.variant.pcm8", 1);
+        /** the song decides by default: see {@link mdplayer.driver.mxdrv.Pcm8Detector} */
+        public int pcm8Type = Integer.getInteger("mdplayer.variant.pcm8", Pcm8Chip.AUTO);
         public int pcm8ppsOption = -1;
 
         @Override
@@ -2071,6 +2076,34 @@ public class Setting implements Serializable, Cloneable {
             midiVolume = outRange(value) ? 0 : value;
         }
 
+        private final Map<String, Integer> masterVolumeSubs = new TreeMap<>();
+
+        /**
+         * A master volume for one of the sound sources a driver plays its songs on, in the same
+         * 2&times;dB unit, on top of {@link #getMasterVolume}.
+         * <p>
+         * Some drivers render their songs themselves on one of several sound sources, picked per
+         * song (the mfi driver: a synthesizer per chip), which are far apart in level and which
+         * the mixer can't tell apart, as no chip of it plays them. This levels them against each
+         * other, applied by the driver, before its output is clamped to 16 bits.
+         *
+         * @param type {@code "group:variant"}, the driver's {@link mdplayer.driver.MasterVolumeSub#getMasterVolumeSubType()},
+         *        {@code "yamaha:ma7"}
+         * @return 0 for a type without one
+         */
+        public int getMasterVolumeSub(String type) {
+            return masterVolumeSubs.getOrDefault(type, 0);
+        }
+
+        public void setMasterVolumeSub(String type, int value) {
+            masterVolumeSubs.put(type, outRange(value) ? 0 : value);
+        }
+
+        /** every {@link #getMasterVolumeSub} set, by type */
+        public Map<String, Integer> getMasterVolumeSubs() {
+            return Collections.unmodifiableMap(masterVolumeSubs);
+        }
+
         private final Map<String, Integer> volumes = new HashMap<>();
 
         private static boolean outRange(int v) {
@@ -2190,6 +2223,19 @@ public class Setting implements Serializable, Cloneable {
                 gen.writeStartObject();
                 gen.writeNumberProperty("MasterVolume", b.getMasterVolume());
                 gen.writeNumberProperty("MidiVolume", b.getMidiVolume());
+                // <MasterVolumeSub type="yamaha:ma7">-28</MasterVolumeSub>, one per type
+                for (var e : b.masterVolumeSubs.entrySet()) {
+                    gen.writeName("MasterVolumeSub");
+                    gen.writeStartObject();
+                    if (gen instanceof ToXmlGenerator x) x.setNextIsAttribute(true);
+                    gen.writeStringProperty("type", e.getKey());
+                    if (gen instanceof ToXmlGenerator x) {
+                        x.setNextIsAttribute(false);
+                        x.setNextIsUnwrapped(true);
+                    }
+                    gen.writeNumberProperty("value", e.getValue());
+                    gen.writeEndObject();
+                }
                 for (VolEntry e : VOL_TABLE) {
                     gen.writeNumberProperty(e.element(), b.volumes.getOrDefault(getKey(e.tag(), e.chip()), 0));
                 }
@@ -2211,6 +2257,7 @@ public class Setting implements Serializable, Cloneable {
                         switch (name) {
                         case "MasterVolume", "masterVolume" -> b.setMasterVolume(p.getValueAsInt());
                         case "MidiVolume", "midiVolume" -> b.setMidiVolume(p.getValueAsInt());
+                        case "MasterVolumeSub" -> readMasterVolumeSub(p, b);
                         case "GimicOPNVolume" -> b.setGimicOPNVolume(p.getValueAsInt());
                         case "GimicOPNAVolume" -> b.setGimicOPNAVolume(p.getValueAsInt());
                         default -> {
@@ -2227,6 +2274,26 @@ public class Setting implements Serializable, Cloneable {
                 }
                 return b;
             }
+        }
+
+        /** {@code type} is the attribute, the value the element's text ({@code ""}), or {@code value} elsewhere than in xml */
+        private static void readMasterVolumeSub(JsonParser p, Balance b) {
+            if (p.currentToken() != JsonToken.START_OBJECT) {
+                p.skipChildren();
+                return;
+            }
+            String type = null;
+            Integer value = null;
+            while (p.nextToken() != JsonToken.END_OBJECT) {
+                String name = p.currentName();
+                p.nextToken();
+                switch (name) {
+                case "type" -> type = p.getValueAsString();
+                case "", "value" -> value = p.getValueAsInt();
+                default -> p.skipChildren();
+                }
+            }
+            if (type != null && value != null) b.setMasterVolumeSub(type, value);
         }
 
         private int _GimicOPNVolume = 0;
@@ -2262,6 +2329,7 @@ public class Setting implements Serializable, Cloneable {
             Balance balance = new Balance();
             balance.masterVolume = this.masterVolume;
             balance.midiVolume = this.midiVolume;
+            balance.masterVolumeSubs.putAll(this.masterVolumeSubs);
             balance.volumes.putAll(this.volumes);
 
             balance._GimicOPNVolume = this._GimicOPNVolume;
@@ -2564,6 +2632,33 @@ public class Setting implements Serializable, Cloneable {
             viewOpen.clear();
         }
 
+        /** the main window's play mode: 0 in order, 1 at random, 2 all songs loop, 3 one song loop */
+        private int playMode = 0;
+        public int getPlayMode() {
+            return playMode;
+        }
+        public void setPlayMode(int value) {
+            playMode = value;
+        }
+
+        /** which titles the play list shows: "all", "en" or "ja" */
+        private String playListLang = "all";
+        public String getPlayListLang() {
+            return playListLang;
+        }
+        public void setPlayListLang(String value) {
+            playListLang = value;
+        }
+
+        /** the play list's column widths, comma separated in column order, empty for the designer's */
+        private String playListColumnWidths = "";
+        public String getPlayListColumnWidths() {
+            return playListColumnWidths;
+        }
+        public void setPlayListColumnWidths(String value) {
+            playListColumnWidths = value;
+        }
+
         @Override
         public Location clone() {
             Location location = new Location();
@@ -2587,6 +2682,9 @@ public class Setting implements Serializable, Cloneable {
 
             location.viewPos = new HashMap<>(this.viewPos);
             location.viewOpen = new HashMap<>(this.viewOpen);
+            location.playMode = this.playMode;
+            location.playListLang = this.playListLang;
+            location.playListColumnWidths = this.playListColumnWidths;
 
             return location;
         }
@@ -2933,9 +3031,14 @@ public class Setting implements Serializable, Cloneable {
         try {
 
             String fn = rb.getString("cntSettingFileName");
-            if (Files.exists(Path.of(System.getProperty("user.dir"), fn))) {
+            String dir = System.getProperty("mdplayer.setting.dir");
+            if (dir != null && !dir.isEmpty()) {
+                // an explicit folder, e.g. the tests keep theirs off the user's own settings
+                Common.settingFilePath = Path.of(dir);
+                Files.createDirectories(Common.settingFilePath);
+            } else if (Files.exists(Path.of(System.getProperty("user.dir"), fn))) {
                 // If there is a configuration file in the same folder as the application, use that.
-                Common.settingFilePath = Path.of(System.getProperty("user.dir")).getParent();
+                Common.settingFilePath = Path.of(System.getProperty("user.dir"));
             } else {
                 // For anything other than the above, use the application data folder.
                 Common.settingFilePath = Common.getApplicationDataFolder(true);
@@ -3030,6 +3133,10 @@ public class Setting implements Serializable, Cloneable {
      * Which of the two X68000 PCM back ends the song being played uses: {@code 0} is X68Sound's own
      * PCM8, {@code 1} is PCM8PP.
      * <p>
+     * {@link Pcm8Chip#AUTO} is resolved here, so nobody downstream ever sees it: for an MDX the
+     * song itself says which one it needs ({@link MDXPlugin#detectedPcm8Type()}), ZMUSIC and RCS
+     * have nothing like that and keep PCM8PP, their default before there was an auto.
+     * <p>
      * The chips are shared singletons - one {@link mdplayer.chips.Pcm8Chip} serves ZMS, MDX and RCS
      * alike - while the setting is per driver, so the chip cannot read a section of its own. It asks
      * the plugin that registered it instead, and the plugin that answers is the one whose
@@ -3040,9 +3147,9 @@ public class Setting implements Serializable, Cloneable {
      */
     public int pcm8Type(Plugin plugin) {
         return switch (plugin) {
-            case MDXPlugin _ -> mxDrv.pcm8Type;
-            case RCSPlugin _ -> rcs.pcm8type;
-            default -> zMusic.pcm8Type;
+            case MDXPlugin p -> mxDrv.pcm8Type == Pcm8Chip.AUTO ? p.detectedPcm8Type() : mxDrv.pcm8Type;
+            case RCSPlugin _ -> rcs.pcm8type == Pcm8Chip.AUTO ? Pcm8Chip.PCM8PP : rcs.pcm8type;
+            default -> zMusic.pcm8Type == Pcm8Chip.AUTO ? Pcm8Chip.PCM8PP : zMusic.pcm8Type;
         };
     }
 

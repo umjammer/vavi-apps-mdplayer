@@ -1,14 +1,17 @@
 package mdplayer.form.sys;
 
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
@@ -75,6 +78,8 @@ import mdplayer.Common;
 import mdplayer.Common.EnmModel;
 import mdplayer.form.FrameBuffer;
 import mdplayer.form.View;
+import mdplayer.form.WindowGroup;
+import mdplayer.form.VisualizerProvider;
 import mdplayer.form.kb.chip.FormRegTest;
 import mdplayer.form.kb.ViewProvider;
 import mdplayer.form.KeyboardHook;
@@ -128,7 +133,7 @@ public class FormMain extends JFrame {
         return ym2612Midi.ym2612Midi;
     }
 
-    static final Point empty = new Point(0, 0);
+    public static final Point empty = new Point(0, 0);
 
     private BufferedImage pbRf5c164Screen;
     private FrameBuffer mainScreen = new FrameBuffer();
@@ -156,9 +161,6 @@ public class FormMain extends JFrame {
 //    private frmVSTeffectList frmVSTeffectList = null;
 
     private FormMixer2 frmMixer2 = null;
-    private FormVisWave frmVisWave = new FormVisWave();
-    private FormFmdsp frmFmdsp = new FormFmdsp();
-    private FormBoids frmBoids = new FormBoids();
     private FormVSTeffectList frmVSTeffectList;
 
     /** every chip/panel view the providers contribute, in provider order, indexed primary/secondary */
@@ -224,18 +226,19 @@ public class FormMain extends JFrame {
     private boolean flgReinit = false;
     private boolean reqAllScreenInit = true;
 
+    /** a swing tool tip is one line unless it is html, so these are */
     private static final String[] modeTip = {
-            "Mode\nNow:Step\nNext:Random",
-            "Mode\nNow:Random\nNext:Loop",
-            "Mode\nNow:Loop\nNext:LoopOne",
-            "Mode\nNow:LoopOne\nNext:Step",
+            "<html>Play mode<br>Now: Step (in order, stop after the last song)<br>Next: Random</html>",
+            "<html>Play mode<br>Now: Random<br>Next: Loop (all songs)</html>",
+            "<html>Play mode<br>Now: Loop (all songs)<br>Next: Loop one song</html>",
+            "<html>Play mode<br>Now: Loop one song<br>Next: Step</html>",
     };
 
     private static final String[] zoomTip = {
-            "Zoom\nNow:x1\nNext:x2",
-            "Zoom\nNow:x2\nNext:x3",
-            "Zoom\nNow:x3\nNext:x4",
-            "Zoom\nNow:x4\nNext:x1",
+            "<html>Zoom<br>Now: x1<br>Next: x2</html>",
+            "<html>Zoom<br>Now: x2<br>Next: x3</html>",
+            "<html>Zoom<br>Now: x3<br>Next: x4</html>",
+            "<html>Zoom<br>Now: x4<br>Next: x1</html>",
     };
 
     //private FileSystemWatcher watcher = null;
@@ -310,6 +313,9 @@ public class FormMain extends JFrame {
 
         logger.log(Level.INFO, "frmMain<init>:STEP 04");
 
+        installQuitHandler();
+        WindowGroup.install();
+
         setVisible(true);
 
         // Swing fires windowActivated before windowOpened, and again on every focus gain, so the
@@ -367,6 +373,7 @@ public class FormMain extends JFrame {
         if (v == null) return;
 
         Point pos = setting.getLocation().pos(p.id(), chipId);
+        if (pos != null && !isOnScreen(new Rectangle(pos, v.frame().getSize()))) pos = null;
         if (pos == null) {
             Point off = p.defaultOffset();
             v.setDefaultLocation(this.getLocation().x + off.x, this.getLocation().y + off.y);
@@ -442,8 +449,8 @@ public class FormMain extends JFrame {
 
                 visVolumeMaster = Math.max(Math.abs(left.intValue()), Math.abs(right.intValue()));
 
-                if (frmVisWave != null) {
-                    frmVisWave.push(left.shortValue(), right.shortValue());
+                for (VisualizerProvider p : VisualizerProvider.providers()) {
+                    p.push(left.shortValue(), right.shortValue());
                 }
                 if (frmMixer2 != null && !frmMixer2.isClosed) {
                     // the mixer's master meter is the loudest of what just came out
@@ -469,6 +476,7 @@ public class FormMain extends JFrame {
 
     private void frmMain_Load(WindowEvent ev) {
         Runtime.getRuntime().addShutdownHook(new Thread(this::SystemEvents_SessionEnding));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::saveOnExit, "mdplayer-save-on-exit"));
 
         logger.log(Level.INFO, "frmMain_Load:STEP 05");
 
@@ -476,7 +484,8 @@ public class FormMain extends JFrame {
         String testY = System.getProperty("mdplayer.test.y");
         if (testX != null && testY != null) {
             this.setLocation(Integer.parseInt(testX), Integer.parseInt(testY));
-        } else if (!setting.getLocation().getPMain().equals(empty)) {
+        } else if (!setting.getLocation().getPMain().equals(empty)
+                && isOnScreen(new Rectangle(setting.getLocation().getPMain(), getSize()))) {
             this.setLocation(setting.getLocation().getPMain());
         }
 
@@ -511,7 +520,7 @@ public class FormMain extends JFrame {
         if (setting.getLocation().getOPlayList()) dispPlayList();
         if (setting.getLocation().getOInfo()) openInfo();
         if (setting.getLocation().getOMixer()) openMixer();
-        if (setting.getLocation().getOpenVisWave()) frmVisWave.open();
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.restore(this);
         if (setting.getLocation().getOpenVSTeffectList()) openVSTeffectList();
 
         for (Map.Entry<ViewProvider, View[]> e : views.entrySet()) {
@@ -525,6 +534,7 @@ public class FormMain extends JFrame {
         frameSizeW = this.getWidth() - this.getSize().width;
         frameSizeH = this.getHeight() - this.getSize().height;
 
+        newButtonMode[9] = Math.clamp(setting.getLocation().getPlayMode(), 0, 3);
         changeZoom();
         opeButtonMode.setToolTipText(modeTip[newButtonMode[9]]);
         lstOpeButtonControl = new JButton[] {
@@ -757,6 +767,10 @@ public class FormMain extends JFrame {
             }
         }
 
+        if (frmPlayList != null) {
+            frmPlayList.setZoom(zoom);
+        }
+
         if (frmMixer2 != null && !frmMixer2.isClosed) {
             openMixer();
             openMixer();
@@ -839,8 +853,107 @@ public class FormMain extends JFrame {
         }
     };
 
+    /**
+     * The application menu's Quit (Cmd-Q on macOS) ends the JVM without a window ever closing, so
+     * {@link #frmMain_FormClosing} — which is what writes the window positions and which windows
+     * are open into the settings — never ran, and every start came up with whatever the settings
+     * last held. Quitting now goes through it too.
+     */
+    private void installQuitHandler() {
+        try {
+            if (!Desktop.isDesktopSupported()) return;
+            Desktop desktop = Desktop.getDesktop();
+            if (!desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) return;
+            desktop.setQuitHandler((e, response) -> {
+                try {
+                    frmMain_FormClosing(null);
+                } catch (Exception ex) {
+                    logger.log(Level.ERROR, ex.getMessage(), ex);
+                } finally {
+                    response.performQuit();
+                }
+            });
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "no quit handler: " + e);
+        }
+    }
+
+    /** set once the closing sequence ran: a window close and a quit may both ask for it */
+    private boolean closing;
+
+    /** set once the settings were written on the way out, by whichever path got there first */
+    private volatile boolean saved;
+
+    /**
+     * Puts where every window is, and which are open, into the settings. Reads the windows only,
+     * so it is safe from the shutdown hook too.
+     */
+    private void recordWindowState() {
+        Setting.Location location = setting.getLocation();
+
+        location.setPMain(getLocation());
+        location.setPlayMode(newButtonMode[9]);
+
+        // the list's titles and column widths are kept whether it is open or not
+        if (frmPlayList != null) frmPlayList.storeViewState();
+
+        boolean playList = frmPlayList != null && !frmPlayList.isClosed;
+        location.setOPlayList(playList);
+        if (playList) {
+            location.setPPlayList(frmPlayList.getLocation());
+            location.setPPlayListWH(new Dimension(frmPlayList.getWidth(), frmPlayList.getHeight()));
+        }
+
+        boolean info = frmInfo != null && !frmInfo.isClosed && frmInfo.isVisible();
+        location.setOInfo(info);
+        if (info) location.setPInfo(frmInfo.getLocation());
+
+        boolean mixer = frmMixer2 != null && !frmMixer2.isClosed && frmMixer2.isVisible();
+        location.setOMixer(mixer);
+        if (mixer) location.setPosMixer(frmMixer2.getLocation());
+
+        // the visualizers keep their open state in the same map, so theirs go in after this
+        location.clearOpen();
+        for (Map.Entry<ViewProvider, View[]> entry : views.entrySet()) {
+            View[] slot = entry.getValue();
+            for (int i = 0; i < slot.length; i++) {
+                // a window hidden rather than closed is not open either
+                if (slot[i] != null && !slot[i].isClosed() && slot[i].frame().isVisible()) {
+                    location.setPos(entry.getKey().id(), i, slot[i].frame().getLocation());
+                    location.setOpen(entry.getKey().id(), i, true);
+                }
+            }
+        }
+
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.remember(location);
+
+        boolean vst = frmVSTeffectList != null && !frmVSTeffectList.isClosed && frmVSTeffectList.isVisible();
+        location.setOpenVSTeffectList(vst);
+        if (vst) location.setPosVSTeffectList(frmVSTeffectList.getLocation());
+    }
+
+    /**
+     * The JVM is ending without the main window having closed — an IDE's stop button, ^C, a
+     * {@code System.exit} from somewhere else. Only a close or a quit used to save anything, so
+     * those runs forgot the windows and the play list altogether.
+     */
+    private void saveOnExit() {
+        if (saved) return;
+        saved = true;
+        try {
+            logger.log(Level.INFO, "saving on exit");
+            recordWindowState();
+            frmPlayList.save();
+            tonePallet.save(null);
+            setting.save();
+        } catch (Exception e) {
+            logger.log(Level.ERROR, e.getMessage(), e);
+        }
+    }
+
     private void frmMain_FormClosing(WindowEvent e) {
-        if (forcedExit) return;
+        if (forcedExit || closing) return;
+        closing = true;
 
         logger.log(Level.ERROR, "Termination process begins");
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 00");
@@ -875,56 +988,20 @@ public class FormMain extends JFrame {
         // release
         closeScreen();
 
-        setting.getLocation().setOInfo(false);
-        setting.getLocation().setOPlayList(false);
-        setting.getLocation().setOMixer(false);
-        setting.getLocation().setOpenVisWave(false);
-        setting.getLocation().clearOpen();
-
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 04");
 
-        if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-            setting.getLocation().setPMain(getLocation());
-        } else {
-            setting.getLocation().setPMain(getBounds().getLocation());
-        }
-        if (frmPlayList != null && !frmPlayList.isClosed) {
-            setting.getLocation().setPPlayList(frmPlayList.getLocation());
-            setting.getLocation().setPPlayListWH(new Dimension(frmPlayList.getWidth(), frmPlayList.getHeight()));
-            frmPlayList.setVisible(false);
-            setting.getLocation().setOPlayList(true);
-        }
-        if (frmInfo != null && !frmInfo.isClosed) {
-            setting.getLocation().setPInfo(frmInfo.getLocation());
-            frmInfo.setVisible(false);
-            setting.getLocation().setOInfo(true);
-        }
-        if (frmMixer2 != null && !frmMixer2.isClosed) {
-            setting.getLocation().setPosMixer(frmMixer2.getLocation());
-            frmMixer2.setVisible(false);
-            setting.getLocation().setOMixer(true);
-        }
+        recordWindowState();
 
-        for (Map.Entry<ViewProvider, View[]> entry : views.entrySet()) {
-            View[] slot = entry.getValue();
-            for (int i = 0; i < slot.length; i++) {
-                if (slot[i] != null && !slot[i].isClosed()) {
-                    setting.getLocation().setPos(entry.getKey().id(), i, slot[i].frame().getLocation());
-                    slot[i].frame().setVisible(false);
-                    setting.getLocation().setOpen(entry.getKey().id(), i, true);
-                }
+        if (frmPlayList != null) frmPlayList.setVisible(false);
+        if (frmInfo != null) frmInfo.setVisible(false);
+        if (frmMixer2 != null) frmMixer2.setVisible(false);
+        for (View[] slot : views.values()) {
+            for (View v : slot) {
+                if (v != null && !v.isClosed()) v.frame().setVisible(false);
             }
         }
-
-        frmVisWave.close();
-        frmFmdsp.close(audio);
-        frmBoids.close(audio);
-
-        setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
-        if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
-            setting.getLocation().setPosVSTeffectList(frmVSTeffectList.getLocation());
-            frmVSTeffectList.setVisible(false);
-        }
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.close();
+        if (frmVSTeffectList != null) frmVSTeffectList.setVisible(false);
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 05");
 
@@ -934,6 +1011,7 @@ public class FormMain extends JFrame {
         if (vst != null) vst.shutdown();
 
         setting.save();
+        saved = true;
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 06");
 
@@ -1116,14 +1194,12 @@ public class FormMain extends JFrame {
             frmInfo.y = setting.getLocation().getPInfo().y;
         }
 
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-        Rectangle rc = new Rectangle(frmInfo.getLocation(), frmInfo.getSize());
-        if (s.contains(rc)) {
-            frmInfo.setLocation(rc.getLocation());
-            frmInfo.setPreferredSize(rc.getSize());
-        } else {
-            frmInfo.setLocation(new Point(100, 100));
+        // the window moves itself to x, y when it opens, so that is what has to be on a screen
+        if (!isOnScreen(new Rectangle(frmInfo.x, frmInfo.y, frmInfo.getWidth(), frmInfo.getHeight()))) {
+            frmInfo.x = 100;
+            frmInfo.y = 100;
         }
+        frmInfo.setLocation(frmInfo.x, frmInfo.y);
 
         frmInfo.setting = setting;
         frmInfo.setVisible(true);
@@ -1235,15 +1311,12 @@ public class FormMain extends JFrame {
             frmMixer2.y = setting.getLocation().getPosMixer().y;
         }
 
-//        Screen s = Screen.FromControl(frmMixer2);
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-        Rectangle rc = new Rectangle(frmMixer2.getLocation(), frmMixer2.getSize());
-        if (s.contains(rc)) {
-            frmMixer2.setLocation(rc.getLocation());
-            frmMixer2.setPreferredSize(rc.getSize());
-        } else {
-            frmMixer2.setLocation(new Point(100, 100));
+        // the window moves itself to x, y when it opens, so that is what has to be on a screen
+        if (!isOnScreen(new Rectangle(frmMixer2.x, frmMixer2.y, frmMixer2.getWidth(), frmMixer2.getHeight()))) {
+            frmMixer2.x = 100;
+            frmMixer2.y = 100;
         }
+        frmMixer2.setLocation(frmMixer2.x, frmMixer2.y);
 
         //frmMixer.setting = setting;
         //screen.AddMixer(frmMixer2.pbScreen, Properties.Resources.planeMixer);
@@ -1302,9 +1375,6 @@ public class FormMain extends JFrame {
 
         if (frmMixer2 != null) frmMixer2.screenInit();
         if (frmInfo != null) frmInfo.screenInit();
-        frmFmdsp.init();
-        frmBoids.init();
-        frmVisWave.init(this);
 
         reqAllScreenInit = false;
     }
@@ -1696,8 +1766,7 @@ public class FormMain extends JFrame {
 
     public void pause() {
         audio.pause();
-        frmFmdsp.pause(audio);
-        frmBoids.pause(audio);
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.pause(audio);
     }
 
     private void fadeout() {
@@ -1732,6 +1801,7 @@ public class FormMain extends JFrame {
             fn = new String[] {""};
             playFn = frmPlayList.setStart(-2); // first
         }
+        if (playFn == null) return; // nothing could be added
 
         reqAllScreenInit = true;
 
@@ -1741,7 +1811,7 @@ public class FormMain extends JFrame {
     }
 
     /** the thread {@link Audio#play()} renders the current song on */
-    private Thread audioThread;
+    private volatile Thread audioThread;
 
     /** set while a song has been asked for but has not started coming out yet */
     private volatile boolean songStarting;
@@ -1757,7 +1827,10 @@ public class FormMain extends JFrame {
         songStarting = true;
         audioThread = new Thread(() -> {
             try {
-                if (!audio.play()) {
+                // a song that could not start stops the list; one that played has ended or was
+                // stopped, and what follows it is the screen loop's or the caller's to decide.
+                // A newer song may have started meanwhile: then this one is none of the list's business
+                if (!audio.play() && audioThread == Thread.currentThread()) {
                     SwingUtilities.invokeLater(() -> {
                         frmPlayList.stop();
                         OpeManager.requestToAudio(new Request(enmRequest.Stop, null, null));
@@ -1798,6 +1871,9 @@ public class FormMain extends JFrame {
                 }
             }
 
+            // before a sample is rendered, so they take the chips as the last song left them
+            for (VisualizerProvider p : VisualizerProvider.providers()) p.start(audio);
+
             startAudio();
 
             for (int chipId = 0; chipId < 2; chipId++) {
@@ -1832,6 +1908,10 @@ public class FormMain extends JFrame {
         if (audio.isPaused()) {
             audio.pause();
         }
+
+        // the stop below is not the end of the song: without this the screen loop would go on to
+        // the next song by itself, and this would then skip one more
+        frmPlayList.stop();
 
         Request req = new Request(enmRequest.Stop, null, null);
         OpeManager.requestToAudio(req);
@@ -1868,6 +1948,7 @@ public class FormMain extends JFrame {
         newButtonMode[9]++;
         if (newButtonMode[9] > 3) newButtonMode[9] = 0;
         opeButtonMode.setToolTipText(modeTip[newButtonMode[9]]);
+        setting.getLocation().setPlayMode(newButtonMode[9]);
     }
 
     private static final Preferences prefs = Preferences.userNodeForPackage(FormMain.class);
@@ -1875,20 +1956,7 @@ public class FormMain extends JFrame {
     private String[] fileOpen(boolean isMultiSelection) {
         JFileChooser ofd = new JFileChooser();
 
-        Arrays.stream(rb2.getString("cntSupportFile").split("\\s")).forEach(l -> {
-            String[] p = l.split("\\|");
-            ofd.setFileFilter(new FileFilter() {
-                @Override
-                public boolean accept(File f) {
-                    return f.getName().toLowerCase().endsWith(p[1]);
-                }
-
-                @Override
-                public String getDescription() {
-                    return p[0];
-                }
-            });
-        });
+        Common.toFileFilters(rb2.getString("cntSupportFile")).forEach(ofd::setFileFilter);
         String lastPath = prefs.get("mdplayer.lasPath", null);
         if (lastPath != null) ofd.setCurrentDirectory(new File(lastPath));
         ofd.setDialogTitle("Select a file");
@@ -1970,8 +2038,12 @@ public class FormMain extends JFrame {
      * chose; the chip's provider knows which formats fit it.
      */
     public void getInstCh(Class<? extends Chip> chip, int ch, int chipId) {
+        // the tone is read off the chip: with no song loaded there is none
+        if (audio.plugin == null) return;
         try {
-            ym2612MIDI.setVoiceFromChipRegister(chip, chipId, ch);
+            // null while its construction above stays commented out; it used to throw here, on
+            // every right click on a channel, and that came up as a "Sound output error"
+            if (ym2612MIDI != null) ym2612MIDI.setVoiceFromChipRegister(chip, chipId, ch);
 
             if (!setting.getOther().getUseGetInst()) return;
 
@@ -2019,6 +2091,10 @@ public class FormMain extends JFrame {
             plugin.init();
             audio.init(plugin);
 
+            // from here the play list counts this song as playing, but it only starts rendering once
+            // playData() has run on the EDT; until then the plugin is stopped, and the screen loop
+            // would take that for the end of the song and skip to the one after it
+            songStarting = true;
             SwingUtilities.invokeLater(this::playData);
 
         } catch (Exception ex) {
@@ -2092,17 +2168,21 @@ public class FormMain extends JFrame {
      * chip's provider knows how to flip it.
      */
     public void setChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
+        // the mask lives on the chip: with no song loaded there is none, and nothing to mute
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.setChannelMask(audio, chip, chipId, ch);
     }
 
     public void resetChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.resetChannelMask(audio, chip, chipId, ch);
     }
 
     /** Reapplies a channel's mute to the (freshly initialized) chip, e.g. when a new song starts. */
     public void forceChannelMask(Class<? extends Chip> chip, int chipId, int ch, boolean mask) {
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.forceChannelMask(audio, chip, chipId, ch, mask);
     }
@@ -2448,15 +2528,33 @@ public class FormMain extends JFrame {
         }
     }
 
-    static void checkAndSetForm(JFrame frm) {
+    public static void checkAndSetForm(JFrame frm) {
         frm.pack();
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
         Rectangle rc = new Rectangle(frm.getLocation(), frm.getSize());
-        if (s.contains(rc)) {
+        if (isOnScreen(rc)) {
             frm.setLocation(rc.getLocation());
             frm.setPreferredSize(rc.getSize());
         } else {
             frm.setLocation(new Point(100, 100));
+        }
+    }
+
+    /**
+     * Can the user get hold of a window put here? True when enough of its top edge lies on any of
+     * the screens — testing against the primary screen alone threw every window saved on a second
+     * monitor back to (100, 100) on the next run.
+     */
+    public static boolean isOnScreen(Rectangle rc) {
+        final int grip = 32;
+        Rectangle title = new Rectangle(rc.x, rc.y, Math.max(rc.width, grip), grip);
+        try {
+            for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                Rectangle r = gd.getDefaultConfiguration().getBounds().intersection(title);
+                if (r.width >= grip && r.height >= grip / 2) return true;
+            }
+            return false;
+        } catch (HeadlessException e) {
+            return true;
         }
     }
 
@@ -2757,9 +2855,6 @@ public class FormMain extends JFrame {
         this.tsmiChangeZoomX4 = new JMenuItem();
         this.registerDumpDisplayToolStripMenuItem = new JMenu();
         this.visualizerMenu = new JMenu();
-        this.tsmiVisualizer = new JMenuItem();
-        this.fmdspVisualizer = new JMenuItem();
-        this.boidsVisualizer = new JMenuItem();
         this.tsmiConsole = new JMenuItem();
         this.opeButtonSetting = new JButton();
         this.toolTip1 = new JToolTip();
@@ -2991,19 +3086,16 @@ public class FormMain extends JFrame {
         this.registerDumpDisplayToolStripMenuItem.setIcon(new ImageIcon(Common.getImage("empty")));
         this.registerDumpDisplayToolStripMenuItem.setName("registerDumpDisplayToolStripMenuItem");
         //
-        // tsmiVisualizer
+        // visualizerMenu, one item per VisualizerProvider
         //
         this.visualizerMenu.setIcon(new ImageIcon(Common.getImage("empty")));
         this.visualizerMenu.setName("visualizer");
-        this.tsmiVisualizer.setName("tsmiVisualizer");
-        this.tsmiVisualizer.addActionListener(_ -> frmVisWave.open());
-        this.fmdspVisualizer.setName("fmdspVisualizer");
-        this.fmdspVisualizer.addActionListener(_ -> frmFmdsp.open(audio, this::pause));
-        this.boidsVisualizer.setName("boidsVisualizer");
-        this.boidsVisualizer.addActionListener(_ -> frmBoids.open(audio, this::pause));
-        this.visualizerMenu.add(this.tsmiVisualizer);
-        this.visualizerMenu.add(this.fmdspVisualizer);
-        this.visualizerMenu.add(this.boidsVisualizer);
+        for (VisualizerProvider p : VisualizerProvider.providers()) {
+            JMenuItem item = new JMenuItem(p.menuText());
+            item.setName("tsmiVis" + p.id());
+            item.addActionListener(_ -> p.open(this));
+            this.visualizerMenu.add(item);
+        }
         //
         // tsmiConsole
         //
@@ -3316,9 +3408,6 @@ public class FormMain extends JFrame {
     private JButton opeButtonOpen;
     private JButton opeButtonMode;
     private JMenu visualizerMenu;
-    private JMenuItem tsmiVisualizer;
-    private JMenuItem fmdspVisualizer;
-    private JMenuItem boidsVisualizer;
     private JMenuItem tsmiConsole;
     private FormConsole frmConsole;
 

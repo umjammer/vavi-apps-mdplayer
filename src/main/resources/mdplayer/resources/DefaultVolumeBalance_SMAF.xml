@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Balance>
-   <MasterVolume>0</MasterVolume>
+   <MasterVolume>-16</MasterVolume>
+   <MidiVolume>0</MidiVolume>
    <YM2612Volume>0</YM2612Volume>
    <SN76489Volume>0</SN76489Volume>
    <RF5C68Volume>0</RF5C68Volume>

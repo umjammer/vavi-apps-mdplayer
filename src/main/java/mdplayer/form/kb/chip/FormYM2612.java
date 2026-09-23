@@ -45,8 +45,9 @@ public class FormYM2612 extends FormChipBase<FormYM2612.Params> {
         super(frm, chipId, zoom, new Params(), new Params());
         initializeComponent();
 
-        // initScreen (via bind) draws the XGM variant of the skin from the song format
-        newParam.fileFormat = audio.plugin.getFileFormat();
+        // initScreen (via bind) draws the XGM variant of the skin from the song format; with no song
+        // loaded there is none yet, and changeScreenParams picks it up once one plays
+        if (audio.plugin != null) newParam.fileFormat = audio.plugin.getFileFormat();
         bind(Common.getImage("planeYM2612"));
     }
 
@@ -64,11 +65,7 @@ public class FormYM2612 extends FormChipBase<FormYM2612.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("YM2612", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("YM2612", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("YM2612", chipId, getLocation());
             isClosed = true;
         }
 

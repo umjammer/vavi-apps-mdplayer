@@ -32,8 +32,20 @@ public class MDXPlugin extends BasePlugin<MxDriver> {
 
     private static final Logger logger = getLogger(MDXPlugin.class.getName());
 
+    /** what {@link Pcm8Detector} made of the song being played */
+    private int detectedPcm8Type = Pcm8Chip.X68SOUND;
+
+    /**
+     * Which PCM8 the song being played needs, for {@link mdplayer.Setting#pcm8Type} to answer
+     * {@link Pcm8Chip#AUTO} with.
+     */
+    public int detectedPcm8Type() {
+        return detectedPcm8Type;
+    }
+
     @Override
     public void prepare() {
+        detectedPcm8Type = Pcm8Detector.detect(getData());
         driverVirtual = new MxDriver(this);
         driverVirtual.setExtendFile((extendFiles != null && !extendFiles.isEmpty()) ? extendFiles.getFirst() : null);
 
@@ -93,7 +105,7 @@ public class MDXPlugin extends BasePlugin<MxDriver> {
             chip.option = new Object[] {setting.pcm8ppsOption(this)};
             put(Pcm8Chip.class, chip);
         }
-logger.log(Level.INFO, "pcm8Type: " + setting.pcm8Type(this) + ", " + chip.instrument.getClass().getName());
+logger.log(Level.INFO, "pcm8Type: " + setting.pcm8Type(this) + " (detected: " + detectedPcm8Type + "), " + chip.instrument.getClass().getName());
 
         chipRegister.plugin(RealChipPlugin.class).initChip(hiyorimiDeviceFlag);
 

@@ -16,8 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.StringJoiner;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import javax.swing.JOptionPane;
 
 import mdplayer.Common.EnmArcType;
@@ -170,7 +168,11 @@ public class PlayList implements Serializable, Cloneable {
             if (Files.exists(fullPath) && Files.size(fullPath) > 10) {
                 try (InputStream sr = Files.newInputStream(fullPath)) {
                     // the binder builds and returns a fresh bean; the one passed in stays empty
-                    return Serdes.Util.deserialize(sr, new PlayList());
+                    PlayList pl = Serdes.Util.deserialize(sr, new PlayList());
+                    if (pl.musics == null) pl.musics = new ArrayList<>();
+                    // a half-written entry has no file to show or play
+                    pl.musics.removeIf(m -> m == null || m.fileName == null);
+                    return pl;
                 }
             }
             return new PlayList();
@@ -211,47 +213,16 @@ public class PlayList implements Serializable, Cloneable {
         }
     }
 
-    /** {@code ".../foo.vgz"} is a {@code VGZ}, not everything up to the dot. */
-    private static String extension(String fileName) {
-        String name = Path.of(fileName).getFileName().toString();
-        int dot = name.lastIndexOf('.');
-        return dot < 0 ? "" : name.substring(dot + 1).toUpperCase();
-    }
-
-    public List<Object[]> makeRow(List<Music> musics) {
-        List<Object[]> ret = new ArrayList<>();
-
-        for (Music music : musics) {
-            if (music == null || music.fileName == null) continue; // a half-written playlist entry has no file to show
-            Object[] row = {
-                0, // clmKey
-                music.songNo, // clmSongNo
-                music.arcFileName, // clmZipFileName
-                music.fileName, // clmFileName
-                " ", // clmPlayingNow
-                extension(music.fileName), // clmEXT
-                music.type, // clmType
-                music.title, // clmTitle
-                music.titleJ, // clmTitleJ
-                Path.of(music.fileName).getFileName().toString(), // clmDispFileName
-                music.game, // clmGame
-                music.gameJ, // clmGameJ
-                music.composer, // clmComposer
-                music.composerJ, // clmComposerJ
-                music.vgmby, // clmVGMby
-                music.converted, // clmConverted
-                music.notes, // clmNotes
-                music.duration, // clmDuration
-            };
-            ret.add(row);
-        }
-        return ret;
-    }
-
+    /**
+     * Called after this list's songs were added to by {@link #addFile} or {@link #insertFile}, on the
+     * thread that added them; a view of the list refreshes itself from it.
+     */
     @com.fasterxml.jackson.annotation.JsonIgnore
-    public transient BiConsumer<Integer, Object[]> setRow;
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    public transient Consumer<Object[]> addRow;
+    public transient Runnable changed;
+
+    private void fireChanged() {
+        if (changed != null) changed.run();
+    }
 
     public void addFile(String filename) {
         try {
@@ -260,6 +231,7 @@ public class PlayList implements Serializable, Cloneable {
             mc.fileName = filename;
 
             addFileLoop(mc, null, null);
+            fireChanged();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null,
                     "Failed to add a file.\nDetail\nMessage=%s".formatted(ex.getMessage()),
@@ -277,6 +249,7 @@ public class PlayList implements Serializable, Cloneable {
 
                 addFileLoop(index, mc, null, null);
             }
+            fireChanged();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(null,
                     "Failed to add a file.\nDetail\nMessage=%s".formatted(ex.getMessage()),
@@ -290,9 +263,8 @@ public class PlayList implements Serializable, Cloneable {
             List<Music> added = mc.format.addFileLoop(mc, archive, entry);
             if (added == null) return;
 
-            List<Object[]> rows = makeRow(added);
-            for (Object[] row : rows)
-                addRow.accept(row);
+            added = new ArrayList<>(added); // what a format hands back may not be changed
+            added.removeIf(m -> m == null || m.fileName == null); // a song with no file cannot be played
             this.musics.addAll(added);
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
@@ -301,14 +273,16 @@ public class PlayList implements Serializable, Cloneable {
 
     private void addFileLoop(int[] index, Music mc, Archive archive, Entry entry /* = null */) {
         try {
-            List<Music> added = mc.format.addFileLoop(index[0], mc, archive, entry);
+            // the place is this list's to keep, and the indexed variants of the formats have fallen
+            // behind the plain ones (some drop archive entries, zip needs the archive open)
+            List<Music> added = mc.format.addFileLoop(mc, archive, entry);
             if (added == null) return;
 
-            List<Object[]> rows = makeRow(added);
-            for (Object[] row : rows)
-                setRow.accept(index[0], row);
+            added = new ArrayList<>(added); // what a format hands back may not be changed
+            added.removeIf(m -> m == null || m.fileName == null); // a song with no file cannot be played
+            index[0] = Math.min(index[0], this.musics.size());
             this.musics.addAll(index[0], added);
-            index[0] += rows.size();
+            index[0] += added.size();
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
         }

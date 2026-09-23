@@ -266,6 +266,14 @@ public class MXDRV {
     public MdxPcmInterface mdxPCM = null;
     public Pcm8Interface pcm8pp;
 
+    /**
+     * Which bits of a PCM part's {@code F << 2 | pan} byte reach PCM8 as the data format code.
+     * MXDRV 2.06+17 keeps three, {@code F0}-{@code F7}, all PCM8 has. The byte has room for six,
+     * and PCM8PP's formats go up to {@code $29}: a song written for it needs them all, or its
+     * {@code F$0C} comes out as the ADPCM of {@code F4}.
+     */
+    public int pcmFormatMask = 0x1c;
+
     public BiConsumer<Integer, Integer> ym2151Write;
     public IntFunction<Boolean> isFromDF;
     public IntFunction<Boolean> isFromPTM;
@@ -2676,7 +2684,7 @@ IL_6F4: { // btw dnSpy is discontinued, why every free decompiler get trouble?
         if (D1 == 0 || D1 == 0x0003) {
                 D1 ^= 0x0003;
         }
-        D2 &= 0x001c;
+        D2 &= pcmFormatMask;
         D2 <<= 6;
         D2 |= D1;
         if (mm.readByte(G + MXWORK_GLOBAL.L001df4) == 0) {

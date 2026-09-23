@@ -77,6 +77,7 @@ class SmafDriverTest {
 
     @Test
     void playsThroughTheDriver() throws Exception {
+        assumeTrue(SmafPlugin.DRIVER == SmafDriver.class, "SmafPlugin builds " + SmafPlugin.DRIVER.getSimpleName());
         assumeTrue(MmfToolPlayer.isAvailable(),
                 "no mmftoolc.exe, set -D" + MmfToolPlayer.MMFTOOL_PATH_KEY + "=<dir>");
         assumeTrue(Files.exists(mmf), mmf + " is missing");
@@ -222,6 +223,7 @@ System.err.println("emulator thread, cores used:" + busy);
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSecondSongCanBePlayedAfterTheFirst() throws Exception {
+        assumeTrue(SmafPlugin.DRIVER == SmafDriver.class, "SmafPlugin builds " + SmafPlugin.DRIVER.getSimpleName());
         assumeTrue(MmfToolPlayer.isAvailable(),
                 "no mmftoolc.exe, set -D" + MmfToolPlayer.MMFTOOL_PATH_KEY + "=<dir>");
         assumeTrue(Files.exists(mmf), mmf + " is missing");
@@ -264,6 +266,7 @@ System.err.println("emulator thread, cores used:" + busy);
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "diag")
     void aSongStoppedPartWayThroughDoesNotSpoilTheNext() throws Exception {
+        assumeTrue(SmafPlugin.DRIVER == SmafDriver.class, "SmafPlugin builds " + SmafPlugin.DRIVER.getSimpleName());
         assumeTrue(MmfToolPlayer.isAvailable(),
                 "no mmftoolc.exe, set -D" + MmfToolPlayer.MMFTOOL_PATH_KEY + "=<dir>");
         assumeTrue(Files.exists(mmf), mmf + " is missing");

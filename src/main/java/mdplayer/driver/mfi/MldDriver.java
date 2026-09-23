@@ -12,19 +12,23 @@ import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
-import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequence;
-import javax.sound.midi.Track;
 
 import mdplayer.Common.EnmModel;
 import mdplayer.driver.BaseDriver;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.MasterVolumeSub;
+import mdplayer.driver.MidiChannels;
+import mdplayer.driver.MidiSchedule;
+import mdplayer.driver.MidiSchedule.Event;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
 import vavi.sound.mfi.MfiChip;
@@ -48,7 +52,23 @@ import static java.lang.System.getLogger;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2026-09-19 nsano initial version <br>
  */
-public class MldDriver extends BaseDriver {
+public class MldDriver extends BaseDriver implements MasterVolumeSub {
+
+    /**
+     * system property: how loud the stream waves (adpcm) are against the song, default 0.2. They
+     * come at the level they were stored at ({@link AudioEngineMixer}), so the level is this
+     * driver's to choose, and what it chooses is what the volume of a line of their own used to
+     * make of them - the same property and the same default - so that a setting of it still works.
+     * <p>
+     * They are added to the song after the synthesizer's
+     * {@link #getMasterVolumeSubType() sub master volume}, not before: that levels the
+     * synthesizers to each other (they are ~13 dB apart), and the waves are the song's, the same
+     * on every one of them. Scaled by it too they lost 13 dB on fuetrek and 10 on nuked
+     * ({@code Judgment_ft.mld}'s were 9 dB under its notes, they are 4 over now, on fuetrek and on
+     * rohm alike). So a song keeps its balance of waves to notes on every synthesizer. They are
+     * added before the cut to 16 bit, which happens once.
+     */
+    public static final String ADPCM_KEY = "vavi.sound.mobile.AudioEngine.volume";
 
     private static final Logger logger = getLogger(MldDriver.class.getName());
 
@@ -58,15 +78,14 @@ public class MldDriver extends BaseDriver {
     /** the frames the synthesizer renders at a time, a message waits at most this long */
     private static final int BLOCK = 32;
 
-    /** a message and the output frame it is due at */
-    record Event(long frame, MidiMessage message) {}
-
     private MfiChip.Detection detection;
 
     /** what the messages sent have left the channels at, for the visualizer */
-    private final MldChannels channels = new MldChannels();
+    private final MidiChannels channels = new MidiChannels();
     private MldSynth synth;
     private Receiver receiver;
+    /** the preset's {@code <MasterVolumeSub>} of the synthesizer playing, see {@link #getMasterVolumeSubType()} */
+    private double gain = 1.0;
 
     private List<Event> events = List.of();
     private int next;
@@ -80,6 +99,13 @@ public class MldDriver extends BaseDriver {
     private double frac;
     private int[] left = new int[BLOCK], right = new int[BLOCK];
     private int blockPos = BLOCK, blockLen = BLOCK;
+
+    /** the frames of the buffer being rendered, the synthesizer leveled and the adpcm, before the clamp */
+    private int[] busL = new int[0], busR = new int[0];
+    /** the adpcm of a part of {@link #busL}, {@link #busR} */
+    private int[] adpcmL = new int[0], adpcmR = new int[0];
+    /** see {@link #ADPCM_KEY} */
+    private double adpcm = 0.2;
 
     /**
      * whether the adpcm of vavi-sound's engines is mixed in here, rather than played to a line
@@ -99,6 +125,7 @@ public class MldDriver extends BaseDriver {
         this(null); // gross
     }
 
+    /** @param args 0: filename */
     @Override
     public MetaData retrieveMetaData(byte[] buf, Object... args) {
         if (!MldFile.isMfi(buf)) return null;
@@ -109,7 +136,9 @@ public class MldDriver extends BaseDriver {
 logger.log(Level.DEBUG, "not an mfi: " + e);
             return null;
         }
-        MfiChip.Detection d = MfiChip.detect(condition(file));
+        String filename = args.length > 0 ? (String) args[0] : null;
+//logger.log(Level.INFO, "filename: " + filename);
+        detection = MfiChip.detect(condition(file, filename));
 
         MetaData md = new MetaData();
         String title = file.getTitle() != null ? file.getTitle() : "";
@@ -121,14 +150,18 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         set(md, Tag.ReleaseDate, file.getDate());
         md.set(Tag.NumberOfSongs, "1");
         // no mdsound chip is registered, this is what names it on the fmdsp header
-        md.set(Tag.Chip, d.name());
+        md.set(Tag.Chip, detection.name());
 
         this.metaData = md;
         return md;
     }
 
     static Condition condition(MldFile file) {
-        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion());
+        return condition(file, null);
+    }
+
+    static Condition condition(MldFile file, String filename) {
+        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion(), filename);
     }
 
     private static void set(MetaData md, Tag tag, String value) {
@@ -143,7 +176,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
     }
 
     /** the channels as the song has left them so far */
-    public MldChannels getChannels() {
+    public MidiChannels getChannels() {
         return channels;
     }
 
@@ -173,10 +206,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         speed = 1;
         speedCounter = 0;
 
-        metaData = retrieveMetaData(dataBuf);
-
-        MldFile file = MldFile.decode(dataBuf);
-        detection = MfiChip.detect(condition(file));
+        metaData = retrieveMetaData(dataBuf, plugin.playingFileName);
 
         int outputRate = setting.getOutputDevice().getSampleRate();
         Sequence sequence;
@@ -187,11 +217,11 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        events = schedule(sequence, outputRate);
+        events = MidiSchedule.of(sequence, outputRate);
         next = 0;
         position = 0;
         channels.reset();
-        long last = events.isEmpty() ? 0 : events.getLast().frame;
+        long last = events.isEmpty() ? 0 : events.getLast().frame();
         end = last + (long) (TAIL_SECONDS * outputRate);
         totalCounter = last;
 
@@ -199,8 +229,12 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         this.outputRate = outputRate;
         // the adpcm (and the UCS waves) the song starts, mixed into what is rendered here
         mixing = AudioEngineMixer.attach();
+        adpcm = Double.parseDouble(System.getProperty(ADPCM_KEY, "0.2"));
         synth = MldSynth.forChip(detection.chip());
         receiver = synth.getReceiver();
+        // the synthesizers are ~17 dB apart for the same songs: more than the driver's one
+        // MasterVolume can level, and applied after the clamp below it could only make it worse
+        gain = Math.pow(10.0, setting.getBalance().getMasterVolumeSub(getMasterVolumeSubType()) / 40.0);
         step = (double) synth.getSampleRate() / outputRate;
         frac = 0;
         blockPos = blockLen = BLOCK;
@@ -208,48 +242,37 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
 logger.log(Level.INFO, "mfi: " + detection + " → " + synth.getDescription());
     }
 
-    /**
-     * The messages of the sequence at the output frames they are due, the tempo changes
-     * followed.
-     */
-    static List<Event> schedule(Sequence sequence, int outputRate) {
-        if (sequence.getDivisionType() != Sequence.PPQ) {
-            throw new IllegalArgumentException("division: " + sequence.getDivisionType());
-        }
-        List<MidiEvent> all = new ArrayList<>();
-        for (Track track : sequence.getTracks()) {
-            for (int i = 0; i < track.size(); i++) {
-                all.add(track.get(i));
-            }
-        }
-        // stable: the order within a tick is the order in the file
-        all.sort(Comparator.comparingLong(MidiEvent::getTick));
+    /** {@code "yamaha:ma7"}: the chip, and the {@link MldSynth#getName() synthesizer} playing it */
+    @Override
+    public String getMasterVolumeSubType() {
+        if (detection == null || synth == null) return null;
+        return group(detection.chip()) + ":" + synth.getName();
+    }
 
-        int resolution = sequence.getResolution();
-        List<Event> events = new ArrayList<>(all.size());
-        long tempoTick = 0;
-        double tempoMicros = 0;
-        double microsPerTick = 500_000d / resolution;
-        for (MidiEvent e : all) {
-            double micros = tempoMicros + (e.getTick() - tempoTick) * microsPerTick;
-            long frame = Math.round(micros * outputRate / 1_000_000d);
-            MidiMessage m = e.getMessage();
-            if (m instanceof MetaMessage meta) {
-                if (meta.getType() == 0x51 && meta.getData().length >= 3) {
-                    byte[] d = meta.getData();
-                    int mpq = ((d[0] & 0xff) << 16) | ((d[1] & 0xff) << 8) | (d[2] & 0xff);
-                    tempoTick = e.getTick();
-                    tempoMicros = micros;
-                    microsPerTick = (double) mpq / resolution;
-                }
-                if (meta.getType() == 0x2f) {
-                    events.add(new Event(frame, m));
-                }
-                continue; // a synthesizer has nothing to do with the others
-            }
-            events.add(new Event(frame, m));
+    /** the synthesizers available that sound as the chip of the song */
+    @Override
+    public List<String> getMasterVolumeSubTypes() {
+        if (detection == null) return List.of();
+        String current = getMasterVolumeSubType();
+        List<String> types = new ArrayList<>();
+        if (current != null) types.add(current);
+        for (MldSynth s : MldSynth.providers()) {
+            if (!s.getChips().contains(detection.chip()) || !s.isAvailable()) continue;
+            String type = group(detection.chip()) + ":" + s.getName();
+            if (!types.contains(type)) types.add(type);
         }
-        return events;
+        return types;
+    }
+
+    /** {@code mdplayer.mfi.synth.<chip>=<synthesizer>} */
+    @Override
+    public Map<String, String> masterVolumeSubProperties(String type) {
+        String[] gv = type.split(":", 2);
+        return Map.of(MldSynth.SYNTH_KEY + "." + gv[0], gv[1]);
+    }
+
+    private static String group(MfiChip chip) {
+        return chip.name().toLowerCase(Locale.ROOT);
     }
 
     /** closes the synthesizer of the song */
@@ -286,8 +309,8 @@ logger.log(Level.DEBUG, "close: " + e);
 
     /** sends what is due by the output frame about to be rendered */
     private void dispatch() {
-        while (next < events.size() && events.get(next).frame <= position) {
-            MidiMessage m = events.get(next++).message;
+        while (next < events.size() && events.get(next).frame() <= position) {
+            MidiMessage m = events.get(next++).message();
             if (m instanceof MetaMessage) continue; // end of track
             channels.send(m);
             try {
@@ -316,13 +339,18 @@ logger.log(Level.DEBUG, "send: " + e);
             return length;
         }
 
+        int frames = length / 2;
+        if (busL.length < frames) {
+            busL = new int[frames];
+            busR = new int[frames];
+        }
         mixedFrames = 0;
-        for (int i = 0; i < length - 1; i += 2) {
+        for (int f = 0; f < frames; f++) {
             if (!stopped) {
-                if (mixing && next < events.size() && events.get(next).frame <= position) {
+                if (mixing && next < events.size() && events.get(next).frame() <= position) {
                     // what sounds before a message is mixed before the message is sent: an
                     // adpcm it starts starts on this frame
-                    mixAdpcm(b, offset, i / 2);
+                    mixAdpcm(f);
                 }
                 dispatch();
             }
@@ -342,9 +370,9 @@ logger.log(Level.DEBUG, "send: " + e);
                 l = (int) (prevL + (curL - prevL) * frac);
                 r = (int) (prevR + (curR - prevR) * frac);
             }
-
-            b[offset + i] = (short) Math.clamp(l, Short.MIN_VALUE, Short.MAX_VALUE);
-            b[offset + i + 1] = (short) Math.clamp(r, Short.MIN_VALUE, Short.MAX_VALUE);
+            // leveled before the clamp: the loud synthesizers reach full scale as they are
+            busL[f] = (int) (l * gain);
+            busR[f] = (int) (r * gain);
 
             position++;
             if (position >= end && !(mixing && AudioEngineMixer.isPlaying())) {
@@ -352,22 +380,39 @@ logger.log(Level.DEBUG, "send: " + e);
             }
 
             processOneFrame();
-            if (isWatched()) {
-                fireEventHappened(this, "wave.buffer", (short) l, (short) r);
-            }
         }
         if (mixing) {
-            mixAdpcm(b, offset, length / 2);
+            mixAdpcm(frames);
+        }
+
+        for (int f = 0; f < frames; f++) {
+            short l = (short) Math.clamp(busL[f], Short.MIN_VALUE, Short.MAX_VALUE);
+            short r = (short) Math.clamp(busR[f], Short.MIN_VALUE, Short.MAX_VALUE);
+            b[offset + f * 2] = l;
+            b[offset + f * 2 + 1] = r;
+            if (isWatched()) {
+                fireEventHappened(this, "wave.buffer", l, r);
+            }
         }
 
         return length;
     }
 
-    /** mixes the adpcm into the frames rendered since it was last, up to {@code frames} */
-    private void mixAdpcm(short[] b, int offset, int frames) {
-        if (frames > mixedFrames) {
-            AudioEngineMixer.render(b, offset + mixedFrames * 2, frames - mixedFrames, outputRate);
-            mixedFrames = frames;
+    /** adds the adpcm to the frames of the bus rendered since it was last, up to {@code frames} */
+    private void mixAdpcm(int frames) {
+        int n = frames - mixedFrames;
+        if (n <= 0) return;
+        if (adpcmL.length < n) {
+            adpcmL = new int[n];
+            adpcmR = new int[n];
         }
+        Arrays.fill(adpcmL, 0, n, 0);
+        Arrays.fill(adpcmR, 0, n, 0);
+        AudioEngineMixer.render(adpcmL, adpcmR, n, outputRate, adpcm);
+        for (int i = 0; i < n; i++) {
+            busL[mixedFrames + i] += adpcmL[i];
+            busR[mixedFrames + i] += adpcmR[i];
+        }
+        mixedFrames = frames;
     }
 }

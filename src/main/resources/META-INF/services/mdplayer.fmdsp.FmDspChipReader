@@ -50,7 +50,9 @@ mdplayer.fmdsp.HvlReader
 mdplayer.fmdsp.AhxReader
 mdplayer.fmdsp.SidReader
 mdplayer.fmdsp.MidiReader
+# the score of mmftoolc.exe, for SmafDriver; inert while SmafPlugin builds SmafDriver2
 mdplayer.fmdsp.SmafReader
+mdplayer.fmdsp.Smaf2Reader
 mdplayer.fmdsp.MldReader
 mdplayer.fmdsp.MdxPcmReader
 mdplayer.fmdsp.SpuReader

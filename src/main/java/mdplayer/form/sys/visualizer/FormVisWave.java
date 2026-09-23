@@ -1,4 +1,4 @@
-package mdplayer.form.sys;
+package mdplayer.form.sys.visualizer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -13,8 +13,6 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
 import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
-import java.util.prefs.Preferences;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -25,6 +23,8 @@ import javax.swing.Timer;
 import mdplayer.Common;
 import mdplayer.Setting;
 import mdplayer.form.FormBase;
+import mdplayer.form.VisualizerProvider;
+import mdplayer.form.sys.FormMain;
 import vavi.util.SplitRadixFft;
 import vavi.util.compat.Tuple;
 
@@ -45,9 +45,8 @@ public class FormVisWave extends FormBase {
     private double dispHeight = 1.0;
     private boolean fft = false;
 
-    private static final Preferences prefs = Preferences.userNodeForPackage(FormVisWave.class);
-
-    public Setting setting = Setting.load();
+    // not load(): that reads the file again into the one shared instance
+    public Setting setting = Setting.getInstance();
 
     /** where in {@link #buf} the next sample goes */
     private int writeIndex;
@@ -56,6 +55,7 @@ public class FormVisWave extends FormBase {
         bmp = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB);
         // the timer starts drawing at once, so it needs somewhere to draw
         g = (Graphics2D) bmp.getGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         initializeComponent();
     }
 
@@ -65,29 +65,45 @@ public class FormVisWave extends FormBase {
 
     public void open() {
         if (this.isVisible()) {
+            this.toFront();
             this.requestFocus();
             return;
         }
 
         if (setting.getLocation().getPosVisWave().equals(empty)) {
-            this.x = this.getLocation().x;
-            this.y = this.getLocation().y + 264;
+            // under the main window, as the C# one comes up
+            Point p = parent != null ? parent.getLocation() : this.getLocation();
+            this.x = p.x;
+            this.y = p.y + 264;
         } else {
             this.x = setting.getLocation().getPosVisWave().x;
             this.y = setting.getLocation().getPosVisWave().y;
         }
-
-        this.setVisible(true);
+        // once, here: it was set on every activation, which put the window back each time it was
+        // clicked after being moved
+        this.setLocation(x, y);
 
         FormMain.checkAndSetForm(this);
+        this.setVisible(true);
+        timer1.start();
     }
 
+    /**
+     * Called as the main window closes: remembers whether this was open, and where, for the next
+     * run.
+     */
     public void close() {
-        if (this.isVisible()) return;
+        setting.getLocation().setOpenVisWave(this.isVisible());
+        if (!this.isVisible()) return;
 
         setting.getLocation().setPosVisWave(this.getLocation());
-        setting.getLocation().setOpenVisWave(true);
 
+        hideWindow();
+    }
+
+    /** nothing is drawn while hidden, the timer only runs while this is on the screen */
+    private void hideWindow() {
+        timer1.stop();
         this.setVisible(false);
     }
 
@@ -156,25 +172,11 @@ public class FormVisWave extends FormBase {
     }
 
     private final WindowListener windowListener = new WindowAdapter() {
+        /** closed by the user: the position is kept for the next open, but it stays closed */
         @Override
-        public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPosVisWave(getLocation());
-            } else {
-                parent.setting.getLocation().setPosVisWave(new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
-        }
-
-        @Override
-        public void windowOpened(WindowEvent e) {
-            g = (Graphics2D) bmp.getGraphics();
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-//        pictureBox1.SizeMode = BufferedImageSizeMode.StretchImage;
-        }
-
-        @Override
-        public void windowActivated(WindowEvent e) {
-            setLocation(new Point(x, y));
+        public void windowClosing(WindowEvent e) {
+            setting.getLocation().setPosVisWave(getLocation());
+            hideWindow();
         }
     };
 
@@ -329,7 +331,7 @@ public class FormVisWave extends FormBase {
 
     private void initializeComponent() {
         this.pictureBox1 = new BufferedImage(224, 176, BufferedImage.TYPE_INT_ARGB);
-        this.timer1 = new Timer(10, this::timer1_Tick);
+        this.timer1 = new Timer(10, this::timer1_Tick); // started by open()
         this.toolStripContainer1 = new JLabel();
         this.toolStrip1 = new JToolBar();
         this.tsbHeight1 = new JButton();
@@ -339,10 +341,6 @@ public class FormVisWave extends FormBase {
         this.tsbDispType2 = new JButton();
         this.tsbFFT = new JToggleButton();
 
-        //
-        // timer1
-        //
-        this.timer1.start();
         //
         // toolStripContainer1 (ContentPanel — displays the waveform image)
         //
@@ -425,6 +423,7 @@ public class FormVisWave extends FormBase {
         // no setOpacity(): Swing only allows a translucent frame if it is undecorated, and this one
         // has a title bar to drag it by
         this.setTitle("Visualizer");
+        this.setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         this.addWindowListener(this.windowListener);
     }
 
@@ -438,4 +437,43 @@ public class FormVisWave extends FormBase {
     private JButton tsbDispType1;
     private JButton tsbDispType2;
     private JToggleButton tsbFFT;
+
+    /** the {@link VisualizerProvider} registration; the window is made on the first open */
+    public static class Provider implements VisualizerProvider {
+
+        private FormVisWave form;
+
+        @Override public String id() { return "wave"; }
+        @Override public String menuText() { return "Visualizer"; }
+
+        private FormVisWave form(FormMain main) {
+            if (form == null) form = new FormVisWave();
+            form.init(main);
+            return form;
+        }
+
+        @Override public void restore(FormMain main) {
+            if (Setting.getInstance().getLocation().getOpenVisWave()) form(main).open();
+        }
+
+        @Override public void open(FormMain main) { form(main).open(); }
+
+        /** this one keeps its own fields in the settings, older than the generic ones */
+        @Override public void remember(Setting.Location location) {
+            boolean open = form != null && form.isVisible();
+            location.setOpenVisWave(open);
+            if (open) location.setPosVisWave(form.getLocation());
+        }
+
+        @Override public void close() {
+            if (form != null) {
+                form.close();
+            } else {
+                // never opened this run, so it was not open when the player closed
+                Setting.getInstance().getLocation().setOpenVisWave(false);
+            }
+        }
+
+        @Override public void push(short left, short right) { if (form != null) form.push(left, right); }
+    }
 }

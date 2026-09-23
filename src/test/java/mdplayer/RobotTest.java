@@ -37,6 +37,8 @@ class RobotTest {
         }
 
         System.setProperty("mdplayer.volume", "%4.2f".formatted(volume));
+        // it moves and closes the player: keep that off the user's own Setting.xml
+        System.setProperty("mdplayer.setting.dir", "target/test-setting");
     }
 
     @Test
@@ -144,6 +146,8 @@ class RobotTest {
             "java",
             "-Dmdplayer.test.x=" + windowX,
             "-Dmdplayer.test.y=" + windowY,
+            // keeps the spawned player's Setting.xml off the user's own
+            "-Dmdplayer.setting.dir=" + System.getProperty("mdplayer.setting.dir"),
             "-cp",
             System.getProperty("java.class.path"),
             "mdplayer.Program",

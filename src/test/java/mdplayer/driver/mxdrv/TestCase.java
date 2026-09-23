@@ -57,7 +57,7 @@ class TestCase {
             PropsEntity.Util.bind(this);
         }
 
-        System.setProperty("mdplayer.variant.pcm8", "0");
+        System.setProperty("mdplayer.variant.pcm8", "-1");
         System.setProperty("mdplayer.variant.ym2151", "1");
 
         System.setProperty("mdplayer.volume", "%4.2f".formatted(volume));

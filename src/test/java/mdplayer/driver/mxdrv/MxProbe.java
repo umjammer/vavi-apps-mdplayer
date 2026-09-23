@@ -22,7 +22,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 class MxProbe {
 
     static {
-        System.setProperty("mdplayer.variant.pcm8", "0");
+        System.setProperty("mdplayer.variant.pcm8", "-1");
         System.setProperty("mdplayer.variant.ym2151", "1");
         System.setProperty("mdplayer.variant.mpcm", "0");
         System.setProperty("mdplayer.variant.ay8910", "1");

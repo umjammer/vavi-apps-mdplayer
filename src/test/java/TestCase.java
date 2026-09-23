@@ -214,6 +214,9 @@ Debug.println("settings\n" +
         "mdplayer.variant.ymf262: " + System.getProperty("mdplayer.variant.ymf262") + "\n" +
         "mdplayer.variant.ym2151: " + System.getProperty("mdplayer.variant.ym2151"));
 
+        System.setProperty("mdplayer.mfi.chip.default", "random");
+        System.setProperty("vavi.sound.mobile.AudioEngine.disabled", "true");
+
         // the end-of-song detection in Audio#play() reads these: loop this many times, then fade out
         Setting.getInstance().getOther().setUseLoopTimes(loopTimes > 0);
         if (loopTimes > 0) {
@@ -386,7 +389,7 @@ Debug.println("close");
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
     void testX() throws Exception {
-        mdplayer.Program.main(new String[] {file});
+        mdplayer.Program.main(new String[] {});
 
         CountDownLatch cdl = new CountDownLatch(1);
         cdl.await();

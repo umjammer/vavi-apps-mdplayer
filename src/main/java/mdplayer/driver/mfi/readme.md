@@ -47,7 +47,7 @@ openDoja's give an `openStream()`, Gervill is an `AudioSynthesizer` (`StreamMldS
 ## The visualizer
 
 None of the synthesizers says what it is sounding. But every message of the song goes past
-`MldDriver` on its way to one, so `MldChannels` keeps the sixteen channels as the song leaves
+`MldDriver` on its way to one, so `MidiChannels` keeps the sixteen channels as the song leaves
 them, and `mdplayer.fmdsp.MldReader` puts them on the fmdsp rows. A Yamaha song goes on the FM
 rows and a FueTrek or Rohm one on the PCM rows, taken in the order the channels first sound.
 The meters follow velocity × volume × expression. The analyzer bars are measured off the mixer,
@@ -56,6 +56,11 @@ because the song is rendered there. The chip is named in upper case (`YAMAHA MA-
 A song whose tune lives only in NEC machine dependent messages (`02 TRANSPARENT.mld`) sends no
 midi note, so it lights no row. The bars still move with its sound.
 
+`MidiChannels`, `mdplayer.driver.MidiSchedule` (the sequence flattened onto the output clock) and
+`mdplayer.fmdsp.MidiChannelsReader` (the rows themselves) are shared with the smaf driver, which
+plays a converted sequence on a sound source of its own the same way - see
+`mdplayer/driver/smaf/readme.md`.
+
 ## TODO
 
 * ~~rohm synthesizer~~ ... the rohm sound source of
@@ -63,7 +68,15 @@ midi note, so it lights no row. The bars still move with its sound.
   `rt_synth_2.dll`, bit exact to it
 * ~~the adpcm of vavi-sound's `AudioEngine`s plays into a line of its own, not through the mixer~~
   ... `AudioEngineMixer` (vavi-sound 1.1.2): the driver mixes it in, starting on the frame of its message
-* level: UCS and Gervill reach full scale, and nothing is calibrated yet
-  (`DefaultVolumeBalance_MLD.xml` is SMAF's copy)
+* ~~the adpcm is barely heard on fuetrek (`Judgment_ft.mld`)~~ ... it was scaled by the synthesizer's
+  `<MasterVolumeSub>` as well as by `vavi.sound.mobile.AudioEngine.volume` (0.2), 13 dB under the notes on fuetrek.
+  it is the song's, not the synthesizer's, so it is now added after the sub master volume, before the one clamp:
+  `out = clamp(synth * sub + adpcm * 0.2)`. `Judgment_ft.mld` has it +4 dB over the notes on fuetrek and on rohm alike;
+  unscaled (1) it would be +19 dB on rohm, whose notes come 13 dB under fuetrek's, and a rohm song clipped
+* ~~level: nothing is calibrated yet~~ ... the synthesizers are ~13-17 dB apart for the same songs, so each
+  `chip:synthesizer` has a `<MasterVolumeSub type="yamaha:ma7">` in `DefaultVolumeBalance_MLD.xml`, applied by the
+  driver before its 16 bit clamp (`MldDriver` is a `mdplayer.driver.MasterVolumeSub`). They and the `MasterVolume`
+  are measured by `VolumeBalanceCalibrator --only MLD --target-dbfs -21.8 --seconds 15 --sub-dir <mfi dir>`:
+  12 songs of each chip played on every synthesizer available for it, each brought to rohm's median
 * loop points (`0xdd`): a song plays once
 * ~~make synthesizer changeable `openDoja`, `SiON` etc.~~ ... `MldSynth` service providers, `SiON` is still to come

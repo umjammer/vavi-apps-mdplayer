@@ -45,11 +45,7 @@ public class FormQSound extends FormChipBase<FormQSound.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("QSound", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("QSound", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("QSound", chipId, getLocation());
             isClosed = true;
         }
 

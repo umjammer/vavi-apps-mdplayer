@@ -45,11 +45,7 @@ public class FormPPZ8 extends FormChipBase<FormPPZ8.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("PPZ8", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("PPZ8", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("PPZ8", chipId, getLocation());
             isClosed = true;
         }
 

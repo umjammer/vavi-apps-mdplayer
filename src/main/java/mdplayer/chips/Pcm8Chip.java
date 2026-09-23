@@ -19,12 +19,20 @@ import mdsound.x68sound.X68Sound;
  * PCM8 (X68000).
  * <p>
  * system property
- * <li>{@code mdplayer.variant.pcm8} ... active chip index</li>
+ * <li>{@code mdplayer.variant.pcm8} ... active chip index, {@link #X68SOUND} or {@link #PCM8PP}, or
+ * {@link #AUTO} to let the song decide (MDX only, see {@code Pcm8Detector})</li>
  * </p>
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2025-02-09 nsano initial version <br>
  */
 public class Pcm8Chip extends BaseChip {
+
+    /** X68Sound's own PCM8 */
+    public static final int X68SOUND = 0;
+    /** PCM8PP (PCM8++), the Mercury-Unit driver, a superset of PCM8 */
+    public static final int PCM8PP = 1;
+    /** whichever of the two the song needs */
+    public static final int AUTO = -1;
 
     // not view
     private final boolean[][] mask = {
@@ -107,10 +115,16 @@ public class Pcm8Chip extends BaseChip {
 
     //
 
+    /**
+     * {@code mode} goes to either driver as it is: PCM8PP reads data format codes {@code $00}-{@code $06}
+     * the way PCM8 does (PCM8PP.TEC). The {@code + 0x0800} the C# original added for PCM8PP moved
+     * every format up by 8, so ADPCM was played as 16bit PCM - the noise any ordinary PCM8 song made
+     * with PCM8PP selected - and it was applied to ZMS here too, which the original never did.
+     */
     public void keyOn(int chipId, int ch, int addr, int mode, int len) {
         switch (setting.pcm8Type(context)) {
             case 0 -> context.mds.inst(X68kYm2151Inst.class).pcm8Out(chipId, ch, addr, mode, len);
-            case 1 -> { try { Objects.requireNonNull(context.mds.inst(Pcm8PPInst.class)).keyOn(chipId, ch, addr, mode + 0x0800, len); } catch (NullPointerException _) {}}
+            case 1 -> { try { Objects.requireNonNull(context.mds.inst(Pcm8PPInst.class)).keyOn(chipId, ch, addr, mode, len); } catch (NullPointerException _) {}}
             default -> { assert false; }
         }
     }
@@ -161,10 +175,16 @@ public class Pcm8Chip extends BaseChip {
         context.mds.inst(X68kYm2151Inst.class).stop(chipId);
     }
 
+    /**
+     * IOCS {@code _ADPCMOUT}: {@code mode} is frequency (0-4) * 256 + pan, the same codes PCM8PP
+     * takes, with no volume in it. PCM8PP plays it on channel 0 at its original volume 8, as PCM8
+     * does the IOCS calls it takes over. The C# original added {@code 0x0c00}, which made 15.6 kHz
+     * ADPCM into 8bit PCM.
+     */
     public void keyOnAdpcm(int chipId, int addr, int mode, int len) {
         switch (setting.pcm8Type(context)) {
             case 0 -> context.mds.inst(X68kYm2151Inst.class).keyOnAdpcm(chipId, addr, mode, len);
-            case 1 -> context.mds.inst(Pcm8PPInst.class).keyOn(chipId, 0, addr, mode + 0x0c00, len);
+            case 1 -> context.mds.inst(Pcm8PPInst.class).keyOn(chipId, 0, addr, 0x08_0000 | (mode & 0xffff), len);
             default -> {assert false;}
         }
     }
