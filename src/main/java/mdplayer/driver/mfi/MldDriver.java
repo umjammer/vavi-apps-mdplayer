@@ -112,6 +112,7 @@ public class MldDriver extends BaseDriver implements MasterVolumeSub {
         this(null); // gross
     }
 
+    /** @param args 0: filename */
     @Override
     public MetaData retrieveMetaData(byte[] buf, Object... args) {
         if (!MldFile.isMfi(buf)) return null;
@@ -122,7 +123,9 @@ public class MldDriver extends BaseDriver implements MasterVolumeSub {
 logger.log(Level.DEBUG, "not an mfi: " + e);
             return null;
         }
-        detection = MfiChip.detect(condition(file));
+        String filename = args.length > 0 ? (String) args[0] : null;
+//logger.log(Level.INFO, "filename: " + filename);
+        detection = MfiChip.detect(condition(file, filename));
 
         MetaData md = new MetaData();
         String title = file.getTitle() != null ? file.getTitle() : "";
@@ -141,7 +144,11 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
     }
 
     static Condition condition(MldFile file) {
-        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion());
+        return condition(file, null);
+    }
+
+    static Condition condition(MldFile file, String filename) {
+        return new Condition(file.getAudioFormats(), file.getSupport(), file.getVendorCarriers(), file.getVersion(), file.getMajorVersion(), filename);
     }
 
     private static void set(MetaData md, Tag tag, String value) {
@@ -186,7 +193,7 @@ logger.log(Level.DEBUG, "not an mfi: " + e);
         speed = 1;
         speedCounter = 0;
 
-        metaData = retrieveMetaData(dataBuf);
+        metaData = retrieveMetaData(dataBuf, plugin.playingFileName);
 
         int outputRate = setting.getOutputDevice().getSampleRate();
         Sequence sequence;

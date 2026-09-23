@@ -117,7 +117,7 @@ System.err.println(dir + " is missing");
         Map<MfiChip, Integer> count = new EnumMap<>(MfiChip.class);
         try (Stream<Path> s = Files.list(dir)) {
             for (Path p : s.filter(p -> p.toString().toLowerCase().endsWith(".mld")).toList()) {
-                count.merge(MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(p)))).chip(), 1, Integer::sum);
+                count.merge(MfiChip.detect(condition(MldFile.decode(Files.readAllBytes(p)), p.getFileName().toString())).chip(), 1, Integer::sum);
             }
         }
 System.err.println(a[0] + ": " + count);
@@ -137,7 +137,7 @@ System.err.println(a[0] + ": " + count);
         var md = new MldDriver().retrieveMetaData(b);
         assertNotNull(md);
         assertEquals(Objects.requireNonNullElse(file.getTitle(), ""), md.getFirst(Tag.Title));
-System.err.println(mld + ": " + MfiChip.detect(condition(file)) + ", supt: " + file.getSupport());
+System.err.println(mld + ": " + MfiChip.detect(condition(file, mld.getFileName().toString())) + ", supt: " + file.getSupport());
     }
 
     @Test
