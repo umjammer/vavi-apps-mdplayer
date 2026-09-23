@@ -67,6 +67,10 @@ public final class Audio {
 
     /** binds a plugin */
     public void init(BasePlugin<? extends BaseDriver> plugin) {
+        // a song change comes here without close(), a line left open keeps its device output
+        // running for good (with the Rococoa line an AVAudioEngine that is never released)
+        closeLine();
+
         this.plugin = plugin;
 
         try {
@@ -299,7 +303,7 @@ logger.log(Level.DEBUG, "line: " + e.getType());
             }
 
             if (!plugin.paused) {
-                if (!line.isRunning()) {
+                if (line == null || !line.isRunning()) {
                     plugin.fadeoutCounterV = 0.1;
                     plugin.fadeout = true;
                     int cnt = 0;
@@ -350,13 +354,12 @@ logger.log(Level.INFO, "stop: " + plugin.stopped + ", " + hashCode());
         }
     }
 
-    /** */
-    public void close() {
-        logger.log(Level.INFO, "close enter");
-
-        // stop the render loop of play() and wait for it to exit, so the
-        // previous track's thread can never render into the line reopened by
-        // the next init() (shared singleton line/plugin fields).
+    /**
+     * Stops the render loop of play(), waits for it to exit, and closes the line, so the
+     * previous track's thread can never render into the line reopened by the next init()
+     * (shared singleton line/plugin fields).
+     */
+    private void closeLine() {
         rendering = false;
         int timeout = 1000;
         while (!renderStopped && timeout-- > 0) {
@@ -371,7 +374,15 @@ logger.log(Level.INFO, "stop: " + plugin.stopped + ", " + hashCode());
             } catch (Exception e) {
                 logger.log(Level.ERROR, e.getMessage(), e);
             }
+            line = null;
         }
+    }
+
+    /** */
+    public void close() {
+        logger.log(Level.INFO, "close enter");
+
+        closeLine();
         if (plugin != null) {
             plugin.close();
             try {
