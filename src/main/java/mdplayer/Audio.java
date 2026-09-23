@@ -129,7 +129,11 @@ logger.log(Level.DEBUG, "line: " + e.getType());
         return rendering && !renderStopped;
     }
 
-    /** start blocking rendering */
+    /**
+     * Starts blocking rendering, and returns when the song has ended or was stopped.
+     *
+     * @return false when the song could not be set up and never played
+     */
     public boolean play() {
         try {
             plugin.prepare();
@@ -231,7 +235,8 @@ logger.log(Level.DEBUG, "line: " + e.getType());
             renderStopped = true;
         }
 
-        return false;
+        // it played, to the end or until it was stopped; only a song that could not start is false
+        return true;
     }
 
     private int write(short[] buffer, int offset, int count) {

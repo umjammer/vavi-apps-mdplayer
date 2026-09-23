@@ -1739,7 +1739,7 @@ public class FormMain extends JFrame {
     }
 
     /** the thread {@link Audio#play()} renders the current song on */
-    private Thread audioThread;
+    private volatile Thread audioThread;
 
     /** set while a song has been asked for but has not started coming out yet */
     private volatile boolean songStarting;
@@ -1755,7 +1755,10 @@ public class FormMain extends JFrame {
         songStarting = true;
         audioThread = new Thread(() -> {
             try {
-                if (!audio.play()) {
+                // a song that could not start stops the list; one that played has ended or was
+                // stopped, and what follows it is the screen loop's or the caller's to decide.
+                // A newer song may have started meanwhile: then this one is none of the list's business
+                if (!audio.play() && audioThread == Thread.currentThread()) {
                     SwingUtilities.invokeLater(() -> {
                         frmPlayList.stop();
                         OpeManager.requestToAudio(new Request(enmRequest.Stop, null, null));
@@ -1833,6 +1836,10 @@ public class FormMain extends JFrame {
         if (audio.isPaused()) {
             audio.pause();
         }
+
+        // the stop below is not the end of the song: without this the screen loop would go on to
+        // the next song by itself, and this would then skip one more
+        frmPlayList.stop();
 
         Request req = new Request(enmRequest.Stop, null, null);
         OpeManager.requestToAudio(req);
@@ -2007,6 +2014,10 @@ public class FormMain extends JFrame {
             plugin.init();
             audio.init(plugin);
 
+            // from here the play list counts this song as playing, but it only starts rendering once
+            // playData() has run on the EDT; until then the plugin is stopped, and the screen loop
+            // would take that for the end of the song and skip to the one after it
+            songStarting = true;
             SwingUtilities.invokeLater(this::playData);
 
         } catch (Exception ex) {

@@ -8,7 +8,10 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.MouseInfo;
 import java.awt.Point;
+import java.awt.PointerInfo;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -102,7 +105,8 @@ public class FormPlayList extends JFrame {
     private PlayList playList;
     private final FormMain frmMain;
 
-    private boolean playing = false;
+    /** set while the song on the list is playing; the screen loop reads it off the EDT */
+    private volatile boolean playing = false;
 
     /** the song being played, or the last one that was */
     private PlayList.Music playingMusic;
@@ -290,7 +294,8 @@ public class FormPlayList extends JFrame {
     public void nextPlayMode(int mode) {
         List<PlayList.Music> musics = playList.getMusics();
         int size = musics.size();
-        int pi = playing ? playIndex() : -1;
+        // go on from the song played last even when it was stopped, as the list shows it
+        int pi = playIndex();
         playing = false;
         if (size == 0) return;
 
@@ -326,7 +331,6 @@ public class FormPlayList extends JFrame {
      * @param mode as {@link #nextPlayMode}; at random, this goes back through the songs played
      */
     public void prevPlay(int mode) {
-        if (!playing) return;
         List<PlayList.Music> musics = playList.getMusics();
         if (musics.isEmpty()) return;
 
@@ -343,7 +347,7 @@ public class FormPlayList extends JFrame {
         if (music == null) {
             int pi = playIndex();
             if (pi < 1) {
-                if (mode != 2 || musics.size() < 2) return;
+                if (mode != 2 || musics.size() < 2 || pi < 0) return;
                 pi = musics.size();
             }
             music = musics.get(pi - 1);
@@ -690,15 +694,29 @@ public class FormPlayList extends JFrame {
     /** A file or a folder dropped on the list. */
     private boolean dropped(Path path) {
         try {
-            // the drop carries no place, but the pointer is still where it was let go
-            Point p = dgvList.getMousePosition();
-            int row = p != null ? dgvList.rowAtPoint(p) : -1;
-            return addFiles(List.of(path.toAbsolutePath().toString()), row);
+            return addFiles(List.of(path.toAbsolutePath().toString()), dropRow());
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
             JOptionPane.showMessageDialog(this, text("msgLoadFailed", "File loading failed."));
             return false;
         }
+    }
+
+    /**
+     * The row a drop goes before, or -1 for after the last one. The drop carries no place, but the
+     * pointer is still where it was let go ({@link JComponent#getMousePosition()} is null during a
+     * native drag on some platforms, so the screen position is used). The lower half of a row
+     * means after it, so a song let go just under the one playing is played next.
+     */
+    private int dropRow() {
+        PointerInfo pointer = MouseInfo.getPointerInfo();
+        if (pointer == null) return -1;
+        Point p = pointer.getLocation();
+        SwingUtilities.convertPointFromScreen(p, dgvList);
+        int row = dgvList.rowAtPoint(p);
+        if (row < 0) return -1;
+        Rectangle r = dgvList.getCellRect(row, 0, true);
+        return p.y >= r.y + r.height / 2 ? row + 1 : row;
     }
 
     /** Lists the playable files among {@code files}, going into folders. */

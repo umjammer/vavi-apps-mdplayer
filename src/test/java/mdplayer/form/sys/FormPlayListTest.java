@@ -195,6 +195,31 @@ class FormPlayListTest {
         assertEquals("-", playList.getMusics().get(0).type);
     }
 
+    /** a song dropped under the one playing is the next one, and so is the song after it */
+    @Test
+    void dropUnderPlayingIsNext() throws Exception {
+        add("a", "b");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(0); form.play(); }); // a
+        Path vgm = Path.of("src/test/resources/test.vgm").toAbsolutePath();
+        call("addFiles", new Class<?>[] {List.class, int.class}, List.of(vgm.toString()), 1);
+        assertEquals(List.of("a.vgm", "test.vgm", "b.vgm"),
+                playList.getMusics().stream().map(m -> Path.of(m.fileName).getFileName().toString()).toList());
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(0));
+        assertEquals("test.vgm", Path.of(form.getPlayingSongInfo().fileName).getFileName().toString());
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(0));
+        assertEquals("b", form.getPlayingSongInfo().title);
+    }
+
+    /** "next" after a stop goes on from the song played last, not from the top */
+    @Test
+    void nextAfterStop() throws Exception {
+        add("a", "b", "c");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(1); form.play(); form.stop(); }); // b, stopped
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(0));
+        assertEquals("c", form.getPlayingSongInfo().title);
+        assertTrue(form.isPlaying());
+    }
+
     @Test
     void emptyList() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
