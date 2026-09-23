@@ -2194,6 +2194,7 @@ public class Setting implements Serializable, Cloneable {
             new VolEntry("SAA1099Volume", mdplayer.chips.Saa1099Chip.class, MAIN),
             new VolEntry("Cs4231Volume", mdplayer.chips.Cs4231Chip.class, MAIN),
             new VolEntry("Es5503Volume", mdplayer.chips.Es5503Chip.class, MAIN),
+            new VolEntry("Es5505Volume", mdplayer.chips.Es5505Chip.class, MAIN),
             new VolEntry("PokeyVolume", mdplayer.chips.PokeyChip.class, MAIN),
             new VolEntry("Upd7759Volume", mdplayer.chips.Upd7759Chip.class, MAIN),
             new VolEntry("WSwanVolume", mdplayer.chips.WSwanChip.class, MAIN),

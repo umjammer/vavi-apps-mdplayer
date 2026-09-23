@@ -544,6 +544,21 @@ public class VGMPlugin extends BasePlugin<VgmDriver> {
             }
         }
 
+        if (driverVirtual.vgm.es5505ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.es5505DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(Es5505Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, Es5505Chip.class);
+                chip.clock = driverVirtual.vgm.es5505ClockValue;
+                chip.option = new Object[] {driverVirtual.vgm.es5505Ch};
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(Es5505Chip.class, chip);
+            }
+        }
+
         if (driverVirtual.vgm.pokeyClockValue != 0) {
             for (int i = 0; i < (driverVirtual.vgm.pokeyDualChipFlag ? 2 : 1); i++) {
                 MDSound.Chip chip = new MDSound.Chip();

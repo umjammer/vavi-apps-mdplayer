@@ -235,6 +235,9 @@ public class VgmDriver extends BaseDriver {
             @Override public void writePcmEs5503(int chipId, int offset, int length, byte[] buf, int srcOffset) {
                 plugin.chipRegister.chip(Es5503Chip.class).writePcm(chipId, offset, length, buf, srcOffset, model);
             }
+            @Override public void writePcmEs5505(int chipId, int romSize, int dataStart, int dataLength, byte[] romData, int srcStartAdr) {
+                plugin.chipRegister.chip(Es5505Chip.class).writePcm(chipId, romSize, dataStart, dataLength, romData, srcStartAdr, model);
+            }
 
             @Override public void writePCMRamRf5C68(int chipId, int offset, int length, byte[] buf, int srcOffset) {
                 plugin.chipRegister.chip(Rf5C68Chip.class).writePcm(chipId, offset, length, buf, srcOffset, model);
@@ -281,6 +284,10 @@ public class VgmDriver extends BaseDriver {
 
             @Override public void writeEs5503(int chipId, int addr, int data) {
                 plugin.chipRegister.chip(Es5503Chip.class).write(chipId, addr, data, model);
+            }
+
+            @Override public void writeEs5505(int chipId, int addr, int data) {
+                plugin.chipRegister.chip(Es5505Chip.class).write(chipId, addr, data, model);
             }
 
             @Override public void writeC352(int chipId, int addr, int data) {

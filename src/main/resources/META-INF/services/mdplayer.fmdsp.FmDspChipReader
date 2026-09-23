@@ -44,6 +44,7 @@ mdplayer.fmdsp.YmZ280BReader
 mdplayer.fmdsp.QSoundReader
 mdplayer.fmdsp.X1_010Reader
 mdplayer.fmdsp.Es5503Reader
+mdplayer.fmdsp.Es5505Reader
 mdplayer.fmdsp.PwmReader
 mdplayer.fmdsp.YmReader
 mdplayer.fmdsp.HvlReader
