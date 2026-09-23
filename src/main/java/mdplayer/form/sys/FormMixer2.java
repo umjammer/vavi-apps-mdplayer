@@ -128,6 +128,9 @@ class FormMixer2 extends JFrame {
         this.zoom = zoom;
 
         initializeComponent();
+        // closed, not just hidden: HIDE_ON_CLOSE (JFrame's default) never fires windowClosed, so
+        // isClosed stayed false and the player remembered a closed window as open
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pbScreen.addMouseWheelListener(this.pbScreen_MouseWheel);
 
         initVolumeSlots();
@@ -176,11 +179,7 @@ class FormMixer2 extends JFrame {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPosMixer(getLocation());
-            } else {
-                parent.setting.getLocation().setPosMixer(new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPosMixer(getLocation());
             isClosed = true;
         }
 
@@ -444,7 +443,8 @@ class FormMixer2 extends JFrame {
             sfd.setDialogTitle(" Mixer - Save Balance");
             sfd.setCurrentDirectory(Path.of(ms.arcFileName == null || ms.arcFileName.isEmpty() ? ms.fileName : ms.arcFileName).getParent().toFile());
             if (!parent.setting.getAutoBalance().getSamePositionAsSongData())
-                sfd.setCurrentDirectory(new File((Common.settingFilePath = Path.of("MixerBalance")).toString()));
+                // resolved, not assigned: assigning here moved where Setting.xml itself is saved
+                sfd.setCurrentDirectory(Common.settingFilePath.resolve("MixerBalance").toFile());
 
 //            sfd.RestoreDirectory = false;
             sfd.setSelectedFile(Path.of(Path.of((ms.arcFileName == null || ms.arcFileName.isEmpty() ? ms.fileName : ms.arcFileName)).getFileName() + ".mbc").toFile());

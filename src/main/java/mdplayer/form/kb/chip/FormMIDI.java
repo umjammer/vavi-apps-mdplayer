@@ -46,6 +46,9 @@ public class FormMIDI extends FormBase implements View {
     public void setDefaultLocation(int x, int y) {
         this.x = x;
         this.y = y;
+        // there at once, not only once opened: a window closed before its windowOpened ran
+        // would otherwise record the platform's default spot as where it was
+        setLocation(x, y);
     }
     private int frameSizeW = 0;
     private int frameSizeH = 0;
@@ -83,11 +86,7 @@ public class FormMIDI extends FormBase implements View {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("MIDI", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("MIDI", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("MIDI", chipId, getLocation());
             isClosed = true;
         }
 

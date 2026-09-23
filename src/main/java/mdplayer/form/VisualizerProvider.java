@@ -6,11 +6,15 @@
 
 package mdplayer.form;
 
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
 import mdplayer.Audio;
+import mdplayer.Setting;
 import mdplayer.form.sys.FormMain;
 
 
@@ -39,9 +43,39 @@ public interface VisualizerProvider {
 
     /**
      * Called once as the main window comes up, to open again what was open when the player was
-     * last closed. The default opens nothing.
+     * last closed. The default reopens it when {@link #remember} found it open.
      */
     default void restore(FormMain main) {
+        if (Setting.getInstance().getLocation().isOpen(key(), 0)) open(main);
+    }
+
+    /**
+     * Records whether this is open, and where, for {@link #restore} and the next {@link #open}.
+     * Called as the player exits, while its windows are still up — before {@link #close}, and
+     * also when the JVM is ended some other way and close never comes. The default records
+     * {@link #window()} under {@link #key()}.
+     */
+    default void remember(Setting.Location location) {
+        Window w = window();
+        boolean open = w != null && w.isShowing();
+        location.setOpen(key(), 0, open);
+        if (open) location.setPos(key(), 0, w.getLocation());
+    }
+
+    /** this visualizer's window while it is up, or null; what the default {@link #remember} records */
+    default Window window() {
+        return null;
+    }
+
+    /** the name its state is kept under in {@link Setting.Location}, apart from the chip views' */
+    default String key() {
+        return "vis." + id();
+    }
+
+    /** where {@link #remember} last saw the window, or null for none or one no screen shows */
+    default Point savedLocation() {
+        Point p = Setting.getInstance().getLocation().pos(key(), 0);
+        return p != null && FormMain.isOnScreen(new Rectangle(p.x, p.y, 1, 1)) ? p : null;
     }
 
     /** opens the window, or brings it to the front when it is open already */

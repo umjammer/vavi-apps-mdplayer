@@ -458,6 +458,13 @@ public class FormVisWave extends FormBase {
 
         @Override public void open(FormMain main) { form(main).open(); }
 
+        /** this one keeps its own fields in the settings, older than the generic ones */
+        @Override public void remember(Setting.Location location) {
+            boolean open = form != null && form.isVisible();
+            location.setOpenVisWave(open);
+            if (open) location.setPosVisWave(form.getLocation());
+        }
+
         @Override public void close() {
             if (form != null) {
                 form.close();

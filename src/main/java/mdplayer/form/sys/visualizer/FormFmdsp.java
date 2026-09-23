@@ -7,6 +7,7 @@
 package mdplayer.form.sys.visualizer;
 
 import java.awt.BorderLayout;
+import java.awt.Point;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -98,7 +99,8 @@ public class FormFmdsp extends JFrame {
         });
     }
 
-    public void open(Audio audio, Runnable pause) {
+    /** @param at where to put the window, null to centre it */
+    public void open(Audio audio, Runnable pause, Point at) {
         if (fmdspVisualizerComponent != null) {
             this.toFront();
             this.requestFocus();
@@ -128,7 +130,7 @@ public class FormFmdsp extends JFrame {
         this.setTitle(title(audio));
         this.add(fmdspVisualizerComponent, BorderLayout.CENTER);
         this.pack();
-        this.setLocationRelativeTo(null);
+        if (at != null) this.setLocation(at); else this.setLocationRelativeTo(null);
         this.setVisible(true);
         this.requestFocusInWindow();
 
@@ -196,10 +198,11 @@ public class FormFmdsp extends JFrame {
 
         @Override public void open(FormMain main) {
             if (form == null) form = new FormFmdsp();
-            form.open(Audio.getInstance(), main::pause);
+            form.open(Audio.getInstance(), main::pause, savedLocation());
         }
 
         @Override public void close() { if (form != null) form.close(Audio.getInstance()); }
+        @Override public java.awt.Window window() { return form; }
         @Override public void start(Audio audio) { if (form != null) form.start(audio); }
         @Override public void pause(Audio audio) { if (form != null) form.pause(audio); }
     }

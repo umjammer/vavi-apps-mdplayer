@@ -57,11 +57,7 @@ public class FormYM2608 extends FormChipBase<FormYM2608.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("YM2608", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("YM2608", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("YM2608", chipId, getLocation());
             isClosed = true;
         }
 

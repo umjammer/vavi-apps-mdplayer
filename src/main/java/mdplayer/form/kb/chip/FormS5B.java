@@ -48,11 +48,7 @@ public class FormS5B extends FormChipBase<FormS5B.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("S5B", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("S5B", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("S5B", chipId, getLocation());
             isClosed = true;
         }
 

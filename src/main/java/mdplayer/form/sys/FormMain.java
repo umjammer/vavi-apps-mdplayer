@@ -1,14 +1,17 @@
 package mdplayer.form.sys;
 
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
@@ -75,6 +78,7 @@ import mdplayer.Common;
 import mdplayer.Common.EnmModel;
 import mdplayer.form.FrameBuffer;
 import mdplayer.form.View;
+import mdplayer.form.WindowGroup;
 import mdplayer.form.VisualizerProvider;
 import mdplayer.form.kb.chip.FormRegTest;
 import mdplayer.form.kb.ViewProvider;
@@ -308,6 +312,9 @@ public class FormMain extends JFrame {
 
         logger.log(Level.INFO, "frmMain<init>:STEP 04");
 
+        installQuitHandler();
+        WindowGroup.install();
+
         setVisible(true);
 
         // Swing fires windowActivated before windowOpened, and again on every focus gain, so the
@@ -365,6 +372,7 @@ public class FormMain extends JFrame {
         if (v == null) return;
 
         Point pos = setting.getLocation().pos(p.id(), chipId);
+        if (pos != null && !isOnScreen(new Rectangle(pos, v.frame().getSize()))) pos = null;
         if (pos == null) {
             Point off = p.defaultOffset();
             v.setDefaultLocation(this.getLocation().x + off.x, this.getLocation().y + off.y);
@@ -467,6 +475,7 @@ public class FormMain extends JFrame {
 
     private void frmMain_Load(WindowEvent ev) {
         Runtime.getRuntime().addShutdownHook(new Thread(this::SystemEvents_SessionEnding));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::saveOnExit, "mdplayer-save-on-exit"));
 
         logger.log(Level.INFO, "frmMain_Load:STEP 05");
 
@@ -474,7 +483,8 @@ public class FormMain extends JFrame {
         String testY = System.getProperty("mdplayer.test.y");
         if (testX != null && testY != null) {
             this.setLocation(Integer.parseInt(testX), Integer.parseInt(testY));
-        } else if (!setting.getLocation().getPMain().equals(empty)) {
+        } else if (!setting.getLocation().getPMain().equals(empty)
+                && isOnScreen(new Rectangle(setting.getLocation().getPMain(), getSize()))) {
             this.setLocation(setting.getLocation().getPMain());
         }
 
@@ -841,8 +851,103 @@ public class FormMain extends JFrame {
         }
     };
 
+    /**
+     * The application menu's Quit (Cmd-Q on macOS) ends the JVM without a window ever closing, so
+     * {@link #frmMain_FormClosing} — which is what writes the window positions and which windows
+     * are open into the settings — never ran, and every start came up with whatever the settings
+     * last held. Quitting now goes through it too.
+     */
+    private void installQuitHandler() {
+        try {
+            if (!Desktop.isDesktopSupported()) return;
+            Desktop desktop = Desktop.getDesktop();
+            if (!desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) return;
+            desktop.setQuitHandler((e, response) -> {
+                try {
+                    frmMain_FormClosing(null);
+                } catch (Exception ex) {
+                    logger.log(Level.ERROR, ex.getMessage(), ex);
+                } finally {
+                    response.performQuit();
+                }
+            });
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "no quit handler: " + e);
+        }
+    }
+
+    /** set once the closing sequence ran: a window close and a quit may both ask for it */
+    private boolean closing;
+
+    /** set once the settings were written on the way out, by whichever path got there first */
+    private volatile boolean saved;
+
+    /**
+     * Puts where every window is, and which are open, into the settings. Reads the windows only,
+     * so it is safe from the shutdown hook too.
+     */
+    private void recordWindowState() {
+        Setting.Location location = setting.getLocation();
+
+        location.setPMain(getLocation());
+
+        boolean playList = frmPlayList != null && !frmPlayList.isClosed;
+        location.setOPlayList(playList);
+        if (playList) {
+            location.setPPlayList(frmPlayList.getLocation());
+            location.setPPlayListWH(new Dimension(frmPlayList.getWidth(), frmPlayList.getHeight()));
+        }
+
+        boolean info = frmInfo != null && !frmInfo.isClosed && frmInfo.isVisible();
+        location.setOInfo(info);
+        if (info) location.setPInfo(frmInfo.getLocation());
+
+        boolean mixer = frmMixer2 != null && !frmMixer2.isClosed && frmMixer2.isVisible();
+        location.setOMixer(mixer);
+        if (mixer) location.setPosMixer(frmMixer2.getLocation());
+
+        // the visualizers keep their open state in the same map, so theirs go in after this
+        location.clearOpen();
+        for (Map.Entry<ViewProvider, View[]> entry : views.entrySet()) {
+            View[] slot = entry.getValue();
+            for (int i = 0; i < slot.length; i++) {
+                // a window hidden rather than closed is not open either
+                if (slot[i] != null && !slot[i].isClosed() && slot[i].frame().isVisible()) {
+                    location.setPos(entry.getKey().id(), i, slot[i].frame().getLocation());
+                    location.setOpen(entry.getKey().id(), i, true);
+                }
+            }
+        }
+
+        for (VisualizerProvider p : VisualizerProvider.providers()) p.remember(location);
+
+        boolean vst = frmVSTeffectList != null && !frmVSTeffectList.isClosed && frmVSTeffectList.isVisible();
+        location.setOpenVSTeffectList(vst);
+        if (vst) location.setPosVSTeffectList(frmVSTeffectList.getLocation());
+    }
+
+    /**
+     * The JVM is ending without the main window having closed — an IDE's stop button, ^C, a
+     * {@code System.exit} from somewhere else. Only a close or a quit used to save anything, so
+     * those runs forgot the windows and the play list altogether.
+     */
+    private void saveOnExit() {
+        if (saved) return;
+        saved = true;
+        try {
+            logger.log(Level.INFO, "saving on exit");
+            recordWindowState();
+            frmPlayList.save();
+            tonePallet.save(null);
+            setting.save();
+        } catch (Exception e) {
+            logger.log(Level.ERROR, e.getMessage(), e);
+        }
+    }
+
     private void frmMain_FormClosing(WindowEvent e) {
-        if (forcedExit) return;
+        if (forcedExit || closing) return;
+        closing = true;
 
         logger.log(Level.ERROR, "Termination process begins");
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 00");
@@ -877,55 +982,20 @@ public class FormMain extends JFrame {
         // release
         closeScreen();
 
-        setting.getLocation().setOInfo(false);
-        setting.getLocation().setOPlayList(false);
-        setting.getLocation().setOMixer(false);
-        setting.getLocation().clearOpen();
-
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 04");
 
-        if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-            setting.getLocation().setPMain(getLocation());
-        } else {
-            setting.getLocation().setPMain(getBounds().getLocation());
-        }
-        if (frmPlayList != null && !frmPlayList.isClosed) {
-            setting.getLocation().setPPlayList(frmPlayList.getLocation());
-            setting.getLocation().setPPlayListWH(new Dimension(frmPlayList.getWidth(), frmPlayList.getHeight()));
-            frmPlayList.setVisible(false);
-            setting.getLocation().setOPlayList(true);
-        } else {
-            setting.getLocation().setOPlayList(false);
-        }
-        if (frmInfo != null && !frmInfo.isClosed) {
-            setting.getLocation().setPInfo(frmInfo.getLocation());
-            frmInfo.setVisible(false);
-            setting.getLocation().setOInfo(true);
-        }
-        if (frmMixer2 != null && !frmMixer2.isClosed) {
-            setting.getLocation().setPosMixer(frmMixer2.getLocation());
-            frmMixer2.setVisible(false);
-            setting.getLocation().setOMixer(true);
-        }
+        recordWindowState();
 
-        for (Map.Entry<ViewProvider, View[]> entry : views.entrySet()) {
-            View[] slot = entry.getValue();
-            for (int i = 0; i < slot.length; i++) {
-                if (slot[i] != null && !slot[i].isClosed()) {
-                    setting.getLocation().setPos(entry.getKey().id(), i, slot[i].frame().getLocation());
-                    slot[i].frame().setVisible(false);
-                    setting.getLocation().setOpen(entry.getKey().id(), i, true);
-                }
+        if (frmPlayList != null) frmPlayList.setVisible(false);
+        if (frmInfo != null) frmInfo.setVisible(false);
+        if (frmMixer2 != null) frmMixer2.setVisible(false);
+        for (View[] slot : views.values()) {
+            for (View v : slot) {
+                if (v != null && !v.isClosed()) v.frame().setVisible(false);
             }
         }
-
         for (VisualizerProvider p : VisualizerProvider.providers()) p.close();
-
-        setting.getLocation().setOpenVSTeffectList(frmVSTeffectList != null && !frmVSTeffectList.isClosed);
-        if (frmVSTeffectList != null && !frmVSTeffectList.isClosed) {
-            setting.getLocation().setPosVSTeffectList(frmVSTeffectList.getLocation());
-            frmVSTeffectList.setVisible(false);
-        }
+        if (frmVSTeffectList != null) frmVSTeffectList.setVisible(false);
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 05");
 
@@ -935,6 +1005,7 @@ public class FormMain extends JFrame {
         if (vst != null) vst.shutdown();
 
         setting.save();
+        saved = true;
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 06");
 
@@ -1117,14 +1188,12 @@ public class FormMain extends JFrame {
             frmInfo.y = setting.getLocation().getPInfo().y;
         }
 
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-        Rectangle rc = new Rectangle(frmInfo.getLocation(), frmInfo.getSize());
-        if (s.contains(rc)) {
-            frmInfo.setLocation(rc.getLocation());
-            frmInfo.setPreferredSize(rc.getSize());
-        } else {
-            frmInfo.setLocation(new Point(100, 100));
+        // the window moves itself to x, y when it opens, so that is what has to be on a screen
+        if (!isOnScreen(new Rectangle(frmInfo.x, frmInfo.y, frmInfo.getWidth(), frmInfo.getHeight()))) {
+            frmInfo.x = 100;
+            frmInfo.y = 100;
         }
+        frmInfo.setLocation(frmInfo.x, frmInfo.y);
 
         frmInfo.setting = setting;
         frmInfo.setVisible(true);
@@ -1236,15 +1305,12 @@ public class FormMain extends JFrame {
             frmMixer2.y = setting.getLocation().getPosMixer().y;
         }
 
-//        Screen s = Screen.FromControl(frmMixer2);
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-        Rectangle rc = new Rectangle(frmMixer2.getLocation(), frmMixer2.getSize());
-        if (s.contains(rc)) {
-            frmMixer2.setLocation(rc.getLocation());
-            frmMixer2.setPreferredSize(rc.getSize());
-        } else {
-            frmMixer2.setLocation(new Point(100, 100));
+        // the window moves itself to x, y when it opens, so that is what has to be on a screen
+        if (!isOnScreen(new Rectangle(frmMixer2.x, frmMixer2.y, frmMixer2.getWidth(), frmMixer2.getHeight()))) {
+            frmMixer2.x = 100;
+            frmMixer2.y = 100;
         }
+        frmMixer2.setLocation(frmMixer2.x, frmMixer2.y);
 
         //frmMixer.setting = setting;
         //screen.AddMixer(frmMixer2.pbScreen, Properties.Resources.planeMixer);
@@ -1965,8 +2031,12 @@ public class FormMain extends JFrame {
      * chose; the chip's provider knows which formats fit it.
      */
     public void getInstCh(Class<? extends Chip> chip, int ch, int chipId) {
+        // the tone is read off the chip: with no song loaded there is none
+        if (audio.plugin == null) return;
         try {
-            ym2612MIDI.setVoiceFromChipRegister(chip, chipId, ch);
+            // null while its construction above stays commented out; it used to throw here, on
+            // every right click on a channel, and that came up as a "Sound output error"
+            if (ym2612MIDI != null) ym2612MIDI.setVoiceFromChipRegister(chip, chipId, ch);
 
             if (!setting.getOther().getUseGetInst()) return;
 
@@ -2091,17 +2161,21 @@ public class FormMain extends JFrame {
      * chip's provider knows how to flip it.
      */
     public void setChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
+        // the mask lives on the chip: with no song loaded there is none, and nothing to mute
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.setChannelMask(audio, chip, chipId, ch);
     }
 
     public void resetChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.resetChannelMask(audio, chip, chipId, ch);
     }
 
     /** Reapplies a channel's mute to the (freshly initialized) chip, e.g. when a new song starts. */
     public void forceChannelMask(Class<? extends Chip> chip, int chipId, int ch, boolean mask) {
+        if (audio.plugin == null) return;
         ViewProvider p = chipProviders.get(chip);
         if (p != null) p.forceChannelMask(audio, chip, chipId, ch, mask);
     }
@@ -2449,13 +2523,31 @@ public class FormMain extends JFrame {
 
     public static void checkAndSetForm(JFrame frm) {
         frm.pack();
-        Rectangle s = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
         Rectangle rc = new Rectangle(frm.getLocation(), frm.getSize());
-        if (s.contains(rc)) {
+        if (isOnScreen(rc)) {
             frm.setLocation(rc.getLocation());
             frm.setPreferredSize(rc.getSize());
         } else {
             frm.setLocation(new Point(100, 100));
+        }
+    }
+
+    /**
+     * Can the user get hold of a window put here? True when enough of its top edge lies on any of
+     * the screens — testing against the primary screen alone threw every window saved on a second
+     * monitor back to (100, 100) on the next run.
+     */
+    public static boolean isOnScreen(Rectangle rc) {
+        final int grip = 32;
+        Rectangle title = new Rectangle(rc.x, rc.y, Math.max(rc.width, grip), grip);
+        try {
+            for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                Rectangle r = gd.getDefaultConfiguration().getBounds().intersection(title);
+                if (r.width >= grip && r.height >= grip / 2) return true;
+            }
+            return false;
+        } catch (HeadlessException e) {
+            return true;
         }
     }
 

@@ -45,11 +45,7 @@ public class FormOKIM6258 extends FormChipBase<FormOKIM6258.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("OKIM6258", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("OKIM6258", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("OKIM6258", chipId, getLocation());
             isClosed = true;
         }
 

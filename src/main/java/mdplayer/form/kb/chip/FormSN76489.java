@@ -51,11 +51,7 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("SN76489", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("SN76489", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("SN76489", chipId, getLocation());
             isClosed = true;
         }
 
@@ -98,6 +94,7 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
         int registerPan = (int) info.get("pan");
         int[][] vol = (int[][]) info.get("volumes");
         boolean ngpFlag = (boolean) info.get("flag");
+        newParam.ngp = ngpFlag;
 
         if (ngpFlag && chipId == 1) {
             for (int ch = 0; ch < 4; ch++) {
@@ -175,7 +172,8 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
         int tp = sn76489Type ? 1 : 0;
         ChannelParams osc;
         ChannelParams nsc;
-        boolean ngpFlag = (boolean) audio.plugin.chipRegister.chip(Sn76489Chip.class).getInfo(chipId).get("flag");
+        // read by changeScreenParams: this also runs with no song loaded, when there is no chip to ask
+        boolean ngpFlag = newParam.ngp;
 
         for (int c = 0; c < 3; c++) {
             osc = oldParam.channels[c];
@@ -253,7 +251,7 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
                 int ch = (py / 8) - 1;
                 if (ch < 0) return;
 
-                boolean ngpFlag = (boolean) audio.plugin.chipRegister.chip(Sn76489Chip.class).getInfo(chipId).get("flag");
+                boolean ngpFlag = newParam.ngp;
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
@@ -369,6 +367,8 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
     /** this panel's per-frame draw state, diffed new against old (see {@link FormChipBase}) */
     static class Params {
         final ChannelParams[] channels = {new ChannelParams(), new ChannelParams(), new ChannelParams(), new ChannelParams()};
+        /** the NeoGeo Pocket pairing: T6W28 stereo, chip 1 carrying chip 0's noise */
+        boolean ngp = false;
     }
 
 

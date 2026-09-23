@@ -45,11 +45,7 @@ public class FormMultiPCM extends FormChipBase<FormMultiPCM.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("MultiPCM", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("MultiPCM", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("MultiPCM", chipId, getLocation());
             isClosed = true;
         }
 

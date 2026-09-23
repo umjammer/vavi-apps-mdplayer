@@ -60,6 +60,9 @@ class FormInfo extends JFrame {
     public FormInfo(FormMain frm) {
         parent = frm;
         initializeComponent();
+        // closed, not just hidden: HIDE_ON_CLOSE (JFrame's default) never fires windowClosed, so
+        // isClosed stayed false and the player remembered a closed window as open
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         rtbLyrics.addFocusListener(RichTextBox1_GotFocus);
         update();
     }

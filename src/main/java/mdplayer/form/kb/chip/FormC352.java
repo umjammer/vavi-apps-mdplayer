@@ -48,11 +48,7 @@ public class FormC352 extends FormChipBase<FormC352.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("C352", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("C352", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("C352", chipId, getLocation());
             isClosed = true;
         }
 

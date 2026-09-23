@@ -84,6 +84,9 @@ public abstract class FormChipBase<P> extends FormBase implements View {
     public void setDefaultLocation(int x, int y) {
         this.x = x;
         this.y = y;
+        // there at once, not only once opened: a window closed before its windowOpened ran
+        // would otherwise record the platform's default spot as where it was
+        setLocation(x, y);
     }
 
     /**

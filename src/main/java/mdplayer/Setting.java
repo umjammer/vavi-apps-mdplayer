@@ -3001,9 +3001,14 @@ public class Setting implements Serializable, Cloneable {
         try {
 
             String fn = rb.getString("cntSettingFileName");
-            if (Files.exists(Path.of(System.getProperty("user.dir"), fn))) {
+            String dir = System.getProperty("mdplayer.setting.dir");
+            if (dir != null && !dir.isEmpty()) {
+                // an explicit folder, e.g. the tests keep theirs off the user's own settings
+                Common.settingFilePath = Path.of(dir);
+                Files.createDirectories(Common.settingFilePath);
+            } else if (Files.exists(Path.of(System.getProperty("user.dir"), fn))) {
                 // If there is a configuration file in the same folder as the application, use that.
-                Common.settingFilePath = Path.of(System.getProperty("user.dir")).getParent();
+                Common.settingFilePath = Path.of(System.getProperty("user.dir"));
             } else {
                 // For anything other than the above, use the application data folder.
                 Common.settingFilePath = Common.getApplicationDataFolder(true);

@@ -41,11 +41,7 @@ public class FormYMZ280B extends FormChipBase<FormYMZ280B.Params> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("YMZ280B", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("YMZ280B", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("YMZ280B", chipId, getLocation());
             isClosed = true;
         }
 

@@ -149,7 +149,9 @@ public class FormRegTest extends FormChipBase<Void> {
             //if (Select < ChipList.size()-1) Select++;
         }
 
+        /** the selected chip's registers, or null when no song is loaded and there is no chip */
         Object getData() {
+            if (audio.plugin == null) return null;
             ChipData x = chipData.get(select);
             return x.register.apply(select - x.baseIndex);
         }
@@ -255,11 +257,7 @@ public class FormRegTest extends FormChipBase<Void> {
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {
-            if (e.getNewState() == WindowEvent.WINDOW_OPENED) {
-                parent.setting.getLocation().setPos("RegTest", chipId, getLocation());
-            } else {
-                parent.setting.getLocation().setPos("RegTest", chipId, new Point(prefs.getInt("x", 0), prefs.getInt("y", 0)));
-            }
+            parent.setting.getLocation().setPos("RegTest", chipId, getLocation());
             parent.setting.getLocation().setChipSelect(regMan.getSelect());
             update();
             isClosed = true;
@@ -330,10 +328,10 @@ public class FormRegTest extends FormChipBase<Void> {
 
         if (regMan.getName().contains("Sid")) {
             //y += 8;
-            SidDriver curSID = audio.plugin.chipRegister.chip(SidChip.class).sid;
-            //Sid curSID = ChipRegister.Sid;
             Object a = regMan.getData();
             if (a == null) return;
+            SidDriver curSID = audio.plugin.chipRegister.chip(SidChip.class).sid;
+            //Sid curSID = ChipRegister.Sid;
             if (!(a instanceof Map)) return;
             @SuppressWarnings("unchecked")
             Map<String, Object> sidInfo = (Map<String, Object>) a;
