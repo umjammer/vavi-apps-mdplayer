@@ -62,6 +62,7 @@ public class Vgm {
     public int es5505ClockValue;
     public int msm5205ClockValue;
     public int msm5232ClockValue;
+    public int k005289ClockValue;
     public int x1_010ClockValue;
     public int c352ClockValue;
     public int c352ClockDivider;
@@ -123,6 +124,7 @@ public class Vgm {
     public boolean es5505DualChipFlag;
     public boolean msm5205DualChipFlag;
     public boolean msm5232DualChipFlag;
+    public boolean k005289DualChipFlag;
     public boolean x1_010DualChipFlag;
     public boolean c352DualChipFlag;
     public boolean ga20DualChipFlag;
@@ -218,7 +220,7 @@ public class Vgm {
 
         vgmCmdTbl[0x40] = this::vcDummy2Ope;
         vgmCmdTbl[0x41] = this::vcDummy2Ope;
-        vgmCmdTbl[0x42] = this::vcDummy2Ope;
+        vgmCmdTbl[0x42] = this::vcK005289;
         vgmCmdTbl[0x43] = this::vcMsm5232;
         vgmCmdTbl[0x44] = this::vcDummy2Ope;
         vgmCmdTbl[0x45] = this::vcDummy2Ope;
@@ -806,6 +808,9 @@ public class Vgm {
                 case 0xc2:
                     ivgm.writePcmNes(chipId, stAdr, dataSize, vgmBuf, vgmAdr + 9);
                     break;
+                case 0xc3:
+                    ivgm.writePromK005289(chipId, stAdr, dataSize, vgmBuf, vgmAdr + 9);
+                    break;
                 }
             } catch (Exception e) {
                 logger.log(Level.ERROR, e.getMessage(), e);
@@ -1101,6 +1106,14 @@ public class Vgm {
         int adr = vgmBuf[vgmAdr + 1] & 0x7f;
         int data = vgmBuf[vgmAdr + 2] & 0xff;
         ivgm.writeMsm5232(id, adr, data);
+        vgmAdr += 3;
+    }
+
+    private void vcK005289() { // 0x42 ad dd: bit 7 chip, bit 6-4 register, 12 bits of data
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = (vgmBuf[vgmAdr + 1] >> 4) & 0x07;
+        int data = ((vgmBuf[vgmAdr + 1] & 0x0f) << 8) | (vgmBuf[vgmAdr + 2] & 0xff);
+        ivgm.writeK005289(id, adr, data);
         vgmAdr += 3;
     }
 
@@ -1509,6 +1522,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
         es5505ClockValue = 0;
         msm5205ClockValue = 0;
         msm5232ClockValue = 0;
+        k005289ClockValue = 0;
         msm5205Flags = 0x06;
         volumeModifier = 0;
 
@@ -2027,17 +2041,29 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                 // (e.g. eito's Darius rip) put it at 0xEC, where libvgm now has the K005289, and
                 // had no pins: those are the arcade's usual 384 kHz / 48, 4 bit
                 int msm5205Clock = headerLimit > 0xf0 ? ByteUtil.readLeInt(vgmBuf, 0xf0) : 0;
+                boolean draftMsm5205 = false;
                 if (msm5205Clock != 0) {
                     msm5205Flags = (vgmBuf[0xd7] & 0x07) | ((msm5205Clock & 0x8000_0000) != 0 ? 0x80 : 0);
                 } else if (headerLimit > 0xec) {
                     msm5205Clock = ByteUtil.readLeInt(vgmBuf, 0xec);
                     if ((msm5205Clock & 0x3fff_ffff) >= 1_000_000) msm5205Clock = 0; // a K005289 (3.58 MHz)
+                    draftMsm5205 = msm5205Clock != 0;
                 }
                 if (msm5205Clock != 0) {
                     msm5205ClockValue = msm5205Clock & 0x3fff_ffff;
                     msm5205DualChipFlag = (msm5205Clock & 0x4000_0000) != 0;
                     String name = (msm5205Flags & 0x80) != 0 ? "MSM6585" : "MSM5205";
                     chips.add(msm5205DualChipFlag ? name + "x2" : name);
+                }
+
+                // Konami's Bubble System / Nemesis board
+                if (headerLimit > 0xec && !draftMsm5205) {
+                    int k005289Clock = ByteUtil.readLeInt(vgmBuf, 0xec);
+                    if (k005289Clock != 0) {
+                        k005289ClockValue = k005289Clock & 0x3fff_ffff;
+                        k005289DualChipFlag = (k005289Clock & 0x4000_0000) != 0;
+                        chips.add(k005289DualChipFlag ? "K005289x2" : "K005289");
+                    }
                 }
 
                 if (headerLimit > 0xf4) {
@@ -2171,6 +2197,10 @@ logger.log(Level.INFO, "usedChips: " + ivgm.getUsedChips());
         void writeMsm5205(int chipId, int addr, int data);
         /** @param addr 00-07: voices, 08-0d: envelopes and controls, 10-1f: libvgm's mixer, 20-23: clock */
         void writeMsm5232(int chipId, int addr, int data);
+        /** @param addr 0/1: control A/B, 2/3: LD1/LD2 (latch the 12 bit data), 4/5: TG1/TG2 */
+        void writeK005289(int chipId, int addr, int data);
+        /** the waveform prom, 0x100 bytes per channel */
+        void writePromK005289(int chipId, int stAdr, int dataSize, byte[] vgmBuf, int vgmAdr);
         void writeC352(int chipId, int addr, int data);
         int readHuC6280(int chipId, int addr);
         boolean isVirtual();

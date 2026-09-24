@@ -15,6 +15,7 @@ mdplayer.fmdsp.Saa1099Reader
 mdplayer.fmdsp.Msm5232Reader
 mdplayer.fmdsp.GigatronReader
 mdplayer.fmdsp.K051649Reader
+mdplayer.fmdsp.K005289Reader
 mdplayer.fmdsp.DmgReader
 mdplayer.fmdsp.WSwanReader
 mdplayer.fmdsp.PokeyReader
