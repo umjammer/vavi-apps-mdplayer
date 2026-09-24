@@ -255,6 +255,39 @@
     </profile>
 
     <profile>
+      <!-- mvn -P zpd antrun:run -Dargs='[- -base dir] [- -out dir] mercury_set_dir ...' -->
+      <id>zpd</id>
+      <properties>
+        <args/>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <java classname="mdplayer.tool.MercuryZpdBuilder" fork="true" failonerror="true">
+                  <classpath>
+                    <path refid="maven.compile.classpath"/>
+                    <path refid="maven.test.classpath"/>
+                  </classpath>
+                  <jvmarg value="-Djava.util.logging.config.file=${project.build.testOutputDirectory}/logging.properties" />
+                  <jvmarg value="-Djava.awt.headless=true" />
+                  <arg line="${args}" />
+                </java>
+              </target>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
       <!-- nested (jar in jar, NOT uber) runnable jar, `java -jar` ready:
            mvn -P nested package -> target/${project.artifactId}-${project.version}-app.jar
            the loader is org.eclipse.jdt.internal.jarinjarloader (eclipse's "package required libraries
@@ -452,7 +485,7 @@
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-mdsound</artifactId>
-      <version>0.0.28</version>
+      <version>0.0.29</version>
       <exclusions>
         <exclusion>
           <groupId>com.github.umjammer</groupId>
@@ -489,7 +522,7 @@
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
       <artifactId>vavi-sound-pmd</artifactId>
-      <version>0.0.13</version>
+      <version>0.0.14</version>
       <exclusions>
         <exclusion> <!-- the local mdsound above -->
           <groupId>com.github.umjammer</groupId>
