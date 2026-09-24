@@ -75,7 +75,7 @@ public class ZMSPlugin extends BasePlugin<ZmsDriver> implements Compilable {
         chip.instrument = chipRegister.chip(MPcmChip.class).instrument(0);
         chip.samplingRate = setting.getOutputDevice().getSampleRate();
         chip.clock = 15600;
-        chip.volume = 0;
+        chip.volume = setting.getBalance().getVolume(MAIN_TAG, MPcmChip.class);
         chip.option = null;
         put(MPcmChip.class, chip);
 
@@ -84,7 +84,7 @@ public class ZMSPlugin extends BasePlugin<ZmsDriver> implements Compilable {
         chip = new MDSound.Chip();
         chip.id = 0;
         chip.instrument = chipRegister.chip(Pcm8Chip.class).instrument(0);
-        chip.volume = 0;
+        chip.volume = setting.getBalance().getVolume(MAIN_TAG, Pcm8Chip.class);
         chip.clock = 4_000_000;
         if (chip.instrument instanceof X68kYm2151Inst opmPCM) {
             opmPCM.soundIocs[0] = new SoundIocs(opmPCM.chips[0]);

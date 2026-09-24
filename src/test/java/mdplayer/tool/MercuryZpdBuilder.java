@@ -31,7 +31,7 @@ import mdplayer.emu.nise68.Nise68;
  * not the ZPD its ZMS names, and the tools the batch runs are hard to find. This does what the batch does and hands
  * the result to the real ZPCNV3.R (Z-MUSIC v3) running on nise68:
  * <ul>
- * <li>{@code ad2pcm} ... X68000 (MSM6258) ADPCM {@code .n44} -> 16bit big-endian mono {@code .m44}</li>
+ * <li>{@code ad2pcm} ... X68000 (MSM6258) ADPCM {@code .n44} -> 16bit big-endian mono {@code .m44}, unclamped and DC blocked (see {@link #decodeAdpcm})</li>
  * <li>{@code mpca -vN} ... volume N/256</li>
  * <li>{@code pcm3pcm -vN} ... volume N%, {@code -dN} ... resample from N Hz to 44.1kHz (pitch down)</li>
  * <li>{@code mixp16 a b c} ... c = a + b</li>
@@ -46,7 +46,8 @@ import mdplayer.emu.nise68.Nise68;
  *   mvn -o -P zpd antrun:run -Dargs='--base VICT_N44 VICT_44B'   (a set that is a diff over another)
  * }</pre>
  * The ZPD is written next to the set's ZMS unless {@code --out} says otherwise; the {@code .m44} and the
- * {@code .CNF} are made in a temporary directory. {@code --zpcnv} points at ZPCNV3.R
+ * {@code .CNF} are made in a temporary directory. {@code --gain} scales the decoded samples (see {@link #gain}),
+ * {@code --zpcnv} points at ZPCNV3.R
  * (default {@code tmp/ZM302C_X/ZPCNV3.R}).
  *
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
@@ -64,11 +65,12 @@ final class MercuryZpdBuilder {
             case "--base" -> base = Path.of(args[++i]);
             case "--out" -> out = Path.of(args[++i]);
             case "--zpcnv" -> zpcnv = Path.of(args[++i]);
+            case "--gain" -> gain = Double.parseDouble(args[++i]);
             default -> sets.add(Path.of(args[i]));
             }
         }
         if (sets.isEmpty()) {
-            System.err.println("usage: MercuryZpdBuilder [--base dir] [--out dir] [--zpcnv ZPCNV3.R] set_dir...");
+            System.err.println("usage: MercuryZpdBuilder [--base dir] [--out dir] [--gain g] [--zpcnv ZPCNV3.R] set_dir...");
             System.exit(1);
         }
         int rc = 0;
@@ -190,13 +192,29 @@ final class MercuryZpdBuilder {
     };
     private static final int[] ADJ = {-1, -1, -1, -1, 2, 4, 6, 8};
 
+    /** DC blocker corner: well below any note, it only takes the drift out */
+    private static final double HPF_HZ = 10.0;
     /**
-     * X68000 ADPCM (MSM6258, low nibble first), 12bit output widened to 16bit.
-     * how loud ad2pcm itself made it is unknown.
+     * the decoded values are already 16bit scale (up to 13113, past the chip's 12bit). the songs, written for PCM8pp,
+     * play them at MPCM volume 0x6f-0x7a, 4-5x of 0x40 = unity, and MPCM sums its channels into 16bit before the mixer:
+     * at 1.0 none of the 9 sets clamps there (loudest mix peak 24460, 60s each), at 1.5 FeliciaED does.
+     */
+    static double gain = 1.0;
+
+    /**
+     * X68000 ADPCM (MSM6258 steps, low nibble first) as the Mercury sets encode it.
+     * <p>
+     * These .n44 were not made for the chip: their waveform runs past its 12bit range and the encoder let the
+     * decoder drift, so the chip's clamp pins samples at the rail and the drift leaves them ending at a large
+     * offset (key off then steps from there to 0 -- the noise heard on FeliciaED). So: no 12bit clamp, and a
+     * DC blocker, which is what the AC coupled output of the real hardware does anyway.
+     * How loud ad2pcm itself made it is unknown.
      */
     static short[] decodeAdpcm(byte[] data) {
         short[] out = new short[data.length * 2];
         int x = 0, idx = 0, o = 0;
+        double r = 1 - 2 * Math.PI * HPF_HZ / 44100, y = 0;
+        int px = 0;
         for (byte b : data) {
             for (int n : new int[] {b & 0x0f, (b >> 4) & 0x0f}) {
                 int s = STEP[idx];
@@ -204,9 +222,11 @@ final class MercuryZpdBuilder {
                 if ((n & 1) != 0) d += s >> 2;
                 if ((n & 2) != 0) d += s >> 1;
                 if ((n & 4) != 0) d += s;
-                x = Math.clamp((n & 8) != 0 ? x - d : x + d, -2048, 2047);
+                x = (n & 8) != 0 ? x - d : x + d;
                 idx = Math.clamp(idx + ADJ[n & 7], 0, 48);
-                out[o++] = (short) (x << 4);
+                y = x - px + r * y;
+                px = x;
+                out[o++] = clip(y * gain);
             }
         }
         return out;

@@ -24,6 +24,7 @@ import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
 
 import static java.lang.System.getLogger;
+import static mdsound.MDSound.Chip.MAIN_TAG;
 
 
 /**
@@ -37,6 +38,10 @@ import static java.lang.System.getLogger;
  * system property
  * <li>{@code mdplayer.zms.dir} ... zmusic.x etc. location, default {@code $HOME}</li>
  * <li>{@code mdplayer.zms.zpd} ... zpd file search location, nullable and multipliable by {@code ;} separation</li>
+ * <li>{@code mdplayer.zms.mercury.mpcmVolume}, {@code mdplayer.zms.mercury.opmVolume} ... for a Mercury-UNIT song
+ *     (one that sets an MPCM rate plain MPCM.X lacks, 16bit 44.1kHz {@code @f13} and the like), MPCM and OPM moved
+ *     by these from the balance, 2&times;dB, that song only. default 12 and -12: the Mercury PCM, already at the
+ *     mixer's ceiling, came out under the OPM</li>
  *
  * @author kumatan
  */
@@ -45,6 +50,16 @@ public class ZmsDriver extends BaseDriver {
     private static final Logger logger = getLogger(ZmsDriver.class.getName());
 
     private final Zms zms;
+
+    /** see the class doc */
+    private static final int MERCURY_MPCM_VOLUME = Integer.getInteger("mdplayer.zms.mercury.mpcmVolume", 12);
+    /** see the class doc */
+    private static final int MERCURY_OPM_VOLUME = Integer.getInteger("mdplayer.zms.mercury.opmVolume", -12);
+    /** the highest rate code MPCM.X itself has, 31.2kHz; above it are MPCMPP's (Mercury-UNIT) */
+    private static final int MPCM_MAX_FREQ = 6;
+
+    /** the song has set a Mercury rate and got its own mix */
+    private boolean mercury;
 
     private String version = "";
 
@@ -101,6 +116,12 @@ public class ZmsDriver extends BaseDriver {
 
             @Override
             public void setFreq(int ch, int value) {
+                if (!mercury && (value & 0xff) > MPCM_MAX_FREQ && (value & 0xff) < 0x80) {
+                    mercury = true;
+                    plugin.setSongVolume(MAIN_TAG, MPcmChip.class, MERCURY_MPCM_VOLUME);
+                    plugin.setSongVolume(MAIN_TAG, Ym2151Chip.class, MERCURY_OPM_VOLUME);
+                    logger.log(Level.INFO, "mercury-unit rate %d: mpcm %+d, opm %+d".formatted(value & 0xff, MERCURY_MPCM_VOLUME, MERCURY_OPM_VOLUME));
+                }
                 plugin.chipRegister.chip(MPcmChip.class).setFreq(0, ch, value);
             }
 

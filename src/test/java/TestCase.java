@@ -184,6 +184,9 @@ class TestCase {
 
             // mfi
             System.setProperty("vavi.sound.ma7.path", ma7Path);
+
+            System.setProperty("mdplayer.zms.mercury.mpcmVolume", "18");
+            System.setProperty("mdplayer.zms.mercury.opmVolume", "-18");
         }
 
         if (System.getProperty("os.name").startsWith("Mac") && effects != null) {

@@ -99,7 +99,7 @@ public class MDXPlugin extends BasePlugin<MxDriver> {
             chip = new MDSound.Chip();
             chip.id = 0;
             chip.instrument = Instrument.getInstrument(Pcm8PPInst.class);
-            chip.volume = 0;
+            chip.volume = 0; // not PCM8Volume (yet): the calibrated MDX preset says 6, measured while this ignored it
             chip.clock = 4_000_000;
             chip.samplingRate = setting.getOutputDevice().getSampleRate();
             chip.option = new Object[] {setting.pcm8ppsOption(this)};

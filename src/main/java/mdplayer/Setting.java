@@ -2214,6 +2214,30 @@ public class Setting implements Serializable, Cloneable {
             for (VolEntry e : VOL_TABLE) VOL_BY_ELEMENT.put(e.element(), e);
         }
 
+        /** prefix of the system properties {@link #applySystemProperties()} reads */
+        public static final String PROPERTY_PREFIX = "mdplayer.balance.";
+
+        /**
+         * Overrides chip volumes from system properties named after the balance file elements,
+         * {@code -Dmdplayer.balance.MPCMVolume=12} (2&times;dB, -192..20, like the {@code .mbc}).
+         * <p>
+         * Applied over whichever balance a song loaded, so one source can be raised without a
+         * balance file -- the Mercury-UNIT ZMS sets, whose 16bit PCM sits low against the OPM.
+         * mdsound clamps a chip's mixer gain to 16bit, so how far up it goes depends on the chip:
+         * MPCM stops at about 12 (+6dB).
+         */
+        public void applySystemProperties() {
+            for (VolEntry e : VOL_TABLE) {
+                String v = System.getProperty(PROPERTY_PREFIX + e.element());
+                if (v == null) continue;
+                try {
+                    setVolume(e.tag(), e.chip(), Integer.parseInt(v.trim()));
+                } catch (NumberFormatException x) {
+                    logger.log(Level.WARNING, PROPERTY_PREFIX + e.element() + ": not a number: " + v);
+                }
+            }
+        }
+
         /** every chip class that has a persistable balance slot (for calibration coverage checks) */
         public static List<? extends Class<? extends Chip>> knownChipClasses() {
             return VOL_TABLE.stream().map(VolEntry::chip).distinct().toList();
