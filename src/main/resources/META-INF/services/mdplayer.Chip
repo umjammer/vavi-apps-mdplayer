@@ -54,4 +54,4 @@ mdplayer.chips.Pcm8Chip
 mdplayer.chips.ZxBeepChip
 mdplayer.chips.Cs4231Chip
 mdplayer.chips.MPcmChip
-
+mdplayer.chips.Upd7759Chip
