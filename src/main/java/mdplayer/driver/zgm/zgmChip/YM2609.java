@@ -26,43 +26,19 @@ public class YM2609 extends ZgmChip {
     }
 
     @Override
-    public void setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.RefRunnable<Byte, Integer>> cmdTable) {
-        super.setUp(chipIndex, dataPos, cmdTable);
+    public int setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.Command> cmdTable) {
+        int next = super.setUp(chipIndex, dataPos, cmdTable);
 
-        cmdTable.remove(defineInfo.commandNo);
-        cmdTable.put(defineInfo.commandNo, YM2609::sendPort0);
-
-        cmdTable.remove(defineInfo.commandNo + 1);
-        cmdTable.put(defineInfo.commandNo + 1, YM2609::sendPort1);
-
-        cmdTable.remove(defineInfo.commandNo + 2);
-        cmdTable.put(defineInfo.commandNo + 2, YM2609::sendPort2);
-
-        cmdTable.remove(defineInfo.commandNo + 3);
-        cmdTable.put(defineInfo.commandNo + 3, YM2609::sendPort3);
+        // there is no YM2609 emulator to send to, the 4 ports are skipped
+        for (int port = 0; port < 4; port++) {
+            cmdTable.put(defineInfo.commandNo + port, YM2609::sendPort);
+        }
+        return next;
     }
 
-    private static void sendPort0(byte od, int vgmAdr) {
-        // chipRegister.YM2609SetRegister(od, Audio.DriverSeqCounter, Index, 0,
+    private static int sendPort(int od, int vgmAdr) {
+        // chipRegister.YM2609SetRegister(od, Audio.DriverSeqCounter, Index, port,
         // dataBuf[vgmAdr + 1], dataBuf[vgmAdr + 2]);
-        vgmAdr += 3;
-    }
-
-    private static void sendPort1(byte od, int vgmAdr) {
-        // chipRegister.YM2609SetRegister(od, Audio.DriverSeqCounter, Index, 1,
-        // dataBuf[vgmAdr + 1], dataBuf[vgmAdr + 2]);
-        vgmAdr += 3;
-    }
-
-    private static void sendPort2(byte od, int vgmAdr) {
-        // chipRegister.YM2609SetRegister(od, Audio.DriverSeqCounter, Index, 2,
-        // dataBuf[vgmAdr + 1], dataBuf[vgmAdr + 2]);
-        vgmAdr += 3;
-    }
-
-    private static void sendPort3(byte od, int vgmAdr) {
-        // chipRegister.YM2609SetRegister(od, Audio.DriverSeqCounter, Index, 3,
-        // dataBuf[vgmAdr + 1], dataBuf[vgmAdr + 2]);
-        vgmAdr += 3;
+        return vgmAdr + 3;
     }
 }

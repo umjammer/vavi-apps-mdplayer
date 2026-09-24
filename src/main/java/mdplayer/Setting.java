@@ -22,11 +22,13 @@ import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import mdplayer.Common.EnmInstFormat;
+import mdplayer.chips.MPcmChip;
 import mdplayer.chips.Pcm8Chip;
 import mdplayer.driver.Plugin;
 import mdplayer.driver.mndrv.MNDPlugin;
 import mdplayer.driver.mxdrv.MDXPlugin;
 import mdplayer.driver.rcp.RCSPlugin;
+import mdplayer.driver.zms.ZMSPlugin;
 import mdplayer.vst.VstInfo;
 import mdsound.MDSound;
 import vavi.util.serdes.JacksonXMLBeanBinder;
@@ -2194,6 +2196,11 @@ public class Setting implements Serializable, Cloneable {
             new VolEntry("SAA1099Volume", mdplayer.chips.Saa1099Chip.class, MAIN),
             new VolEntry("Cs4231Volume", mdplayer.chips.Cs4231Chip.class, MAIN),
             new VolEntry("Es5503Volume", mdplayer.chips.Es5503Chip.class, MAIN),
+            new VolEntry("Es5505Volume", mdplayer.chips.Es5505Chip.class, MAIN),
+            new VolEntry("Msm5205Volume", mdplayer.chips.Msm5205Chip.class, MAIN),
+            new VolEntry("Msm5232Volume", mdplayer.chips.Msm5232Chip.class, MAIN),
+            new VolEntry("K005289Volume", mdplayer.chips.K005289Chip.class, MAIN),
+            new VolEntry("GigatronVolume", mdplayer.chips.GigatronChip.class, MAIN),
             new VolEntry("PokeyVolume", mdplayer.chips.PokeyChip.class, MAIN),
             new VolEntry("Upd7759Volume", mdplayer.chips.Upd7759Chip.class, MAIN),
             new VolEntry("WSwanVolume", mdplayer.chips.WSwanChip.class, MAIN),
@@ -2209,6 +2216,30 @@ public class Setting implements Serializable, Cloneable {
         private static final Map<String, VolEntry> VOL_BY_ELEMENT = new HashMap<>();
         static {
             for (VolEntry e : VOL_TABLE) VOL_BY_ELEMENT.put(e.element(), e);
+        }
+
+        /** prefix of the system properties {@link #applySystemProperties()} reads */
+        public static final String PROPERTY_PREFIX = "mdplayer.balance.";
+
+        /**
+         * Overrides chip volumes from system properties named after the balance file elements,
+         * {@code -Dmdplayer.balance.MPCMVolume=12} (2&times;dB, -192..20, like the {@code .mbc}).
+         * <p>
+         * Applied over whichever balance a song loaded, so one source can be raised without a
+         * balance file -- the Mercury-UNIT ZMS sets, whose 16bit PCM sits low against the OPM.
+         * mdsound clamps a chip's mixer gain to 16bit, so how far up it goes depends on the chip:
+         * MPCM stops at about 12 (+6dB).
+         */
+        public void applySystemProperties() {
+            for (VolEntry e : VOL_TABLE) {
+                String v = System.getProperty(PROPERTY_PREFIX + e.element());
+                if (v == null) continue;
+                try {
+                    setVolume(e.tag(), e.chip(), Integer.parseInt(v.trim()));
+                } catch (NumberFormatException x) {
+                    logger.log(Level.WARNING, PROPERTY_PREFIX + e.element() + ": not a number: " + v);
+                }
+            }
         }
 
         /** every chip class that has a persistable balance slot (for calibration coverage checks) */
@@ -3165,10 +3196,15 @@ public class Setting implements Serializable, Cloneable {
     /**
      * Which of the two MPCM back ends the song being played uses: {@code 0} is X68Sound's own MPCM,
      * {@code 1} is MPCMPP. The same sharing as {@link #pcm8Type}, for {@link mdplayer.chips.MPcmChip}.
+     * <p>
+     * {@code 0} is taken as "X68Sound's when it can play the song": a ZMUSIC song asking for a
+     * Mercury-Unit format ({@link ZMSPlugin#needsMpcmPP()}) gets MPCMPP, as X68Sound's MPCM cannot
+     * play those at all. MPCMPP plays everything MPCM.X does, so nothing is lost the other way.
      */
     public int mpcmType(Plugin plugin) {
         return switch (plugin) {
             case MNDPlugin _ -> mnDrv.mpcmType;
+            case ZMSPlugin p when zMusic.mpcmType == MPcmChip.X68SOUND && p.needsMpcmPP() -> MPcmChip.MPCMPP;
             default -> zMusic.mpcmType;
         };
     }

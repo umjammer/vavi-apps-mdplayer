@@ -7,6 +7,8 @@
 package mdplayer.chips;
 
 import java.lang.System.Logger;
+import java.util.Collections;
+import java.util.Map;
 
 import mdplayer.Common.EnmModel;
 import mdsound.Instrument;
@@ -28,6 +30,11 @@ public class MPcmChip extends BaseChip {
 
     private static final Logger logger = System.getLogger(MPcmChip.class.getName());
 
+    /** X68Sound's own MPCM, see {@link mdplayer.Setting#mpcmType} */
+    public static final int X68SOUND = 0;
+    /** MPCMPP, the Mercury-Unit MPCM */
+    public static final int MPCMPP = 1;
+
     private final boolean[][] mask = {
             {false, false, false, false, false, false, false, false},
             {false, false, false, false, false, false, false, false}
@@ -43,6 +50,12 @@ public class MPcmChip extends BaseChip {
     @Override
     public int activeIndex(int chipId) {
         return setting.mpcmType(context);
+    }
+
+    /** the voices, as the playing back end reports them; see {@code mdsound.chips.MPcmPP#getInfo} */
+    public Map<String, Object> getInfo(int chipId) {
+        Instrument inst = context.mds.inst(inst(chipId));
+        return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
     }
 
     public void writePcm(int chipId, int bank, int mode, byte[] pcmData, EnmModel model) {
@@ -68,6 +81,11 @@ public class MPcmChip extends BaseChip {
     @Override
     protected void setMask(int chipId, int ch, boolean mask, Object... args) {
         this.mask[chipId][ch] = mask;
+    }
+
+    @Override
+    public boolean getMask(int chipId, int ch) {
+        return ch < this.mask[chipId].length && this.mask[chipId][ch];
     }
 
     public void keyOn(int chipId, int ch) {
@@ -117,7 +135,7 @@ public class MPcmChip extends BaseChip {
     public void setPitch(int chipId, int ch, int value) {
         switch (context.mds.inst(inst(chipId))) {
             case X68kMPcmInst mpcm -> mpcm.setPitch(chipId, ch, value);
-            case MPcmPPInst mpcmpp -> setPitch(chipId, ch, value);
+            case MPcmPPInst mpcmpp -> mpcmpp.setPitch(chipId, ch, value);
             default -> {assert false;}
         }
     }

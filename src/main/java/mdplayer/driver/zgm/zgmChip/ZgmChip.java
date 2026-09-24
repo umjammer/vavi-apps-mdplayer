@@ -25,10 +25,20 @@ public abstract class ZgmChip extends Chip {
 
     }
 
-    public void setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.RefRunnable<Byte, Integer>> cmdTable) {
+    /** the n-th of this chip in the song, the mixer's chip id */
+    public int getIndex() {
+        return index;
+    }
+
+    public ZgmDriver.DefineInfo getDefineInfo() {
+        return defineInfo;
+    }
+
+    /** @return the position of the next define */
+    public int setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.Command> cmdTable) {
         this.index = chipIndex;
         defineInfo = new ZgmDriver.DefineInfo();
-        defineInfo.length = vgmBuf[dataPos + 0x03];
+        defineInfo.length = vgmBuf[dataPos + 0x03] & 0xff;
         defineInfo.chipIdentNo = ByteUtil.readLeInt(vgmBuf, dataPos + 0x4);
         defineInfo.commandNo = ByteUtil.readLeShort(vgmBuf, dataPos + 0x8);
         defineInfo.clock = ByteUtil.readLeInt(vgmBuf, dataPos + 0xa);
@@ -40,6 +50,6 @@ public abstract class ZgmChip extends Chip {
             }
         }
 
-        dataPos += defineInfo.length;
+        return dataPos + defineInfo.length;
     }
 }

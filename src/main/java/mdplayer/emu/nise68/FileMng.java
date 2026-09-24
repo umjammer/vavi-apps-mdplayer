@@ -7,7 +7,9 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import mdplayer.emu.common.Utils;
@@ -25,6 +27,14 @@ public class FileMng {
     //private String crntDir;
 
     public final Map<String, vFileInfo> vDrive = new HashMap<>();
+
+    /** every name a program asked about, in order, and whether it was there */
+    private final Map<String, Boolean> lookups = new LinkedHashMap<>();
+
+    /** @return the names {@link #existsFile} was asked, in order, each with whether it was found */
+    public Map<String, Boolean> getLookups() {
+        return Collections.unmodifiableMap(lookups);
+    }
 
     /**
      * Constructor
@@ -49,17 +59,22 @@ logger.log(Level.TRACE, "vFile: " + vFile);
         // Check if there are files in the virtual drive
         String vFull = Path.of(VCurrentPath, vFile).toString().toUpperCase();
 logger.log(Level.TRACE, "vFull: " + vFull);
-        if (vDrive.containsKey(vFull)) return true;
-
-        try {
-            // If not present on the virtual drive, check the physical drive
-            String pFull = convertPhysicalFileName(Path.of(VCurrentPath, vFile).toString());
+        boolean found;
+        if (vDrive.containsKey(vFull)) {
+            found = vDrive.get(vFull).body != null;
+        } else {
+            try {
+                // If not present on the virtual drive, check the physical drive
+                String pFull = convertPhysicalFileName(Path.of(VCurrentPath, vFile).toString());
 logger.log(Level.TRACE, "pFull: " + pFull);
-            return Utils.fileExistsIgnoreCase(Path.of(pFull)) != null;
-        } catch (Exception e) {
+                found = Utils.fileExistsIgnoreCase(Path.of(pFull)) != null;
+            } catch (Exception e) {
 logger.log(Level.ERROR, e.getMessage(), e);
-            return false;
+                found = false;
+            }
         }
+        lookups.put(vFile, found);
+        return found || vDrive.containsKey(vFull);
     }
 
     /**

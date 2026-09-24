@@ -2,11 +2,9 @@ package mdplayer.driver.pmd;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,13 +32,16 @@ import musicDriverInterface.MmlDatum;
 import vavi.util.compat.Tuple;
 
 import static java.lang.System.getLogger;
+import static pmd.common.Common.createFileReader;
 
 
 /**
  * PMD
  * <p>
  * environment variable
- * <li>{@code mdplayer.pmd.pmd} ... </li>
+ * <li>{@code mdplayer.pmd.pmd} ... search path for the files a song names ({@code .PPC}, {@code .P86}, {@code .PPS},
+ *     {@code .PZI}, MML includes), separated by {@link File#pathSeparator}. the song's own folder is searched first,
+ *     a relative entry is relative to the song's folder, e.g. {@code ..} for the parent</li>
  * <li>{@code mdplayer.pmd.opt} ... </li>
  *
  * @author kumatan
@@ -95,7 +96,7 @@ public class PmdDriver extends BaseDriver {
             envPmdOpt = System.getProperty("mdplayer.pmd.opt", "").split(File.pathSeparator);
 
             pmdCompiler = ICompiler.factory("pmd.compiler.Compiler");
-            pmdCompiler.setCompileSwitch((Function<String, InputStream>) this::appendFileReaderCallback);
+            pmdCompiler.setCompileSwitch(fileReader());
             metaData = pmdCompiler.getMetaData(buf);
         } else {
             pmdDriver = IDriver.factory("pmd.driver.Driver");
@@ -255,7 +256,7 @@ public class PmdDriver extends BaseDriver {
             pmdCompiler.setCompileSwitch("PmdOption=%s \"%s\"".formatted(
                     setting.getPmd().compilerArguments, plugin.playingFileName));
             try (InputStream sourceMML = new ByteArrayInputStream(dataBuf)) {
-                ret = pmdCompiler.compile(sourceMML, this::appendFileReaderCallback);// wrkMUCFullPath, disp);
+                ret = pmdCompiler.compile(sourceMML, fileReader());// wrkMUCFullPath, disp);
             }
 
             info = pmdCompiler.getCompilerInfo();
@@ -299,7 +300,7 @@ public class PmdDriver extends BaseDriver {
                 envPmdOpt, // String[] Environment variable PMDOpt
                 plugin.playingFileName, // String srcFile;
                 "", // String PPCFileHeader is ignored (no setting required)
-                (Function<String, InputStream>) this::appendFileReaderCallback
+                null // the driver searches the song's folder, then envPmd
         };
 
         String[] commandLineOption = getPMDOption();
@@ -339,7 +340,7 @@ public class PmdDriver extends BaseDriver {
         usePPS = setting.getPmd().usePPSDRV;
         usePPZ = setting.getPmd().usePPZ8;
 
-        envPmd = System.getProperty("mdplayer.pmd.dir", "").split(File.pathSeparator);
+        envPmd = System.getProperty("mdplayer.pmd.pmd", "").split(File.pathSeparator);
         envPmdOpt = System.getProperty("mdplayer.pmd.opt", "").split(File.pathSeparator);
 
         Object[] driverOption = {
@@ -355,7 +356,7 @@ public class PmdDriver extends BaseDriver {
                 envPmdOpt, // String[] Environment variable PMDOpt
                 plugin.playingFileName, // String srcFile;
                 "", // String PPCFileHeader is ignored (no setting required)
-                (Function<String, InputStream>) this::appendFileReaderCallback
+                null // the driver searches the song's folder, then envPmd
         };
 
         String[] commandLineOption = getPMDOption();
@@ -442,30 +443,9 @@ public class PmdDriver extends BaseDriver {
         return 0;
     }
 
-    private InputStream appendFileReaderCallback(String arg) {
-logger.log(Level.DEBUG, "find pmd additional file: " + arg);
-        Path fileName = Path.of(arg).getFileName();
-        Path dir = Path.of(arg).getParent();
-        if (dir == null)
-            fileName = Path.of(plugin.playingFileName).getParent().resolve(fileName);
-
-        if (envPmd != null) {
-            int i = 0;
-            while (!Files.exists(fileName) && i < envPmd.length) {
-                fileName = Path.of(envPmd[i++], Path.of(arg).getFileName().toString());
-            }
-        }
-
-        InputStream stream;
-        try {
-logger.log(Level.DEBUG, "found pmd additional file: " + fileName);
-            stream = Files.newInputStream(fileName);
-        } catch (IOException e) {
-            logger.log(Level.ERROR, e.getMessage(), e);
-            stream = null;
-        }
-
-        return stream;
+    /** the files a song names, searched in the song's folder, then in {@link #envPmd} */
+    private Function<String, InputStream> fileReader() {
+        return createFileReader(Path.of(plugin.playingFileName).toAbsolutePath().getParent(), envPmd);
     }
 
     private static String[] getPMDOption() {

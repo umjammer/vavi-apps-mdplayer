@@ -103,7 +103,7 @@ public class MNDPlugin extends BasePlugin<MnDriver> {
         chip.instrument = chipRegister.chip(MPcmChip.class).instrument(0);
         chip.samplingRate = setting.getOutputDevice().getSampleRate();
         chip.clock = 15600;
-        chip.volume = 0;
+        chip.volume = setting.getBalance().getVolume(MAIN_TAG, MPcmChip.class);
         chip.option = null;
         put(MPcmChip.class, chip);
 

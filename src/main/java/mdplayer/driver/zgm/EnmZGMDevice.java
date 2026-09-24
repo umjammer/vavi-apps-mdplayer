@@ -49,6 +49,12 @@ public enum EnmZGMDevice {
     GA20(0x0000_00E0),
     // Chips
     Conductor(0x0001_0000),
+    VRC6(0x0001_0004),
+    VRC7(0x0001_0008),
+    MMC5(0x0001_000C),
+    N106(0x0001_0010),
+    S5B(0x0001_0014),
+    Gigatron(0x0001_0018),
     // Delusion Chips
     OtherChips(0x0002_0000),
     AY8910B(0x0002_0000),

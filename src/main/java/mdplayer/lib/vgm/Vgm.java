@@ -59,6 +59,10 @@ public class Vgm {
     public int saa1099ClockValue;
     public int wSwanClockValue;
     public int es5503ClockValue;
+    public int es5505ClockValue;
+    public int msm5205ClockValue;
+    public int msm5232ClockValue;
+    public int k005289ClockValue;
     public int x1_010ClockValue;
     public int c352ClockValue;
     public int c352ClockDivider;
@@ -117,6 +121,10 @@ public class Vgm {
     public boolean saA1099DualChipFlag;
     public boolean wSwanDualChipFlag;
     public boolean es5503DualChipFlag;
+    public boolean es5505DualChipFlag;
+    public boolean msm5205DualChipFlag;
+    public boolean msm5232DualChipFlag;
+    public boolean k005289DualChipFlag;
     public boolean x1_010DualChipFlag;
     public boolean c352DualChipFlag;
     public boolean ga20DualChipFlag;
@@ -134,6 +142,9 @@ public class Vgm {
     public boolean isPcmRAMWrite = false;
     public boolean useChipYM2612Ch6 = false;
     public int es5503Ch = 2;
+    public int es5505Ch = 1;
+    /** bit 1-0: prescaler (S1, S2), bit 2: 4 bit ADPCM, bit 7: MSM6585 */
+    public int msm5205Flags = 0x06;
 
     public final Runnable[] vgmCmdTbl = new Runnable[0x100];
 
@@ -191,7 +202,7 @@ public class Vgm {
 
         vgmCmdTbl[0x30] = this::vcPSG;
         vgmCmdTbl[0x31] = this::vcDummy1Ope;
-        vgmCmdTbl[0x32] = this::vcDummy1Ope;
+        vgmCmdTbl[0x32] = this::vcMsm5205;
         vgmCmdTbl[0x33] = this::vcDummy1Ope;
         vgmCmdTbl[0x34] = this::vcDummy1Ope;
         vgmCmdTbl[0x35] = this::vcDummy1Ope;
@@ -209,8 +220,8 @@ public class Vgm {
 
         vgmCmdTbl[0x40] = this::vcDummy2Ope;
         vgmCmdTbl[0x41] = this::vcDummy2Ope;
-        vgmCmdTbl[0x42] = this::vcDummy2Ope;
-        vgmCmdTbl[0x43] = this::vcDummy2Ope;
+        vgmCmdTbl[0x42] = this::vcK005289;
+        vgmCmdTbl[0x43] = this::vcMsm5232;
         vgmCmdTbl[0x44] = this::vcDummy2Ope;
         vgmCmdTbl[0x45] = this::vcDummy2Ope;
         vgmCmdTbl[0x46] = this::vcDummy2Ope;
@@ -330,7 +341,7 @@ public class Vgm {
         vgmCmdTbl[0xbb] = this::vcPOKEY;
         vgmCmdTbl[0xbc] = this::vcWSwan;
         vgmCmdTbl[0xbd] = this::vcSAA1099;
-        vgmCmdTbl[0xbe] = this::vcDummy2Ope;
+        vgmCmdTbl[0xbe] = this::vcEs5505;
         vgmCmdTbl[0xbf] = this::vcGA20;
 
         vgmCmdTbl[0xc0] = this::vcSEGAPCM;
@@ -357,7 +368,7 @@ public class Vgm {
         vgmCmdTbl[0xd3] = this::vcK054539;
         vgmCmdTbl[0xd4] = this::vcC140;
         vgmCmdTbl[0xd5] = this::vcEs5503;
-        vgmCmdTbl[0xd6] = this::vcDummy3Ope;
+        vgmCmdTbl[0xd6] = this::vcEs5505_16;
         vgmCmdTbl[0xd7] = this::vcDummy3Ope;
 
         vgmCmdTbl[0xd8] = this::vcDummy3Ope;
@@ -754,6 +765,11 @@ public class Vgm {
                 ivgm.writePcmQSound(chipId, romSize, startAddress, bLen - 8, vgmBuf, vgmAdr + 15);
                 break;
 
+            case 0x90:
+                // ES5505/ES5506
+                ivgm.writePcmEs5505(chipId, romSize, startAddress, bLen - 8, vgmBuf, vgmAdr + 15);
+                break;
+
             case 0x91:
                 // X1-010
                 ivgm.writePcmX1_010(chipId, romSize, startAddress, bLen - 8, vgmBuf, vgmAdr + 15);
@@ -791,6 +807,9 @@ public class Vgm {
                     break;
                 case 0xc2:
                     ivgm.writePcmNes(chipId, stAdr, dataSize, vgmBuf, vgmAdr + 9);
+                    break;
+                case 0xc3:
+                    ivgm.writePromK005289(chipId, stAdr, dataSize, vgmBuf, vgmAdr + 9);
                     break;
                 }
             } catch (Exception e) {
@@ -1071,6 +1090,46 @@ public class Vgm {
         int adr = (vgmBuf[vgmAdr + 1] & 0x7f) * 0x100 + (vgmBuf[vgmAdr + 2] & 0xff);
         int data = vgmBuf[vgmAdr + 3] & 0xff;
         ivgm.writeC140(id, adr, data);
+        vgmAdr += 4;
+    }
+
+    private void vcMsm5205() { // 0x32 rd
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = (vgmBuf[vgmAdr + 1] & 0x70) >> 4;
+        int data = vgmBuf[vgmAdr + 1] & 0x0f;
+        ivgm.writeMsm5205(id, adr, data);
+        vgmAdr += 2;
+    }
+
+    private void vcMsm5232() { // 0x43 aa dd
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = vgmBuf[vgmAdr + 1] & 0x7f;
+        int data = vgmBuf[vgmAdr + 2] & 0xff;
+        ivgm.writeMsm5232(id, adr, data);
+        vgmAdr += 3;
+    }
+
+    private void vcK005289() { // 0x42 ad dd: bit 7 chip, bit 6-4 register, 12 bits of data
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = (vgmBuf[vgmAdr + 1] >> 4) & 0x07;
+        int data = ((vgmBuf[vgmAdr + 1] & 0x0f) << 8) | (vgmBuf[vgmAdr + 2] & 0xff);
+        ivgm.writeK005289(id, adr, data);
+        vgmAdr += 3;
+    }
+
+    private void vcEs5505() { // 0xBE aa dd
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = vgmBuf[vgmAdr + 1] & 0x7f;
+        int data = vgmBuf[vgmAdr + 2] & 0xff;
+        ivgm.writeEs5505(id, adr, data);
+        vgmAdr += 3;
+    }
+
+    private void vcEs5505_16() { // 0xD6 aa dd dd
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = 0x80 | (vgmBuf[vgmAdr + 1] & 0x7f);
+        int data = ((vgmBuf[vgmAdr + 2] & 0xff) << 8) | (vgmBuf[vgmAdr + 3] & 0xff);
+        ivgm.writeEs5505(id, adr, data);
         vgmAdr += 4;
     }
 
@@ -1460,6 +1519,11 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
         x1_010ClockValue = 0;
         wSwanClockValue = 0;
         es5503ClockValue = 0;
+        es5505ClockValue = 0;
+        msm5205ClockValue = 0;
+        msm5232ClockValue = 0;
+        k005289ClockValue = 0;
+        msm5205Flags = 0x06;
         volumeModifier = 0;
 
         // Check if the header is large enough to read
@@ -1572,9 +1636,17 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                 vgmDataOffset += 0x34;
             }
 
+            // the header ends where the extra header starts (v1.70), the rest is not chip clocks
+            int headerLimit = vgmDataOffset;
+            if (headerLimit > 0xbc) {
+                int extraHeaderOffset = ByteUtil.readLeInt(vgmBuf, 0xbc);
+                if (extraHeaderOffset != 0)
+                    headerLimit = Math.min(headerLimit, 0xbc + extraHeaderOffset);
+            }
+
             //if (version >= 0x0151)
             {
-                if (vgmDataOffset > 0x38) {
+                if (headerLimit > 0x38) {
                     int segaPCMClock = ByteUtil.readLeInt(vgmBuf, 0x38);
                     int SPCMInterface = ByteUtil.readLeInt(vgmBuf, 0x3c);
                     if (segaPCMClock != 0 && SPCMInterface != 0) {
@@ -1584,7 +1656,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x40) {
+                if (headerLimit > 0x40) {
                     int RF5C68clock = ByteUtil.readLeInt(vgmBuf, 0x40);
                     if (RF5C68clock != 0) {
                         rf5C68ClockValue = RF5C68clock & 0x3fff_ffff;
@@ -1594,7 +1666,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x44) {
+                if (headerLimit > 0x44) {
                     int YM2203clock = ByteUtil.readLeInt(vgmBuf, 0x44);
                     if (YM2203clock != 0) {
                         ym2203ClockValue = YM2203clock & 0x3fff_ffff;
@@ -1604,7 +1676,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x48) {
+                if (headerLimit > 0x48) {
                     int YM2608clock = ByteUtil.readLeInt(vgmBuf, 0x48);
                     if (YM2608clock != 0) {
                         ym2608ClockValue = YM2608clock & 0x3fff_ffff;
@@ -1616,7 +1688,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x4c) {
+                if (headerLimit > 0x4c) {
                     int YM2610Bclock = ByteUtil.readLeInt(vgmBuf, 0x4c);
                     if (YM2610Bclock != 0) {
                         ym2610ClockValue = YM2610Bclock & 0x3fff_ffff;
@@ -1627,7 +1699,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x50) {
+                if (headerLimit > 0x50) {
                     int YM3812clock = ByteUtil.readLeInt(vgmBuf, 0x50);
                     if (YM3812clock != 0) {
                         ym3812ClockValue = YM3812clock & 0x3fff_ffff;
@@ -1637,7 +1709,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x54) {
+                if (headerLimit > 0x54) {
                     int YM3526clock = ByteUtil.readLeInt(vgmBuf, 0x54);
                     if (YM3526clock != 0) {
                         ym3526ClockValue = YM3526clock & 0x3fff_ffff;
@@ -1647,7 +1719,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x58) {
+                if (headerLimit > 0x58) {
                     int Y8950clock = ByteUtil.readLeInt(vgmBuf, 0x58);
                     if (Y8950clock != 0) {
                         y8950ClockValue = Y8950clock & 0x3fff_ffff;
@@ -1657,7 +1729,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x5c) {
+                if (headerLimit > 0x5c) {
                     int YMF262clock = ByteUtil.readLeInt(vgmBuf, 0x5c);
                     if (YMF262clock != 0) {
                         ymF262ClockValue = YMF262clock & 0x3fff_ffff;
@@ -1667,7 +1739,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x60) {
+                if (headerLimit > 0x60) {
                     int YMF278Bclock = ByteUtil.readLeInt(vgmBuf, 0x60);
                     if (YMF278Bclock != 0) {
                         ymF278BClockValue = YMF278Bclock & 0x3fff_ffff;
@@ -1677,7 +1749,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x64) {
+                if (headerLimit > 0x64) {
                     int YMF271clock = ByteUtil.readLeInt(vgmBuf, 0x64);
                     if (YMF271clock != 0) {
                         ymF271ClockValue = YMF271clock & 0x3fff_ffff;
@@ -1687,7 +1759,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x68) {
+                if (headerLimit > 0x68) {
                     int YMZ280Bclock = ByteUtil.readLeInt(vgmBuf, 0x68);
                     if (YMZ280Bclock != 0) {
                         ymZ280BClockValue = YMZ280Bclock & 0x3fff_ffff;
@@ -1697,7 +1769,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x6c) {
+                if (headerLimit > 0x6c) {
                     int RF5C164clock = ByteUtil.readLeInt(vgmBuf, 0x6c);
                     if (RF5C164clock != 0) {
                         rf5C164ClockValue = RF5C164clock & 0x3fff_ffff;
@@ -1708,7 +1780,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                 }
 
 
-                if (vgmDataOffset > 0x70) {
+                if (headerLimit > 0x70) {
                     int PWMclock = ByteUtil.readLeInt(vgmBuf, 0x70);
                     if (PWMclock != 0) {
                         chips.add("PWM");
@@ -1716,7 +1788,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x74) {
+                if (headerLimit > 0x74) {
                     int AY8910clock = ByteUtil.readLeInt(vgmBuf, 0x74);
                     if (AY8910clock != 0) {
                         ay8910ClockValue = AY8910clock & 0x3fff_ffff;
@@ -1726,7 +1798,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x7c) {
+                if (headerLimit > 0x7c) {
                     volumeModifier = vgmBuf[0x7c] & 0xff;
                 }
             }
@@ -1737,7 +1809,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
 
 //            if (version >= 0x0161)
             {
-                if (vgmDataOffset > 0x80) {
+                if (headerLimit > 0x80) {
                     int DMGclock = ByteUtil.readLeInt(vgmBuf, 0x80);
                     if (DMGclock != 0) {
                         dmgClockValue = DMGclock & 0x3fff_ffff;
@@ -1747,7 +1819,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x84) {
+                if (headerLimit > 0x84) {
                     int NESclock = ByteUtil.readLeInt(vgmBuf, 0x84);
                     if (NESclock != 0) {
                         nesClockValue = NESclock & 0xbfff_ffff;
@@ -1757,7 +1829,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x88) {
+                if (headerLimit > 0x88) {
                     int MultiPCMclock = ByteUtil.readLeInt(vgmBuf, 0x88);
                     if (MultiPCMclock != 0) {
                         multiPCMClockValue = MultiPCMclock & 0x3fff_ffff;
@@ -1767,7 +1839,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x8c) {
+                if (headerLimit > 0x8c) {
                     int uPD7759clock = ByteUtil.readLeInt(vgmBuf, 0x8c);
                     if (uPD7759clock != 0) {
                         uPD7759ClockValue = uPD7759clock & 0xbfff_ffff;
@@ -1777,7 +1849,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x90) {
+                if (headerLimit > 0x90) {
                     int OKIM6258clock = ByteUtil.readLeInt(vgmBuf, 0x90);
                     if (OKIM6258clock != 0) {
                         chips.add("OKIM6258");
@@ -1786,7 +1858,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x9c) {
+                if (headerLimit > 0x9c) {
                     int K051649clock = ByteUtil.readLeInt(vgmBuf, 0x9c);
                     if (K051649clock != 0) {
                         k051649ClockValue = K051649clock & 0x3fff_ffff;
@@ -1796,7 +1868,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xa0) {
+                if (headerLimit > 0xa0) {
                     int K054539clock = ByteUtil.readLeInt(vgmBuf, 0xa0);
                     if (K054539clock != 0) {
                         k054539ClockValue = K054539clock & 0x3fff_ffff;
@@ -1807,7 +1879,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xa4) {
+                if (headerLimit > 0xa4) {
 
                     int HuC6280clock = ByteUtil.readLeInt(vgmBuf, 0xa4);
                     if (HuC6280clock != 0) {
@@ -1816,7 +1888,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xa8) {
+                if (headerLimit > 0xa8) {
 
                     int C140clock = ByteUtil.readLeInt(vgmBuf, 0xa8);
                     if (C140clock != 0) {
@@ -1829,7 +1901,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xac) {
+                if (headerLimit > 0xac) {
 
                     int k053260clock = ByteUtil.readLeInt(vgmBuf, 0xac);
                     if (k053260clock != 0) {
@@ -1840,7 +1912,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xb0) {
+                if (headerLimit > 0xb0) {
 
                     int pokeyClock = ByteUtil.readLeInt(vgmBuf, 0xb0);
                     if (pokeyClock != 0) {
@@ -1851,7 +1923,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xb4) {
+                if (headerLimit > 0xb4) {
 
                     int qSoundClock = ByteUtil.readLeInt(vgmBuf, 0xb4);
                     if (qSoundClock != 0) {
@@ -1860,7 +1932,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0x98) {
+                if (headerLimit > 0x98) {
                     int okiM6295clock = ByteUtil.readLeInt(vgmBuf, 0x98);
                     if (okiM6295clock != 0) {
                         okiM6295DualChipFlag = (okiM6295clock & 0x4000_0000) != 0;
@@ -1874,7 +1946,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                 }
             }
             if (version >= 0x0171) {
-                if (vgmDataOffset > 0xc0) {
+                if (headerLimit > 0xc0) {
 
                     int wSwanClock = ByteUtil.readLeInt(vgmBuf, 0xc0);
                     if (wSwanClock != 0) {
@@ -1885,7 +1957,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xc8) {
+                if (headerLimit > 0xc8) {
 
                     int saa1099Clock = ByteUtil.readLeInt(vgmBuf, 0xc8);
                     if (saa1099Clock != 0) {
@@ -1896,7 +1968,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xcc) {
+                if (headerLimit > 0xcc) {
 
                     int es5503clock = ByteUtil.readLeInt(vgmBuf, 0xcc);
                     if (es5503clock != 0)
@@ -1910,7 +1982,23 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xd8) {
+                if (headerLimit > 0xd0) {
+
+                    int es5506clock = ByteUtil.readLeInt(vgmBuf, 0xd0);
+                    if (es5506clock != 0) {
+                        if ((es5506clock & 0x8000_0000) != 0) {
+                            logger.log(Level.WARNING, "ES5506 is not supported");
+                        } else {
+                            es5505ClockValue = es5506clock & 0x3fff_ffff;
+                            es5505DualChipFlag = (es5506clock & 0x4000_0000) != 0;
+                            es5505Ch = vgmBuf[0xd5] & 0xff;
+                            if (es5505DualChipFlag) chips.add("ES5505x2");
+                            else chips.add("ES5505");
+                        }
+                    }
+                }
+
+                if (headerLimit > 0xd8) {
 
                     int x1_010Clock = ByteUtil.readLeInt(vgmBuf, 0xd8);
                     if (x1_010Clock != 0) {
@@ -1921,7 +2009,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xdc) {
+                if (headerLimit > 0xdc) {
 
                     int c352clock = ByteUtil.readLeInt(vgmBuf, 0xdc);
                     if (c352clock != 0) {
@@ -1934,7 +2022,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     }
                 }
 
-                if (vgmDataOffset > 0xe0) {
+                if (headerLimit > 0xe0) {
 
                     int ga20Clock = ByteUtil.readLeInt(vgmBuf, 0xe0);
                     if (ga20Clock != 0) {
@@ -1946,6 +2034,44 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                             ga20ClockValue = ga20Clock & 0xbfff_ffff;
                             chips.add("GA20");
                         }
+                    }
+                }
+
+                // libvgm puts it at 0xF0 with its pins in 0xD7, the draft it was logged with before
+                // (e.g. eito's Darius rip) put it at 0xEC, where libvgm now has the K005289, and
+                // had no pins: those are the arcade's usual 384 kHz / 48, 4 bit
+                int msm5205Clock = headerLimit > 0xf0 ? ByteUtil.readLeInt(vgmBuf, 0xf0) : 0;
+                boolean draftMsm5205 = false;
+                if (msm5205Clock != 0) {
+                    msm5205Flags = (vgmBuf[0xd7] & 0x07) | ((msm5205Clock & 0x8000_0000) != 0 ? 0x80 : 0);
+                } else if (headerLimit > 0xec) {
+                    msm5205Clock = ByteUtil.readLeInt(vgmBuf, 0xec);
+                    if ((msm5205Clock & 0x3fff_ffff) >= 1_000_000) msm5205Clock = 0; // a K005289 (3.58 MHz)
+                    draftMsm5205 = msm5205Clock != 0;
+                }
+                if (msm5205Clock != 0) {
+                    msm5205ClockValue = msm5205Clock & 0x3fff_ffff;
+                    msm5205DualChipFlag = (msm5205Clock & 0x4000_0000) != 0;
+                    String name = (msm5205Flags & 0x80) != 0 ? "MSM6585" : "MSM5205";
+                    chips.add(msm5205DualChipFlag ? name + "x2" : name);
+                }
+
+                // Konami's Bubble System / Nemesis board
+                if (headerLimit > 0xec && !draftMsm5205) {
+                    int k005289Clock = ByteUtil.readLeInt(vgmBuf, 0xec);
+                    if (k005289Clock != 0) {
+                        k005289ClockValue = k005289Clock & 0x3fff_ffff;
+                        k005289DualChipFlag = (k005289Clock & 0x4000_0000) != 0;
+                        chips.add(k005289DualChipFlag ? "K005289x2" : "K005289");
+                    }
+                }
+
+                if (headerLimit > 0xf4) {
+                    int msm5232Clock = ByteUtil.readLeInt(vgmBuf, 0xf4);
+                    if (msm5232Clock != 0) {
+                        msm5232ClockValue = msm5232Clock & 0x3fff_ffff;
+                        msm5232DualChipFlag = (msm5232Clock & 0x4000_0000) != 0;
+                        chips.add(msm5232DualChipFlag ? "MSM5232x2" : "MSM5232");
                     }
                 }
             }
@@ -2052,6 +2178,7 @@ logger.log(Level.INFO, "usedChips: " + ivgm.getUsedChips());
         void writePcmRf5C164(int chipId, int offset, int length, byte[] buf, int srcOffset);
         void writePcmNes(int chipId, int stAdr, int dataSize, byte[] vgmBuf, int vgmAdr);
         void writePcmEs5503(int chipId, int offset, int length, byte[] buf, int srcOffset);
+        void writePcmEs5505(int chipId, int romSize, int dataStart, int dataLength, byte[] romData, int srcStartAdr);
         void writePCMRamRf5C68(int chipId, int offset, int length, byte[] buf, int srcOffset);
         void writePCMRamRf5C164(int chipId, int offset, int length, byte[] buf, int srcOffset);
         void writeRf5C68(int chipId, int addr, int data);
@@ -2064,6 +2191,16 @@ logger.log(Level.INFO, "usedChips: " + ivgm.getUsedChips());
         void writeK054539(int chipId, int addr, int data);
         void writeC140(int chipId, int addr, int data);
         void writeEs5503(int chipId, int addr, int data);
+        /** @param addr bit 7: 16 bit data, bit 6-0: byte offset */
+        void writeEs5505(int chipId, int addr, int data);
+        /** @param addr 0: reset, 1: data, 2: VCK, 4: prescaler, 5: bit width */
+        void writeMsm5205(int chipId, int addr, int data);
+        /** @param addr 00-07: voices, 08-0d: envelopes and controls, 10-1f: libvgm's mixer, 20-23: clock */
+        void writeMsm5232(int chipId, int addr, int data);
+        /** @param addr 0/1: control A/B, 2/3: LD1/LD2 (latch the 12 bit data), 4/5: TG1/TG2 */
+        void writeK005289(int chipId, int addr, int data);
+        /** the waveform prom, 0x100 bytes per channel */
+        void writePromK005289(int chipId, int stAdr, int dataSize, byte[] vgmBuf, int vgmAdr);
         void writeC352(int chipId, int addr, int data);
         int readHuC6280(int chipId, int addr);
         boolean isVirtual();

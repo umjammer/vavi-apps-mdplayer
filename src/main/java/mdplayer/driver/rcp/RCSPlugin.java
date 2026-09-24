@@ -12,6 +12,7 @@ import mdsound.instrument.X68kYm2151Inst;
 import mdsound.x68sound.SoundIocs;
 
 import static java.lang.System.getLogger;
+import static mdsound.MDSound.Chip.MAIN_TAG;
 
 
 /**
@@ -50,7 +51,7 @@ public class RCSPlugin extends BasePlugin<RcsDriver> {
         MDSound.Chip chip = new MDSound.Chip();
         chip.id = 0;
         chip.instrument = chipRegister.chip(Pcm8Chip.class).instrument(0);
-        chip.volume = 0;
+        chip.volume = setting.getBalance().getVolume(MAIN_TAG, Pcm8Chip.class);
         chip.clock = 4_000_000;
         X68kYm2151Inst opmPCM = null;
         Pcm8PPInst pcm8pp = null;

@@ -57,10 +57,10 @@ this is a fork of [MDPlayer](https://github.com/kuma4649/MDPlayer)
 | M4A/AAC                         |                  |       →        |    -     | spi                   | [vavi-sound-aac](https://github.com/umjammer/vavi-sound-aac)                                   |                                                                                   |
 | WMA                             |                  |       →        |    -     | spi                   | [vavi-sound-sandbox](https://github.com/umjammer/vavi-sound-sandbox)                           |                                                                                   |
 | FLAC                            |                  |       →        |    -     | spi                   | [vavi-sound-flac](https://github.com/umjammer/vavi-sound-flac)                                 |                                                                                   |
-| SMAF                            | YAMAHA           |       ✅️       |    -     | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [mmftool](https://github.com/umjammer/mmftool) | ~~adapt fmdsp visualizer ... difficult~~                                          |
+| SMAF                            | YAMAHA MA-5      |       →️       |    -     | ~~built-in*~~, spi    | [jDOSBox](https://github.com/umjammer/jDOSBox), [mmftool](https://github.com/umjammer/mmftool) | ~~adapt fmdsp visualizer ... difficult~~                                          |
 | SMAF                            | YAMAHA MA-7      |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         |                                                                                   |
 | OWI/MWI                         | Windows FMP7     |       ✅️       |    ✅️    | built-in*             | [jDOSBox](https://github.com/umjammer/jDOSBox), [FMP7](http://fmpdoc.fmp.jp/fmp7/)             |                                                                                   |
-| MLD                             | DoCoMo MFi       |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         |                                                                                   |
+| MLD                             | DoCoMo MFi       |       ✅️       |    -     | built-in              | [vavi-apps-mfiplayer](https://github.com/umjammer/vavi-apps-mfiplayer)                         | autodetect MA-7/Fuetrek/BU8788KN                                                  |
 
 <sub>* at type: driver uses emulator</sub>
 
@@ -146,7 +146,7 @@ when using this project with vgm, gbs spi, apply the settings below to avoid con
 
 #### pmd
 
-- `mdplayer.pmd.pmd` ... pmd driver options
+- `mdplayer.pmd.pmd` ... search path for the files a song names (`.PPC`, `.P86`, `.PPS`, `.PZI`), separated by `:`. the song's folder is searched first, a relative entry is relative to the song's folder (e.g. `..`)
 - `mdplayer.pmd.opt` ... pmd command line options
 
 #### fmp
@@ -198,22 +198,26 @@ when using this project with vgm, gbs spi, apply the settings below to avoid con
 
 you can select a chip implementation variant by number.
 
-| chip    | system property          | setting                                                             |
-|---------|--------------------------|---------------------------------------------------------------------|
-| AY8910  | mdplayer.variant.ay8910  | 0: fmgen, 1: mame, 2: np                                            |
-| SN76496 | mdplayer.variant.sn76496 | 0: sn76489, 1: sn76496                                              |
-| YM2151  | mdplayer.variant.ym2151  | 0: fmgen, 1: mame, 2: 68k, 3: ymfm                                  |
-| YM2203  | mdplayer.variant.ym2203  | 0: fmgen, 1: ymfm                                                   |
-| YM2413  | mdplayer.variant.ym2413  | 0: mame, 1: vrc7(np), 2: emu, 3: np                                 |
-| YM2608  | mdplayer.variant.ym2608  | 0: fmgen, 1: ymfm                                                   |
-| YM2610  | mdplayer.variant.ym2610  | 0: fmgen, 1: ymfm                                                   |
-| YM2612  | mdplayer.variant.ym2612  | 0: mame-A, 1: nuke-A, 2: mame-B, 3: nuke-B(simple), 4: nuke-A(vavi) |
-| YM3812  | mdplayer.variant.ym3812  | 0: dosbox, 1: mame                                                  |
-| YMF262  | mdplayer.variant.ymF262  | 0: dosbox, 1: mame, 2: nuked, 3: cozendey, 4: ymfm                  |
-| Qsound  | mdplayer.variant.qsound  | 0: qsound-ctr, 1: qsound                                            |
-| C140    | mdplayer.variant.c140    | 0: c140, 1: c219                                                    |
-| PCM8    | mdplayer.variant.pcm8    | 0: x68sound, 1: wachoman (pcm8pp), -1: auto (mdx: by `F`, default)  |
-| MPCM    | mdplayer.variant.mpcm    | 0: x68sound, 1: wachoman                                            |
+| chip    | system property          | setting                                                                   |
+|---------|--------------------------|---------------------------------------------------------------------------|
+| AY8910  | mdplayer.variant.ay8910  | 0: fmgen, 1: mame, 2: np                                                  |
+| SN76496 | mdplayer.variant.sn76496 | 0: sn76489, 1: sn76496                                                    |
+| YM2151  | mdplayer.variant.ym2151  | 0: fmgen, 1: mame, 2: 68k, 3: ymfm                                        |
+| YM2203  | mdplayer.variant.ym2203  | 0: fmgen, 1: ymfm                                                         |
+| YM2413  | mdplayer.variant.ym2413  | 0: mame, 1: vrc7(np, no drum), 2: emu, 3: np                              |
+| YM2608  | mdplayer.variant.ym2608  | 0: fmgen, 1: ymfm                                                         |
+| YM2610  | mdplayer.variant.ym2610  | 0: fmgen, 1: ymfm                                                         |
+| YM2612  | mdplayer.variant.ym2612  | 0: mame-A, 1: nuke-A, 2: mame-B, 3: nuke-B(simple), 4: nuke-A(vavi)       |
+| YM3812  | mdplayer.variant.ym3812  | 0: dosbox, 1: mame                                                        |
+| YMF262  | mdplayer.variant.ymF262  | 0: dosbox, 1: mame, 2: nuked, 3: cozendey, 4: ymfm                        |
+| Qsound  | mdplayer.variant.qsound  | 0: qsound-ctr, 1: qsound                                                  |
+| C140    | mdplayer.variant.c140    | 0: c140, 1: c219                                                          |
+| PCM8    | mdplayer.variant.pcm8    | 0: x68sound, 1: wachoman (pcm8pp), -1: auto (mdx: by `F`, default)        |
+| MPCM    | mdplayer.variant.mpcm    | 0: x68sound (zms: wachoman when the song needs Mercury `@f`), 1: wachoman |
+
+#### Mixer Balance
+
+ [zms settings](src/main/java/mdplayer/driver/zms/readme.md)
 
 ### Sample Player
 
@@ -267,30 +271,34 @@ you can select a chip implementation variant by number.
     * ~~fmp: fmp not resident~~
     * ~~mnd: no .mnd samples on the internet~~
     * ~~zms: wip signed byte related ... ???~~
-    * rcs: wip
+    * ~~rcs: wip~~
     * ~~rcp: wip, how to treat midi plugin as chip?~~
     * ~~nsf: sp library works. `render_()` is not work, `mul` related. (replace `render_()` to vavi-sound-mdplayer:NsfTestPlayer's one, it works)~~ ... not resolved
     * ~~fmp: test mochit final~~
-    * mxdrv: ~~pcm8~~, when 68k opm is chosen as 1st opm, 2nd opm cannot sound pcm8. why???
+    * ~~mxdrv: pcm8, when 68k opm is chosen as 1st opm, 2nd opm cannot sound pcm8. why???~~
     * ~~ndp: fmgen ym8910 is silence (meme's works)~~
     * ~~gbs: song no 9 -  wrong~~
     * ~~zms: upstream STBL561 new patch (but this library doesn't slow)~~
     * ~~fmp: startup is slow~~ ... logging issue
     * ~~mxdrv: current-position counter reads 0~~
     * ~~mxdrv: pdx (see portable mdx)~~ ... it's pcm
- * chip class should handle one chip
- * real chip is one of instrument?
- * ~~eliminate dotnet4j~~
- * ~~vgm spi kill switch~~
+    * ~~check ahx, hvl are HasSongNo?~~
+    * vgm: song title
+ * refactoring
+   * ~~eliminate dotnet4j~~
+   * ~~make VisWaveBuffer as one of view~~
+   * ~~json serdes impls are too heavy (own 2 spi), can we get by with annotation to fields~~
+   * ~~`Common#copyField` ... i don't like it~~
+   * chip class should handle one chip
+   * real chip is one of instrument?
+   * \[ym] move ym2149ex to mdsound
+   * chip refactoring about masking
+   * settings ...  demolish each driver and chips
+   * abstract m3u, zip
+ * vgm spi kill switch
    * ~~vavi-sound-smu (wip)~~
    * ~~vavi-sound-ymfm (wip)~~
    * this spi
- * ~~check ahx, hvl are HasSongNo?~~
- * \[ym] move ym2149ex to mdsound
- * ~~make VisWaveBuffer as one of view~~ 
- * ~~change fmdsp right top strings "for UNIX/..."~~
- * json serdes impls are too heavy (own 2 spi), can we get by with annotation to fields
- * ~~`Common#copyField` ... i don't like it~~
  * `mdplayer.form` package
    * ~~eliminate chip listing inside forms~~
      * ~~view provider~~
@@ -301,20 +309,19 @@ you can select a chip implementation variant by number.
    * ~~heavy json serdes~~
    * ~~FormRegTest open the same page, not reflected from which menu open~~
    * ~~add a test traversing all settings tab~~
- * ~~volume leveling~~
- * chip refactoring about masking
  * fmdsp visualizer
+   * ~~change fmdsp right top strings "for UNIX/..."~~
    * kanji conversion is still in it ... needed?
      * \[fmp] ... move to emu/util ??? ... yes mdplayer should not care encoding, hide it native driver inside
    * \[pmd] ... add special tag in datasource to display music_title/composer/arranger
- * settings ...  demolish each driver and chips
+   * visualizer for spi
+   * ~~mdplayer.variant.ym2413=1 no kb,spectrum~~
  * ~~midi + dls/sf2~~ (should not be supported, it's normal midi responsibility)
- * visualizer for spi
  * ~~android emulator: app + server ↔ mlplayer~~
  * ~~wine + custom audio dev ... capture from that~~ ... chose proprietary way
  * ~~boids from gui is still weird~~
+ * ~~volume leveling~~
  * ~~calibration works for each Y/F/R inside mfi?~~
- * abstract m3u, zip
  * ~~fuetrek adpcm, check rohm also~~
 
 ---

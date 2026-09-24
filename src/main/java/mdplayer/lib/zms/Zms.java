@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
@@ -42,6 +43,20 @@ public class Zms {
 
     private Nise68 nise68;
     private FileMng fileMng = new FileMng(System.getProperty("user.dir"), "C:");
+
+    /**
+     * The ZPD the playing song loaded: ZMUSIC opens it by itself, from the ZMS {@code .ADPCM_BLOCK_DATA}
+     * or the ZMD's own reference, so it is only known from what was asked of the file manager.
+     *
+     * @return the name as the song gave it, and whether it was there; null when none was asked for
+     */
+    public Map.Entry<String, Boolean> pcmFile() {
+        Map.Entry<String, Boolean> last = null;
+        for (Map.Entry<String, Boolean> e : fileMng.getLookups().entrySet()) {
+            if (e.getKey().toUpperCase().endsWith(".ZPD")) last = e;
+        }
+        return last;
+    }
     public Pcm8Interface pcm8;
     public MPcmInterface mpcm;
     public int frequency;
@@ -535,13 +550,15 @@ if (!Arrays.equals(compiledData, 1, 7, magic, 0, 6) || compiledData.length <= 80
                 break;
             case 0x0300:
                 //logger.log(Level.TRACE, "MPCM #M_SET_FRQ($%04x) D1$%08x".formatted(n, nise68.reg.GetDl(1)));
-                mpcm.setFreq(ch, nise68.reg.getDl(1) & 0xff);
-                mpcmSt[ch].frq = nise68.reg.getDl(1) & 0xff;
+                mpcm.setFreq(ch, nise68.reg.getDl(1));
+                mpcmSt[ch].frq = nise68.reg.getDl(1);
                 break;
             case 0x0400:
                 //logger.log(Level.TRACE, "MPCM #M_SET_PITCH($%04x) D1$%04x".formatted(n, nise68.reg.GetDl(1)));
-                mpcm.setPitch(ch, nise68.reg.getDl(1) & 0xff);
-                mpcmSt[ch].pitch = nise68.reg.getDl(1) & 0xff;
+                // a word, note << 6 | fine: A4 is $1140 (a byte left only the fine part); the upper word
+                // carries other bits ($81140) that X68Sound's MPCM would take as a note
+                mpcm.setPitch(ch, nise68.reg.getDl(1) & 0xffff);
+                mpcmSt[ch].pitch = nise68.reg.getDl(1) & 0xffff;
                 break;
             case 0x0500:
                 //logger.log(Level.TRACE, "MPCM #M_SET_VOL($%04x) = $%02x".formatted(n, nise68.reg.GetDb(1)));

@@ -49,8 +49,13 @@ mdplayer.chips.YmF271Chip
 mdplayer.chips.YmF278BChip
 mdplayer.chips.YmZ280BChip
 mdplayer.chips.Es5503Chip
+mdplayer.chips.Es5505Chip
+mdplayer.chips.Msm5205Chip
+mdplayer.chips.Msm5232Chip
+mdplayer.chips.K005289Chip
+mdplayer.chips.GigatronChip
 mdplayer.chips.Pcm8Chip
 mdplayer.chips.ZxBeepChip
 mdplayer.chips.Cs4231Chip
 mdplayer.chips.MPcmChip
-
+mdplayer.chips.Upd7759Chip

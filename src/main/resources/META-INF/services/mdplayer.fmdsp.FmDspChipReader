@@ -12,7 +12,10 @@ mdplayer.fmdsp.Sn76489Reader
 mdplayer.fmdsp.Ay8910Reader
 mdplayer.fmdsp.ZxBeepReader
 mdplayer.fmdsp.Saa1099Reader
+mdplayer.fmdsp.Msm5232Reader
+mdplayer.fmdsp.GigatronReader
 mdplayer.fmdsp.K051649Reader
+mdplayer.fmdsp.K005289Reader
 mdplayer.fmdsp.DmgReader
 mdplayer.fmdsp.WSwanReader
 mdplayer.fmdsp.PokeyReader
@@ -39,11 +42,13 @@ mdplayer.fmdsp.Rf5C68Reader
 mdplayer.fmdsp.Rf5C164Reader
 mdplayer.fmdsp.K054539Reader
 mdplayer.fmdsp.OkiM6258Reader
+mdplayer.fmdsp.Msm5205Reader
 mdplayer.fmdsp.Cs4231Reader
 mdplayer.fmdsp.YmZ280BReader
 mdplayer.fmdsp.QSoundReader
 mdplayer.fmdsp.X1_010Reader
 mdplayer.fmdsp.Es5503Reader
+mdplayer.fmdsp.Es5505Reader
 mdplayer.fmdsp.PwmReader
 mdplayer.fmdsp.YmReader
 mdplayer.fmdsp.HvlReader
@@ -57,3 +62,4 @@ mdplayer.fmdsp.MldReader
 mdplayer.fmdsp.MdxPcmReader
 mdplayer.fmdsp.SpuReader
 mdplayer.fmdsp.Fmp7Reader
+mdplayer.fmdsp.MPcmReader

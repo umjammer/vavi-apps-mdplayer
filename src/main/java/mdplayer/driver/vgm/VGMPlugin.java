@@ -544,6 +544,76 @@ public class VGMPlugin extends BasePlugin<VgmDriver> {
             }
         }
 
+        if (driverVirtual.vgm.es5505ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.es5505DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(Es5505Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, Es5505Chip.class);
+                chip.clock = driverVirtual.vgm.es5505ClockValue;
+                chip.option = new Object[] {driverVirtual.vgm.es5505Ch};
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(Es5505Chip.class, chip);
+            }
+        }
+
+        if (driverVirtual.vgm.msm5205ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.msm5205DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(Msm5205Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, Msm5205Chip.class);
+                chip.clock = driverVirtual.vgm.msm5205ClockValue;
+                BiConsumer<Integer, Integer> fn = chip::changeChipSampleRate;
+                chip.option = new Object[] {
+                        driverVirtual.vgm.msm5205Flags,
+                        fn,
+                        setting.getOutputDevice().getSampleRate()
+                };
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(Msm5205Chip.class, chip);
+            }
+        }
+
+        if (driverVirtual.vgm.msm5232ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.msm5232DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(Msm5232Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, Msm5232Chip.class);
+                chip.clock = driverVirtual.vgm.msm5232ClockValue;
+                BiConsumer<Integer, Integer> fn = chip::changeChipSampleRate;
+                chip.option = new Object[] {
+                        null, // VGM has no field for the capacitors, libvgm's 1 µF
+                        fn,
+                        setting.getOutputDevice().getSampleRate()
+                };
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(Msm5232Chip.class, chip);
+            }
+        }
+
+        if (driverVirtual.vgm.k005289ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.k005289DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(K005289Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, K005289Chip.class);
+                chip.clock = driverVirtual.vgm.k005289ClockValue;
+                chip.option = null;
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(K005289Chip.class, chip);
+            }
+        }
+
         if (driverVirtual.vgm.pokeyClockValue != 0) {
             for (int i = 0; i < (driverVirtual.vgm.pokeyDualChipFlag ? 2 : 1); i++) {
                 MDSound.Chip chip = new MDSound.Chip();

@@ -6,6 +6,8 @@
 
 package mdplayer.emu.common;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
@@ -53,6 +55,19 @@ public class Utils {
                 .filter(Files::exists)
                 .findFirst()
                 .orElse(null);
+
+        // mixed case ("Z_g03.ZPD" asked as "Z_G03.ZPD") matches none of the above on a case-sensitive volume
+        if (r == null) {
+            Path dir = parent != null ? parent : Path.of(".");
+            try (var files = Files.list(dir)) {
+                r = files.filter(f -> f.getFileName().toString().equalsIgnoreCase(name))
+                        .map(f -> parent != null ? f : f.getFileName())
+                        .findFirst()
+                        .orElse(null);
+            } catch (IOException | UncheckedIOException e) {
+                logger.log(Level.TRACE, e.toString());
+            }
+        }
 
 if (r == null) {
  logger.log(Level.TRACE, path + " not found in " + trials /*, new Exception(path + " not found in " + trials) */);

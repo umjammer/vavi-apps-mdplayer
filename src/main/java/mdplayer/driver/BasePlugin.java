@@ -223,6 +223,7 @@ logger.log(Level.INFO, "stop: " + this.stopped);
         this.playingFilePath = Path.of(playingFileName).getParent();
 
         loadPresetMixerBalance();
+        setting.getBalance().applySystemProperties();
     }
 
     /**
@@ -444,6 +445,22 @@ logger.log(Level.INFO, "close enter");
                 mds.setVolume(tag, chip.inst(0), v); // TODO vavi
             }
             setting.getBalance().setVolume(tag, c, v);
+        } catch (Exception e) {
+            logger.log(Level.ERROR, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Moves one chip's mixer volume by {@code offset} from the balance, for the song being played only:
+     * unlike {@link #setVolume} the balance is left as it is, so the next song starts from it again.
+     *
+     * @param offset 2&times;dB
+     */
+    public void setSongVolume(String tag, Class<? extends mdplayer.Chip> c, int offset) {
+        try {
+            int v = Common.range(setting.getBalance().getVolume(tag, c) + offset, -192, 20);
+            mdplayer.Chip chip = chipRegister.chip(c);
+            if (chip != null) mds.setVolume(tag, chip.inst(0), v);
         } catch (Exception e) {
             logger.log(Level.ERROR, e.getMessage(), e);
         }
