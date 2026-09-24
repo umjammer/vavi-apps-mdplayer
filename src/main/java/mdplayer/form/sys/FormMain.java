@@ -250,13 +250,13 @@ public class FormMain extends JFrame {
     private final List<String[]> remoteReq = new ArrayList<>();
 
     public FormMain() {
-        logger.log(Level.INFO, "Startup process begins");
-        logger.log(Level.INFO, "frmMain<init>:STEP 00");
+        logger.log(Level.DEBUG, "Startup process begins");
+        logger.log(Level.DEBUG, "frmMain<init>:STEP 00");
 
         initializeComponent();
         FrameBuffer.init();
 
-        logger.log(Level.INFO, "frmMain<init>:STEP 01");
+        logger.log(Level.DEBUG, "frmMain<init>:STEP 01");
 
         // Only if arguments are specified, does a process check, and if the same application as itself is running,
         // passes the arguments to it and terminates it.
@@ -273,11 +273,11 @@ public class FormMain extends JFrame {
 //            }
 //        }
 
-        logger.log(Level.INFO, "frmMain<init>:STEP 02");
+        logger.log(Level.DEBUG, "frmMain<init>:STEP 02");
 
 //        pbScreen.AllowDrop = true;
 
-        logger.log(Level.INFO, "frmMain<init>:STEP 03");
+        logger.log(Level.DEBUG, "frmMain<init>:STEP 03");
         if (setting == null) {
             logger.log(Level.ERROR, "frmMain<init>:setting instanceof null");
         } else {
@@ -311,7 +311,7 @@ public class FormMain extends JFrame {
 
         startMIDIInMonitoring();
 
-        logger.log(Level.INFO, "frmMain<init>:STEP 04");
+        logger.log(Level.DEBUG, "frmMain<init>:STEP 04");
 
         installQuitHandler();
         WindowGroup.install();
@@ -478,7 +478,7 @@ public class FormMain extends JFrame {
         Runtime.getRuntime().addShutdownHook(new Thread(this::SystemEvents_SessionEnding));
         Runtime.getRuntime().addShutdownHook(new Thread(this::saveOnExit, "mdplayer-save-on-exit"));
 
-        logger.log(Level.INFO, "frmMain_Load:STEP 05");
+        logger.log(Level.DEBUG, "frmMain_Load:STEP 05");
 
         String testX = System.getProperty("mdplayer.test.x");
         String testY = System.getProperty("mdplayer.test.y");
@@ -493,12 +493,12 @@ public class FormMain extends JFrame {
 
         pbRf5c164Screen = new BufferedImage(320, 72, BufferedImage.TYPE_INT_ARGB);
 
-        logger.log(Level.INFO, "frmMain_Load:STEP 06");
+        logger.log(Level.DEBUG, "frmMain_Load:STEP 06");
 
         mainScreen.add(pbScreen, Common.getImage("planeMain"), null, 1);
         reqAllScreenInit = true;
 
-        logger.log(Level.INFO, "frmMain_Load:STEP 07");
+        logger.log(Level.DEBUG, "frmMain_Load:STEP 07");
 
         pWidth = pbScreen.getWidth();
         pHeight = pbScreen.getHeight();
@@ -529,7 +529,7 @@ public class FormMain extends JFrame {
             }
         }
 
-        logger.log(Level.INFO, "frmMain_Load:STEP 08");
+        logger.log(Level.DEBUG, "frmMain_Load:STEP 08");
 
         frameSizeW = this.getWidth() - this.getSize().width;
         frameSizeH = this.getHeight() - this.getSize().height;
@@ -561,7 +561,7 @@ public class FormMain extends JFrame {
                 opeButtonMode
         };
 
-        logger.log(Level.INFO, "frmMain_Load:STEP 09");
+        logger.log(Level.DEBUG, "frmMain_Load:STEP 09");
 
         // Operation: Clear folder
         //opeFolder = mdplayer.Common.GetOperationFolder(true);
@@ -779,7 +779,7 @@ public class FormMain extends JFrame {
     }
 
     private void frmMain_Shown(WindowEvent ev) {
-        logger.log(Level.INFO, "frmMain_Shown:STEP 09");
+        logger.log(Level.DEBUG, "frmMain_Shown:STEP 09");
 
         Thread trd = new Thread(this::screenMainLoop);
         trd.setPriority(Thread.MIN_PRIORITY);
@@ -2078,6 +2078,7 @@ public class FormMain extends JFrame {
             }
             // .vgz and friends are compressed: reading the file raw fails the format's header check
             format.load(Archives.getInputStream(new BufferedInputStream(Files.newInputStream(Path.of(fn)))), null);
+logger.log(Level.INFO, "filename: " + fn);
 
             BasePlugin<? extends BaseDriver> plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
             // setParams applies the song's preset volume balance, before prepare() reaches the chips
