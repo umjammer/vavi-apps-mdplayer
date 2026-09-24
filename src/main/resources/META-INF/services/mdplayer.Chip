@@ -52,6 +52,7 @@ mdplayer.chips.Es5503Chip
 mdplayer.chips.Es5505Chip
 mdplayer.chips.Msm5205Chip
 mdplayer.chips.Msm5232Chip
+mdplayer.chips.GigatronChip
 mdplayer.chips.Pcm8Chip
 mdplayer.chips.ZxBeepChip
 mdplayer.chips.Cs4231Chip

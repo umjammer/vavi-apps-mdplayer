@@ -4,9 +4,14 @@ import java.lang.System.Logger;
 
 import mdplayer.Common;
 import mdplayer.chips.RealChipPlugin;
+import mdplayer.chips.GigatronChip;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.zgm.zgmChip.Gigatron;
+import mdplayer.driver.zgm.zgmChip.ZgmChip;
+import mdsound.MDSound;
 
 import static java.lang.System.getLogger;
+import static mdsound.MDSound.Chip.MAIN_TAG;
 
 
 /**
@@ -37,6 +42,7 @@ public class ZGMPlugin extends BasePlugin<ZgmDriver> {
         // Sealed until MIDI is supported
 //        startTrdVgmReal();
 
+        // parses the defines, so the chips below are known
         driverVirtual.init(Common.EnmModel.VirtualModel,
                 setting.getOutputDevice().getSampleRate() * setting.getLatencyEmulation() / 1000,
                 setting.getOutputDevice().getSampleRate() * setting.getOutputDevice().getWaitTime() / 1000);
@@ -54,8 +60,26 @@ public class ZGMPlugin extends BasePlugin<ZgmDriver> {
         // chips initialization
         //
 
+        for (ZgmChip zc : driverVirtual.getChips()) {
+            if (zc instanceof Gigatron) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = zc.getIndex();
+                chip.instrument = chipRegister.chip(GigatronChip.class).instrument(chip.id);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, GigatronChip.class);
+                chip.clock = zc.getDefineInfo().clock;
+                chip.option = null;
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(GigatronChip.class, chip);
+            }
+        }
+
         chipRegister.plugin(RealChipPlugin.class).initChip(hiyorimiDeviceFlag);
 
         mds.init(setting.getOutputDevice().getSampleRate(), BUFFER_SIZE, flatten());
+
+        if (chips.containsKey(GigatronChip.class))
+            setVolume(MAIN_TAG, GigatronChip.class, true, setting.getBalance().getVolume(MAIN_TAG, GigatronChip.class));
     }
 }

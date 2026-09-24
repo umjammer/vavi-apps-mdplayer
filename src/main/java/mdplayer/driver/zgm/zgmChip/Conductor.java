@@ -27,14 +27,15 @@ public class Conductor extends ZgmChip {
     }
 
     @Override
-    public void setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.RefRunnable<Byte, Integer>> cmdTable) {
-        super.setUp(chipIndex, dataPos, cmdTable);
+    public int setUp(int chipIndex, int dataPos, Map<Integer, ZgmDriver.Command> cmdTable) {
+        int next = super.setUp(chipIndex, dataPos, cmdTable);
 
-        cmdTable.remove(defineInfo.commandNo);
         cmdTable.put(defineInfo.commandNo, Conductor::sendPort0);
+        return next;
     }
 
-    private static void sendPort0(byte od, int vgmAdr) {
-        vgmAdr += 3;
+    /** the conductor's commands carry nothing a player needs */
+    private static int sendPort0(int od, int vgmAdr) {
+        return vgmAdr + 3;
     }
 }

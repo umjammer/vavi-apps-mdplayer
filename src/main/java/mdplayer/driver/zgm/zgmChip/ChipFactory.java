@@ -50,6 +50,12 @@ public class ChipFactory {
             case 0x0000_00DC -> null; // C352Inst
             case 0x0000_00E0 -> null; // GA20
             case 0x0001_0000 -> new Conductor(chipRegister, setting, vgmBuf);
+            case 0x0001_0004 -> null; // VRC6
+            case 0x0001_0008 -> null; // VRC7
+            case 0x0001_000C -> null; // MMC5
+            case 0x0001_0010 -> null; // N106
+            case 0x0001_0014 -> null; // S5B
+            case 0x0001_0018 -> new Gigatron(chipRegister, setting, vgmBuf);
             case 0x0002_0001 -> new YM2609(chipRegister, setting, vgmBuf);
             case 0x0003_0000 -> null; // XG MU50
             case 0x0003_0001 -> null; // XG MU100
@@ -71,7 +77,7 @@ public class ChipFactory {
             case 0x0005_0000 -> null; // new MidiGM(chipRegister, setting, dataBuf);
             case 0x0006_0000 -> null; // CSTi General
             case 0x0007_0000 -> null; // Wave General
-            default -> throw new IllegalArgumentException();
+            default -> throw new IllegalArgumentException("unknown chip: 0x%08x".formatted(chipIdentNo));
         };
     }
 }
