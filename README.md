@@ -146,7 +146,7 @@ when using this project with vgm, gbs spi, apply the settings below to avoid con
 
 #### pmd
 
-- `mdplayer.pmd.pmd` ... pmd driver options
+- `mdplayer.pmd.pmd` ... search path for the files a song names (`.PPC`, `.P86`, `.PPS`, `.PZI`), separated by `:`. the song's folder is searched first, a relative entry is relative to the song's folder (e.g. `..`)
 - `mdplayer.pmd.opt` ... pmd command line options
 
 #### fmp

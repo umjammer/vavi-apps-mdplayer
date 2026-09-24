@@ -93,6 +93,8 @@ class TestCase {
     @Property
     int track;
 
+    @Property(name = "mdplayer.pmd.dir")
+    String pmdDir;
     @Property(name = "mdplayer.fmp.dir")
     String fmpDir;
     @Property(name = "mdplayer.fmp.pvi")
@@ -159,6 +161,8 @@ class TestCase {
         if (localPropertiesExists()) {
             PropsEntity.Util.bind(this);
 
+            // pmd
+            System.setProperty("mdplayer.pmd.pmd", pmdDir);
             // fmp
             System.setProperty("mdplayer.fmp.dir", fmpDir);
             System.setProperty("mdplayer.fmp.pvi", fmpPvi);
@@ -198,6 +202,7 @@ Debug.println("on mac, use AudioUnit effects: " + effects);
         System.setProperty("mdplayer.volume", "%4.2f".formatted(volume));
 Debug.println("volume: " + volume + ", player.volume: " + System.getProperty("mdplayer.volume") + ", cwd: " + System.getProperty("user.dir") + ", time: " + time);
 Debug.println("settings\n" +
+        "mdplayer.pmd.pmd: " + System.getProperty("mdplayer.pmd.pmd") + "\n" +
         "mdplayer.fmp.dir: " + System.getProperty("mdplayer.fmp.dir") + "\n" +
         "mdplayer.fmp.pvi: " + System.getProperty("mdplayer.fmp.pvi") + "\n" +
         "mdplayer.zms.dir: " + System.getProperty("mdplayer.zms.dir") + "\n" +
