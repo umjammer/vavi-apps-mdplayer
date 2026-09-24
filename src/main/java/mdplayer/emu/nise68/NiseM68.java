@@ -9386,7 +9386,132 @@ public class NiseM68 {
     }
 
     private int csublDn(short n) {
-        throw new UnsupportedOperationException("Not implemented at PC: %08x, opcode: %04x".formatted(reg.pc - 2, mem.peekW(reg.pc - 2) & 0xffff));
+//#if DEBUG
+        String nimo = null;
+        if (TRACE) nimo = "SUB.l ";
+//#endif
+
+        int cycle = 0;
+
+        int dr = (n & 0x0e00) >> 9;
+        int sm = (n & 0x0038) >> 3;
+        int sr = (n & 0x0007);
+
+        // src
+        int src = reg.getDl(dr);
+//#if DEBUG
+        if (TRACE) nimo += "D%d,".formatted(dr);
+//#endif
+
+        int dst = 0;
+        int ans = 0;
+
+        short vw;
+        boolean isA;
+        int ni;
+        boolean isL;
+        int IX;
+        int ptr;
+
+        cycle = sm;
+        switch (sm) {
+            case 2: // (An)
+//#if DEBUG
+                if (TRACE) nimo += "(A%d)".formatted(sr);
+//#endif
+
+                dst = mem.peekL(reg.getA().get(sr));
+                ans = dst - src;
+                mem.pokeL(reg.getA().get(sr), ans);
+                break;
+            case 3: // (An)+
+//#if DEBUG
+                if (TRACE) nimo += "(A%d)+".formatted(sr);
+//#endif
+
+                dst = mem.peekL(reg.getA().get(sr));
+                ans = dst - src;
+                mem.pokeL(reg.getA().get(sr), ans);
+                reg.getA().set(sr, reg.getA().get(sr) + 4);
+                break;
+            case 4: // -(An)
+//#if DEBUG
+                if (TRACE) nimo += "-(A%d)".formatted(sr);
+//#endif
+
+                reg.getA().set(sr, reg.getA().get(sr) - 4);
+                dst = mem.peekL(reg.getA().get(sr));
+                ans = dst - src;
+                mem.pokeL(reg.getA().get(sr), ans);
+                break;
+            case 5: // d16(An)
+                short d16 = fetchW(); // signed
+//#if DEBUG
+                if (TRACE) nimo += "$%04x(A%d)".formatted(d16, sr);
+//#endif
+
+                dst = mem.peekL(reg.getA().get(sr) + d16);
+                ans = dst - src;
+                mem.pokeL(reg.getA().get(sr) + d16, ans);
+                break;
+            case 6: // d8(An,IX)
+                vw = fetchW();
+                isA = (vw & 0x8000) != 0;
+                ni = (vw & 0x7000) >> 12;
+                isL = (vw & 0x0800) != 0;
+                IX = (isA ? reg.getA().get(ni) : reg.getD()[ni]);
+//#if DEBUG
+                if (TRACE) nimo += "$%02x(A%d,%s%d.%s)".formatted(vw & 0xff, sr, isA ? "A" : "D", ni, isL ? "l" : "w");
+//#endif
+
+                if (!isL) ptr = reg.getA().get(sr) + (byte) vw + (short) (IX & 0xffff);
+                else ptr = reg.getA().get(sr) + (byte) vw + IX;
+                dst = mem.peekL(ptr);
+                ans = dst - src;
+                mem.pokeL(ptr, ans);
+                break;
+            case 7: // etc.
+                switch (sr) {
+                    case 0: // Abs.W
+                        ptr = fetchW();
+//#if DEBUG
+                        if (TRACE) nimo += "$%04x".formatted(ptr);
+//#endif
+
+                        dst = mem.peekL(ptr);
+                        ans = dst - src;
+                        mem.pokeL(ptr, ans);
+                        break;
+                    case 1: // Abs.L
+                        ptr = fetchL();
+//#if DEBUG
+                        if (TRACE) nimo += "$%08x".formatted(ptr);
+//#endif
+
+                        dst = mem.peekL(ptr);
+                        ans = dst - src;
+                        mem.pokeL(ptr, ans);
+                        cycle = 8;
+                        break;
+                }
+                break;
+        }
+
+        // flag
+        reg.setN(ans);
+        reg.setZ(ans);
+        reg.setVcmp(src, dst, ans);
+        reg.setCcmp(src, dst, ans);
+        reg.setX(reg.getC());
+
+        // cycle
+        cycle = Cycle.Sub_lDn[cycle];
+
+//#if DEBUG
+        if (TRACE) logger.log(Level.TRACE, nimo);
+//#endif
+
+        return cycle;
     }
 
     private int csubb(short n) {

@@ -42,6 +42,8 @@ public class NiseHuman {
     private int execPtr;
     private int fileHandle = 0;
     private final FileIni[] fi = new FileIni[256];
+    /** 0-4 are stdin, stdout, stderr, aux and prn on Human68k; files a program opens start here */
+    private static final int FIRST_USER_HANDLE = 5;
     private String currentWorkPath = "C:\\"; // The actual path that makes niseHuman think it is C:\\
     //public Dictionary<String, byte[]> fb = new Dictionary<String, byte[]>();
     private final List<String> envZPDs;
@@ -69,7 +71,7 @@ public class NiseHuman {
                 // 0x00
                 this::exit, null, this::putChar, null, null, null, null, this::inKey, null, this::print, null, null, null, null, null, this::drvctrl,
                 // 0x10
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, this::fputs, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, this::fputc, this::fputs, this::allClose,
                 // 0x20
                 this::super_, null, null, this::conCtrl, null, this::intVcs, null, null, null, null, null, null, null, null, null, null,
                 // 0x30
@@ -78,14 +80,14 @@ public class NiseHuman {
                 // 0x40
                 this::write, this::delete, this::seek, null, null, null, null, null, this::malloc, this::mFree, this::setBlock, this::exec, this::exit2, null, this::files, null,
                 // 0x50
-                null, this::getPsp, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, this::getPsp, null, null, null, null, null, this::fileDate, this::malloc2, null, null, null, null, null, null, null,
                 // 0x60
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
                 // 0x70
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
 
                 // 0x80
-                null, this::getPsp, null, null, null, null, null, this::fileDate, null, null, this::makeTmp, null, null, null, null, null,
+                null, this::getPsp, null, null, null, null, null, this::fileDate, this::malloc2, null, this::makeTmp, null, null, null, null, null,
                 // 0x90
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
                 // 0xa0
@@ -432,6 +434,13 @@ public class NiseHuman {
         int mesPtr = mem.peekL(reg.getA().get(7) + 0);
         short fileNo = mem.peekW(reg.getA().get(7) + 4);
 
+        if (fileNo >= FIRST_USER_HANDLE && fileNo < fi.length && fi[fileNo] != null && fi[fileNo].isopen) {
+            List<Byte> raw = new ArrayList<>();
+            for (int i = 0; mem.peekB(mesPtr + i) != 0; i++) raw.add(mem.peekB(mesPtr + i));
+            reg.getD()[0] = writeFile(fileNo, ByteUtil.toByteArray(raw)) ? raw.size() : -1;
+            return;
+        }
+
         List<Byte> msg = new ArrayList<>();
         int cnt = 0;
         do {
@@ -593,7 +602,7 @@ logger.log(Level.WARNING, "readonly: "  + fn);
 
         // Find free file information
         fileHandle = -1;
-        for (int i = 0; i < fi.length; i++) {
+        for (int i = FIRST_USER_HANDLE; i < fi.length; i++) {
             if (fi[i] == null) fi[i] = new FileIni();
             if (fi[i].isopen) continue;
             //File.create(physicalFn).close();
@@ -655,7 +664,7 @@ logger.log(Level.WARNING, "fileHandle: "  + fileHandle + ", " + fn);
 
         // Find free file information
         fileHandle = -1;
-        for (int i = 0; i < fi.length; i++) {
+        for (int i = FIRST_USER_HANDLE; i < fi.length; i++) {
             if (fi[i] == null) fi[i] = new FileIni();
             if (fi[i].isopen) continue;
             //if (!File.exists(physicalFn)) continue;
@@ -728,6 +737,22 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
         }
     }
 
+    private void malloc2() {
+        logger.log(Level.TRACE, "<NiseHuman>dos call $FF88 malloc2");
+        short md = mem.peekW(reg.getA().get(7) + 0); // lower/upper/smallest fit: one heap here, so all the same
+        int len = mem.peekL(reg.getA().get(7) + 2);
+
+        reg.getD()[0] = allocate(len);
+    }
+
+    private void allClose() {
+        logger.log(Level.TRACE, "<NiseHuman>dos call $FF1F allclose");
+        for (int i = FIRST_USER_HANDLE; i < fi.length; i++) {
+            if (fi[i] != null) fi[i].isopen = false;
+        }
+        reg.getD()[0] = 0;
+    }
+
     private void read() {
         logger.log(Level.TRACE, "<NiseHuman>dos call $FF3F read");
         int fileNo = mem.peekW(reg.getA().get(7) + 0) & 0xffff;
@@ -784,16 +809,41 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
         //    reg.getD()[0] = i;
         //}
 
-        String fn = fi[fileNo].filename;
-        if (fileMng.existsFile(fn)) {
-            byte[] f = fileMng.vReadAllBytes(fn);
-            int nSize = (f != null ? f.length : 0) + data.size() - fi[fileNo].ptr;
-            byte[] nf = new byte[nSize];
-            System.arraycopy(ByteUtil.toByteArray(data), 0, nf, fi[fileNo].ptr, data.size());
-            fileMng.setVFile(fn, nf); // File.writeAllBytes(physicalFn, nf);
+        if (writeFile(fileNo, ByteUtil.toByteArray(data))) reg.getD()[0] = i;
+    }
 
-            reg.getD()[0] = i;
+    /** writes at the file pointer, keeping what is already there, and advances the pointer */
+    private boolean writeFile(int fileNo, byte[] data) {
+        String fn = fi[fileNo].filename;
+        if (!fileMng.existsFile(fn)) return false;
+        byte[] f = fileMng.vReadAllBytes(fn);
+        int oldSize = f != null ? f.length : 0;
+        int ptr = fi[fileNo].ptr;
+        byte[] nf = new byte[Math.max(oldSize, ptr + data.length)];
+        if (f != null) System.arraycopy(f, 0, nf, 0, oldSize);
+        System.arraycopy(data, 0, nf, ptr, data.length);
+        fileMng.setVFile(fn, nf); // File.writeAllBytes(physicalFn, nf);
+        fi[fileNo].ptr = ptr + data.length;
+        if (fi[fileNo].memoryStream != null) {
+            fi[fileNo].memoryStream.clear();
+            for (byte b : nf) fi[fileNo].memoryStream.add(b);
         }
+        return true;
+    }
+
+    private void fputc() {
+        logger.log(Level.TRACE, "<NiseHuman>dos call $FF1D fputc");
+        short code = mem.peekW(reg.getA().get(7) + 0);
+        int fileNo = mem.peekW(reg.getA().get(7) + 2) & 0xffff;
+
+        if (fileNo == 1 || fileNo == 2) { // stdout, stderr
+            System.out.print(new String(new byte[] {(byte) code}, charset));
+            reg.getD()[0] = 0;
+            return;
+        }
+        reg.getD()[0] = -1;
+        if (fileNo >= fi.length || fi[fileNo] == null || !fi[fileNo].isopen) return;
+        if (writeFile(fileNo, new byte[] {(byte) code})) reg.getD()[0] = 0;
     }
 
     private void delete() {
@@ -845,15 +895,25 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
         logger.log(Level.TRACE, "<NiseHuman>dos call $FF48 malloc");
         int byteSize = mem.peekL(reg.getA().get(7) + 0);
 
-        int ptr = memMng.malloc(byteSize + 16);
+        reg.getD()[0] = allocate(byteSize);
+    }
+
+    /**
+     * Human68k MALLOC semantics: the size is unsigned, so the usual "how much is free" probe with
+     * -1 or $ffffff must fail with {@code $81000000 | largest free size}, not wrap to a tiny block.
+     *
+     * @return the block address for d0, or the error code
+     */
+    private int allocate(int byteSize) {
+        long want = (byteSize & 0xffff_ffffL) + 16;
+        int ptr = want <= memMng.available() ? memMng.malloc((int) want) : -1;
 
         if (ptr < 0) {
-            reg.getD()[0] = 0x8100_0000 + byteSize + 16; // Unable to allocate
-            reg.getD()[0] = 0x8200_0000; // allocated not at all
-            return;
+            int max = memMng.available() - 16;
+            return max > 0 ? 0x8100_0000 | max : 0x8200_0000; // $81 + the largest free size, $82 when nothing is free
         }
 
-        reg.getD()[0] = ptr + 16;
+                return ptr + 16;
     }
 
     private void mFree() {
@@ -869,11 +929,14 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
         logger.log(Level.TRACE, "<NiseHuman>dos call $FF4A setblock");
         int newLen = mem.peekL(reg.getA().get(7) + 4);
         int newPtr = mem.peekL(reg.getA().get(7) + 0);
-        boolean ret = memMng.Change(newPtr, newLen);
+        // malloc'd blocks are kept by their 16 byte header, the process block by its memory pointer
+        int key = memMng.contains(newPtr - 16) ? newPtr - 16 : newPtr;
+                int header = key == newPtr ? 0 : 16;
+        boolean ret = memMng.contains(key) && memMng.Change(key, newLen + header);
 
         if (!ret) {
-            reg.getD()[0] = 0x8100_0000 + newLen; // Unable to  allocate
-            reg.getD()[0] = 0x8200_0000; //  allocate not at all
+            int max = memMng.contains(key) ? memMng.room(key) - header : 0;
+            reg.getD()[0] = max > 0 ? 0x8100_0000 | max : 0x8200_0000; // $81 + the largest size it can take, $82 when none
             return;
         }
 
@@ -1062,7 +1125,7 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
 
         // Find free file information
         fileHandle = -1;
-        for (int i = 0; i < fi.length; i++) {
+        for (int i = FIRST_USER_HANDLE; i < fi.length; i++) {
             if (fi[i] != null) continue;
 
             fi[i] = new FileIni();
@@ -1088,15 +1151,7 @@ logger.log(Level.INFO, "file not found: %s".formatted(fn));
         short md = mem.peekW(reg.getA().get(7) + 0);
         int len = mem.peekL(reg.getA().get(7) + 2);
 
-        int ptr = memMng.malloc(len + 16);
-
-        if (ptr < 0) {
-            reg.getD()[0] = 0x8100_0000 + len + 16; // Unable to secure
-            reg.getD()[0] = 0x8200_0000; //Not at all secure
-            return;
-        }
-
-        reg.getD()[0] = ptr + 16;
+        reg.getD()[0] = allocate(len);
     }
 
     private void s_mfree() {

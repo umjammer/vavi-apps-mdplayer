@@ -24,7 +24,7 @@ class NiseIOCS {
                 // 10
                 null, null, null, null, null, null, null, null, null, this::_FNTGET, null, null, null, null, null, null,
                 // 20
-                null, null, null, null, null, null, null, null, null, null, this::_B_CLR_ST, null, null, null, null, null,
+                null, null, null, this::_B_LOCATE, null, null, null, null, null, null, this::_B_CLR_ST, null, null, null, null, null,
                 // 30
                 this::_SET232C, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
                 // 40
@@ -98,6 +98,18 @@ class NiseIOCS {
         reg.setSSP(reg.getSSP() + 4);
 
         byte clrArea = reg.getDb(1);
+    }
+
+    /** text cursor position: there is no text screen, so a move is dropped and a query (d1 = -1) returns 0,0 */
+    private void _B_LOCATE() {
+        logger.log(Level.TRACE, "IOCS _B_LOCATE");
+
+        reg.setSR(mem.peekW(reg.getSSP()));
+        reg.setSSP(reg.getSSP() + 2);
+        reg.pc = mem.peekL(reg.getSSP());
+        reg.setSSP(reg.getSSP() + 4);
+
+        reg.setDl(0, 0x0000_0000); // previous position x << 16 | y
     }
 
     private void _SET232C() {
