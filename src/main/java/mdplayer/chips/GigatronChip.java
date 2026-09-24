@@ -6,6 +6,9 @@
 
 package mdplayer.chips;
 
+import java.util.Collections;
+import java.util.Map;
+
 import mdplayer.Common.EnmModel;
 import mdsound.Instrument;
 import mdsound.instrument.GigatronInst;
@@ -40,6 +43,16 @@ public class GigatronChip extends BaseChip {
         if (model == EnmModel.VirtualModel) {
             context.mds.write(inst(chipId), chipId, 0, address, data);
         }
+    }
+
+    /**
+     * {@code clock} (scanlines/s), {@code channelMask}, and {@code channels}, a list of four maps
+     * with {@code key}, {@code wavX}, {@code wavA}, {@code servings}, {@code level} and {@code mute}.
+     */
+    @Override
+    public Map<String, Object> getInfo(int chipId) {
+        GigatronInst inst = context.mds.inst(GigatronInst.class);
+        return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
     }
 
     @Override
