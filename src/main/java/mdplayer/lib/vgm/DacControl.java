@@ -160,6 +160,9 @@ class DacControl implements Vgm.IDac {
         case 0x2c: // MSM5205
             ivgm.writeMsm5205(chipId, offset, data & 0xff);
             break;
+        case 0x2d: // MSM5232
+            ivgm.writeMsm5232(chipId, offset, data & 0xff);
+            break;
         }
     }
 
@@ -290,6 +293,7 @@ class DacControl implements Vgm.IDac {
             case 0x1E: // Pokey - TODO: Verify
             case 0x29: // MSM5205 (draft)
             case 0x2C: // MSM5205
+            case 0x2D: // MSM5232
                 command = dstCommand & 0x00FF;
                 data = this.data[dataStart + realPos];
                 writeChipReg(dstChipType2, dstChipID, 0x00, command, data);

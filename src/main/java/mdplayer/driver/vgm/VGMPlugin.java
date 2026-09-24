@@ -579,6 +579,26 @@ public class VGMPlugin extends BasePlugin<VgmDriver> {
             }
         }
 
+        if (driverVirtual.vgm.msm5232ClockValue != 0) {
+            for (int i = 0; i < (driverVirtual.vgm.msm5232DualChipFlag ? 2 : 1); i++) {
+                MDSound.Chip chip = new MDSound.Chip();
+                chip.id = i;
+                chip.instrument = chipRegister.chip(Msm5232Chip.class).instrument(i);
+                chip.samplingRate = setting.getOutputDevice().getSampleRate();
+                chip.volume = setting.getBalance().getVolume(MAIN_TAG, Msm5232Chip.class);
+                chip.clock = driverVirtual.vgm.msm5232ClockValue;
+                BiConsumer<Integer, Integer> fn = chip::changeChipSampleRate;
+                chip.option = new Object[] {
+                        null, // VGM has no field for the capacitors, libvgm's 1 µF
+                        fn,
+                        setting.getOutputDevice().getSampleRate()
+                };
+                hiyorimiDeviceFlag |= 0x2;
+
+                put(Msm5232Chip.class, chip);
+            }
+        }
+
         if (driverVirtual.vgm.pokeyClockValue != 0) {
             for (int i = 0; i < (driverVirtual.vgm.pokeyDualChipFlag ? 2 : 1); i++) {
                 MDSound.Chip chip = new MDSound.Chip();

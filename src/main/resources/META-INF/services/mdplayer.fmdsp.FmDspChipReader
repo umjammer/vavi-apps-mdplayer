@@ -12,6 +12,7 @@ mdplayer.fmdsp.Sn76489Reader
 mdplayer.fmdsp.Ay8910Reader
 mdplayer.fmdsp.ZxBeepReader
 mdplayer.fmdsp.Saa1099Reader
+mdplayer.fmdsp.Msm5232Reader
 mdplayer.fmdsp.K051649Reader
 mdplayer.fmdsp.DmgReader
 mdplayer.fmdsp.WSwanReader

@@ -61,6 +61,7 @@ public class Vgm {
     public int es5503ClockValue;
     public int es5505ClockValue;
     public int msm5205ClockValue;
+    public int msm5232ClockValue;
     public int x1_010ClockValue;
     public int c352ClockValue;
     public int c352ClockDivider;
@@ -121,6 +122,7 @@ public class Vgm {
     public boolean es5503DualChipFlag;
     public boolean es5505DualChipFlag;
     public boolean msm5205DualChipFlag;
+    public boolean msm5232DualChipFlag;
     public boolean x1_010DualChipFlag;
     public boolean c352DualChipFlag;
     public boolean ga20DualChipFlag;
@@ -217,7 +219,7 @@ public class Vgm {
         vgmCmdTbl[0x40] = this::vcDummy2Ope;
         vgmCmdTbl[0x41] = this::vcDummy2Ope;
         vgmCmdTbl[0x42] = this::vcDummy2Ope;
-        vgmCmdTbl[0x43] = this::vcDummy2Ope;
+        vgmCmdTbl[0x43] = this::vcMsm5232;
         vgmCmdTbl[0x44] = this::vcDummy2Ope;
         vgmCmdTbl[0x45] = this::vcDummy2Ope;
         vgmCmdTbl[0x46] = this::vcDummy2Ope;
@@ -1094,6 +1096,14 @@ public class Vgm {
         vgmAdr += 2;
     }
 
+    private void vcMsm5232() { // 0x43 aa dd
+        int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
+        int adr = vgmBuf[vgmAdr + 1] & 0x7f;
+        int data = vgmBuf[vgmAdr + 2] & 0xff;
+        ivgm.writeMsm5232(id, adr, data);
+        vgmAdr += 3;
+    }
+
     private void vcEs5505() { // 0xBE aa dd
         int id = (vgmBuf[vgmAdr + 1] & 0x80) != 0 ? 1 : 0;
         int adr = vgmBuf[vgmAdr + 1] & 0x7f;
@@ -1498,6 +1508,7 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
         es5503ClockValue = 0;
         es5505ClockValue = 0;
         msm5205ClockValue = 0;
+        msm5232ClockValue = 0;
         msm5205Flags = 0x06;
         volumeModifier = 0;
 
@@ -2028,6 +2039,15 @@ logger.log(Level.TRACE, "Bad PCM Table Length!");
                     String name = (msm5205Flags & 0x80) != 0 ? "MSM6585" : "MSM5205";
                     chips.add(msm5205DualChipFlag ? name + "x2" : name);
                 }
+
+                if (headerLimit > 0xf4) {
+                    int msm5232Clock = ByteUtil.readLeInt(vgmBuf, 0xf4);
+                    if (msm5232Clock != 0) {
+                        msm5232ClockValue = msm5232Clock & 0x3fff_ffff;
+                        msm5232DualChipFlag = (msm5232Clock & 0x4000_0000) != 0;
+                        chips.add(msm5232DualChipFlag ? "MSM5232x2" : "MSM5232");
+                    }
+                }
             }
         } else {
             vgmDataOffset = 0x40;
@@ -2149,6 +2169,8 @@ logger.log(Level.INFO, "usedChips: " + ivgm.getUsedChips());
         void writeEs5505(int chipId, int addr, int data);
         /** @param addr 0: reset, 1: data, 2: VCK, 4: prescaler, 5: bit width */
         void writeMsm5205(int chipId, int addr, int data);
+        /** @param addr 00-07: voices, 08-0d: envelopes and controls, 10-1f: libvgm's mixer, 20-23: clock */
+        void writeMsm5232(int chipId, int addr, int data);
         void writeC352(int chipId, int addr, int data);
         int readHuC6280(int chipId, int addr);
         boolean isVirtual();
