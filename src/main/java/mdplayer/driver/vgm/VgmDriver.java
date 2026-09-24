@@ -290,6 +290,10 @@ public class VgmDriver extends BaseDriver {
                 plugin.chipRegister.chip(Es5505Chip.class).write(chipId, addr, data, model);
             }
 
+            @Override public void writeMsm5205(int chipId, int addr, int data) {
+                plugin.chipRegister.chip(Msm5205Chip.class).write(chipId, addr, data, model);
+            }
+
             @Override public void writeC352(int chipId, int addr, int data) {
                 plugin.chipRegister.chip(C352Chip.class).write(chipId, addr, data, model);
             }

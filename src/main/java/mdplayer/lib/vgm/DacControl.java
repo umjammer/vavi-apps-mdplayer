@@ -156,6 +156,10 @@ class DacControl implements Vgm.IDac {
         case 0x1b: // OotakeHuC6280
             ivgm.writeHuC6280(chipId, offset, data);
             break;
+        case 0x29: // MSM5205, as the draft libvgm numbered it (now the Mikey's)
+        case 0x2c: // MSM5205
+            ivgm.writeMsm5205(chipId, offset, data & 0xff);
+            break;
         }
     }
 
@@ -284,6 +288,8 @@ class DacControl implements Vgm.IDac {
             case 0x17: // OKIM6258
             case 0x1D: // K053260 - TODO: Verify
             case 0x1E: // Pokey - TODO: Verify
+            case 0x29: // MSM5205 (draft)
+            case 0x2C: // MSM5205
                 command = dstCommand & 0x00FF;
                 data = this.data[dataStart + realPos];
                 writeChipReg(dstChipType2, dstChipID, 0x00, command, data);

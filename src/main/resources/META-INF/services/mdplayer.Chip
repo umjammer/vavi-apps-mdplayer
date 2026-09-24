@@ -50,6 +50,7 @@ mdplayer.chips.YmF278BChip
 mdplayer.chips.YmZ280BChip
 mdplayer.chips.Es5503Chip
 mdplayer.chips.Es5505Chip
+mdplayer.chips.Msm5205Chip
 mdplayer.chips.Pcm8Chip
 mdplayer.chips.ZxBeepChip
 mdplayer.chips.Cs4231Chip
