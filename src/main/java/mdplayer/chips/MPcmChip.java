@@ -7,6 +7,8 @@
 package mdplayer.chips;
 
 import java.lang.System.Logger;
+import java.util.Collections;
+import java.util.Map;
 
 import mdplayer.Common.EnmModel;
 import mdsound.Instrument;
@@ -45,6 +47,12 @@ public class MPcmChip extends BaseChip {
         return setting.mpcmType(context);
     }
 
+    /** the voices, as the playing back end reports them; see {@code mdsound.chips.MPcmPP#getInfo} */
+    public Map<String, Object> getInfo(int chipId) {
+        Instrument inst = context.mds.inst(inst(chipId));
+        return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
+    }
+
     public void writePcm(int chipId, int bank, int mode, byte[] pcmData, EnmModel model) {
         if (model != EnmModel.VirtualModel)
             return;
@@ -68,6 +76,11 @@ public class MPcmChip extends BaseChip {
     @Override
     protected void setMask(int chipId, int ch, boolean mask, Object... args) {
         this.mask[chipId][ch] = mask;
+    }
+
+    @Override
+    public boolean getMask(int chipId, int ch) {
+        return ch < this.mask[chipId].length && this.mask[chipId][ch];
     }
 
     public void keyOn(int chipId, int ch) {

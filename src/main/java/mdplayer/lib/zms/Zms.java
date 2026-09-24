@@ -555,9 +555,10 @@ if (!Arrays.equals(compiledData, 1, 7, magic, 0, 6) || compiledData.length <= 80
                 break;
             case 0x0400:
                 //logger.log(Level.TRACE, "MPCM #M_SET_PITCH($%04x) D1$%04x".formatted(n, nise68.reg.GetDl(1)));
-                // a word, note << 6 | fine: A4 is $1140 (a byte left only the fine part)
-                mpcm.setPitch(ch, nise68.reg.getDl(1));
-                mpcmSt[ch].pitch = nise68.reg.getDl(1);
+                // a word, note << 6 | fine: A4 is $1140 (a byte left only the fine part); the upper word
+                // carries other bits ($81140) that X68Sound's MPCM would take as a note
+                mpcm.setPitch(ch, nise68.reg.getDl(1) & 0xffff);
+                mpcmSt[ch].pitch = nise68.reg.getDl(1) & 0xffff;
                 break;
             case 0x0500:
                 //logger.log(Level.TRACE, "MPCM #M_SET_VOL($%04x) = $%02x".formatted(n, nise68.reg.GetDb(1)));
