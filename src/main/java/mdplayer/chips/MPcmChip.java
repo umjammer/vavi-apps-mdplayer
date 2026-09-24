@@ -117,7 +117,7 @@ public class MPcmChip extends BaseChip {
     public void setPitch(int chipId, int ch, int value) {
         switch (context.mds.inst(inst(chipId))) {
             case X68kMPcmInst mpcm -> mpcm.setPitch(chipId, ch, value);
-            case MPcmPPInst mpcmpp -> setPitch(chipId, ch, value);
+            case MPcmPPInst mpcmpp -> mpcmpp.setPitch(chipId, ch, value);
             default -> {assert false;}
         }
     }
