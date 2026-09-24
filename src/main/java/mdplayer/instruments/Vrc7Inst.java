@@ -41,7 +41,7 @@ public class Vrc7Inst extends Ym2413Inst {
         chip.setClock(clock / 2.); // masterclock(NES:1789773)
         chip.setRate(samplingRate); // samplerate
         chip.reset();
-        chip.setListener((Consumer<int[]>) option[0]);
+        chip.setListener(option != null ? (Consumer<int[]>) option[0] : _ -> {});
         rate = samplingRate;
         return samplingRate;
     }
@@ -67,7 +67,7 @@ public class Vrc7Inst extends Ym2413Inst {
             chip.tick(apu_clocks);
             chip.render(b);
 //            if (b[0] != 0) logger.log(Level.DEBUG, "%d".formatted(b[0]));
-            outputs[0][i] += b[0] << 2;
+            outputs[0][i] += b[0] << 2; // TODO check, 11 dB louder
             outputs[1][i] += b[1] << 2;
         }
     }
