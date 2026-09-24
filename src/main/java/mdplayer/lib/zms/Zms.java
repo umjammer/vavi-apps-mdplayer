@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
@@ -42,6 +43,20 @@ public class Zms {
 
     private Nise68 nise68;
     private FileMng fileMng = new FileMng(System.getProperty("user.dir"), "C:");
+
+    /**
+     * The ZPD the playing song loaded: ZMUSIC opens it by itself, from the ZMS {@code .ADPCM_BLOCK_DATA}
+     * or the ZMD's own reference, so it is only known from what was asked of the file manager.
+     *
+     * @return the name as the song gave it, and whether it was there; null when none was asked for
+     */
+    public Map.Entry<String, Boolean> pcmFile() {
+        Map.Entry<String, Boolean> last = null;
+        for (Map.Entry<String, Boolean> e : fileMng.getLookups().entrySet()) {
+            if (e.getKey().toUpperCase().endsWith(".ZPD")) last = e;
+        }
+        return last;
+    }
     public Pcm8Interface pcm8;
     public MPcmInterface mpcm;
     public int frequency;

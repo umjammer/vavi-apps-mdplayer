@@ -192,6 +192,19 @@ public class ZmsDriver extends BaseDriver {
         return zms.compileV2(vgmBuf, fn);
     }
 
+    /** the ZPD, which the plugin does not load (ZMUSIC does), so it is no extend file */
+    @Override
+    public String pcmFilename(int index) {
+        var zpd = index == 0 ? zms.pcmFile() : null;
+        return zpd != null ? zpd.getKey() : super.pcmFilename(index);
+    }
+
+    @Override
+    public boolean pcmError(int index) {
+        var zpd = index == 0 ? zms.pcmFile() : null;
+        return zpd != null ? !zpd.getValue() : super.pcmError(index);
+    }
+
     /**
      * @param args 0: offset, 1: filename
      */
