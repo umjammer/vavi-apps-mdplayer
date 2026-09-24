@@ -30,6 +30,11 @@ public class MPcmChip extends BaseChip {
 
     private static final Logger logger = System.getLogger(MPcmChip.class.getName());
 
+    /** X68Sound's own MPCM, see {@link mdplayer.Setting#mpcmType} */
+    public static final int X68SOUND = 0;
+    /** MPCMPP, the Mercury-Unit MPCM */
+    public static final int MPCMPP = 1;
+
     private final boolean[][] mask = {
             {false, false, false, false, false, false, false, false},
             {false, false, false, false, false, false, false, false}

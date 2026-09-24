@@ -22,11 +22,13 @@ import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import mdplayer.Common.EnmInstFormat;
+import mdplayer.chips.MPcmChip;
 import mdplayer.chips.Pcm8Chip;
 import mdplayer.driver.Plugin;
 import mdplayer.driver.mndrv.MNDPlugin;
 import mdplayer.driver.mxdrv.MDXPlugin;
 import mdplayer.driver.rcp.RCSPlugin;
+import mdplayer.driver.zms.ZMSPlugin;
 import mdplayer.vst.VstInfo;
 import mdsound.MDSound;
 import vavi.util.serdes.JacksonXMLBeanBinder;
@@ -3192,10 +3194,15 @@ public class Setting implements Serializable, Cloneable {
     /**
      * Which of the two MPCM back ends the song being played uses: {@code 0} is X68Sound's own MPCM,
      * {@code 1} is MPCMPP. The same sharing as {@link #pcm8Type}, for {@link mdplayer.chips.MPcmChip}.
+     * <p>
+     * {@code 0} is taken as "X68Sound's when it can play the song": a ZMUSIC song asking for a
+     * Mercury-Unit format ({@link ZMSPlugin#needsMpcmPP()}) gets MPCMPP, as X68Sound's MPCM cannot
+     * play those at all. MPCMPP plays everything MPCM.X does, so nothing is lost the other way.
      */
     public int mpcmType(Plugin plugin) {
         return switch (plugin) {
             case MNDPlugin _ -> mnDrv.mpcmType;
+            case ZMSPlugin p when zMusic.mpcmType == MPcmChip.X68SOUND && p.needsMpcmPP() -> MPcmChip.MPCMPP;
             default -> zMusic.mpcmType;
         };
     }

@@ -55,8 +55,6 @@ public class ZmsDriver extends BaseDriver {
     private static final int MERCURY_MPCM_VOLUME = Integer.getInteger("mdplayer.zms.mercury.mpcmVolume", 12);
     /** see the class doc */
     private static final int MERCURY_OPM_VOLUME = Integer.getInteger("mdplayer.zms.mercury.opmVolume", -12);
-    /** the highest rate code MPCM.X itself has, 31.2kHz; above it are MPCMPP's (Mercury-UNIT) */
-    private static final int MPCM_MAX_FREQ = 6;
 
     /** the song has set a Mercury rate and got its own mix */
     private boolean mercury;
@@ -116,7 +114,7 @@ public class ZmsDriver extends BaseDriver {
 
             @Override
             public void setFreq(int ch, int value) {
-                if (!mercury && (value & 0xff) > MPCM_MAX_FREQ && (value & 0xff) < 0x80) {
+                if (!mercury && (value & 0xff) > MpcmDetector.MPCM_MAX_FREQ && (value & 0xff) < 0x80) {
                     mercury = true;
                     plugin.setSongVolume(MAIN_TAG, MPcmChip.class, MERCURY_MPCM_VOLUME);
                     plugin.setSongVolume(MAIN_TAG, Ym2151Chip.class, MERCURY_OPM_VOLUME);

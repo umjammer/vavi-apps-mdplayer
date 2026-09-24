@@ -42,8 +42,19 @@ public class ZMSPlugin extends BasePlugin<ZmsDriver> implements Compilable {
 
     }
 
+    /** the song asks for a PCM format only MPCMPP has, see {@link MpcmDetector} */
+    private boolean needsMpcmPP;
+
+    /** @see mdplayer.Setting#mpcmType */
+    public boolean needsMpcmPP() {
+        return needsMpcmPP;
+    }
+
     @Override
     public void prepare() {
+        // before initChips puts one of the two MPCM back ends in
+        needsMpcmPP = MpcmDetector.needsMpcmPP(dataBuf, playingFileName);
+        if (needsMpcmPP) logger.log(Level.INFO, "mpcm: the song asks for a Mercury-Unit format, MPCMPP");
         driverVirtual = new ZmsDriver(this);
 
         driverReal = null;
