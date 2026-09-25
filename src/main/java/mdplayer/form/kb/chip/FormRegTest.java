@@ -249,11 +249,6 @@ public class FormRegTest extends FormChipBase<Void> {
         frameBuffer.refresh(null);
     }
 
-    @Override
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {

@@ -127,10 +127,6 @@ class FormInfo extends JFrame {
         culColor = new Color(192, 192, 255);
     }
 
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {

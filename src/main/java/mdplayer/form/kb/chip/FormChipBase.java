@@ -99,11 +99,6 @@ public abstract class FormChipBase<P> extends FormBase implements View {
         return chip == null ? 0 : chip.clock;
     }
 
-    /** A chip panel never takes the focus off the main window. */
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     /** Reads this frame's chip state into {@link #newParam}. */
     @Override
     public void changeScreenParams() {

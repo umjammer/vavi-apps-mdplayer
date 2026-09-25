@@ -107,10 +107,6 @@ public class FormYM2612MIDI extends FormBase implements View {
         }
     }
 
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {

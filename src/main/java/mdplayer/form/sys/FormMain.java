@@ -12,8 +12,6 @@ import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -73,39 +71,40 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 import mdplayer.Audio;
 import mdplayer.Chip;
-import mdplayer.form.ChipLEDs;
+import mdplayer.ChipRegister;
 import mdplayer.Common;
 import mdplayer.Common.EnmModel;
-import mdplayer.form.FrameBuffer;
-import mdplayer.form.View;
-import mdplayer.form.WindowGroup;
-import mdplayer.form.VisualizerProvider;
-import mdplayer.form.kb.chip.FormRegTest;
-import mdplayer.form.kb.ViewProvider;
-import mdplayer.form.KeyboardHook;
-import mdplayer.form.MmfControl;
 import mdplayer.OpeManager;
 import mdplayer.PlayList;
 import mdplayer.Request;
 import mdplayer.Request.enmRequest;
-import mdplayer.form.ScreenPanel;
 import mdplayer.Setting;
 import mdplayer.TonePallet;
 import mdplayer.YM2612MIDI;
-import mdplayer.ChipRegister;
 import mdplayer.chips.RealChipPlugin;
 import mdplayer.chips.VstPlugin;
-import mdplayer.vst.FormVSTeffectList;
 import mdplayer.driver.BaseDriver;
-import mdplayer.form.Layouts;
-import mdplayer.driver.FileFormat;
-import mdplayer.driver.sampled.M3UFileFormat;
-import mdplayer.driver.archive.ZIPFileFormat;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.FileFormat;
+import mdplayer.driver.archive.ZIPFileFormat;
+import mdplayer.driver.sampled.M3UFileFormat;
 import mdplayer.driver.vgm.VGMPlugin;
+import mdplayer.form.ChipLEDs;
+import mdplayer.form.FrameBuffer;
+import mdplayer.form.KeyboardHook;
+import mdplayer.form.Layouts;
+import mdplayer.form.MmfControl;
+import mdplayer.form.ScreenPanel;
+import mdplayer.form.View;
+import mdplayer.form.VisualizerProvider;
+import mdplayer.form.WindowGroup;
+import mdplayer.form.kb.ViewProvider;
+import mdplayer.form.kb.chip.FormRegTest;
+import mdplayer.vst.FormVSTeffectList;
 import mdsound.Instrument;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
+import vavi.awt.dnd.Droppable;
 import vavi.util.archive.Archives;
 import vavi.util.compat.Tuple;
 import vavi.util.compat.Tuple4;
@@ -491,8 +490,6 @@ public class FormMain extends JFrame {
 
         // Creating a DoubleBuffer Object
 
-        pbRf5c164Screen = new BufferedImage(320, 72, BufferedImage.TYPE_INT_ARGB);
-
         logger.log(Level.DEBUG, "frmMain_Load:STEP 06");
 
         mainScreen.add(pbScreen, Common.getImage("planeMain"), null, 1);
@@ -844,12 +841,8 @@ public class FormMain extends JFrame {
     private final ComponentListener componentListener = new ComponentAdapter() {
         @Override
         public void componentResized(ComponentEvent e) {
-            // Reallocate when resizing
-//            if (screen != null) screen.setVisible(false);
-
             mainScreen.add(pbScreen, Common.getImage("planeMain"), null, setting.getOther().getZoom());
             reqAllScreenInit = true;
-            //screen.screenInitAll();
         }
     };
 
@@ -977,7 +970,6 @@ public class FormMain extends JFrame {
         isRunning = false;
         while (!stopped) {
             try { Thread.sleep(10); } catch (InterruptedException ignored) {}
-//            Application.DoEvents();
         }
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 03");
@@ -1242,17 +1234,13 @@ public class FormMain extends JFrame {
             try { Thread.sleep(10); } catch (InterruptedException ignored) {}
         }
 
-        //audio.Stop();
         audio.close();
 
         this.setting = setting;
         this.setting.save();
 
         frmPlayList.setting = this.setting;
-        //oldParam = new ScreenParams();
-        //newParam = new ScreenParams();
         reqAllScreenInit = true;
-        //screen.screenInitAll();
 
         logger.log(Level.ERROR, "The settings have been changed, so the audio initialization process will start again.");
 
@@ -1267,15 +1255,6 @@ public class FormMain extends JFrame {
 
         isInitialOpenFolder = true;
         flgReinit = false;
-
-//        for (int i = 0; i < 5; i++) {
-//            try {
-//                Thread.sleep(100);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//            Application.DoEvents();
-//        }
     }
 
     private void openMixer() {
@@ -1318,30 +1297,20 @@ public class FormMain extends JFrame {
         }
         frmMixer2.setLocation(frmMixer2.x, frmMixer2.y);
 
-        //frmMixer.setting = setting;
-        //screen.AddMixer(frmMixer2.pbScreen, Properties.Resources.planeMixer);
         frmMixer2.setVisible(true);
         frmMixer2.update();
-        //screen.screenInitMixer();
         oldParam = new ScreenParams();
     }
 
-//    private void pbScreen_DragEnter(DragEvent e) {
-//        e.Effect = DragDropEffects.All;
-//    }
-
-    private void pbScreen_DragDrop(List<File> files) {
-        String filename = files.getFirst().getPath();
+    private boolean pbScreen_DragDrop(Path file) {
+        String filename = file.toString();
 
         try {
             // Stop the song
             frmPlayList.stop();
             this.stop();
-//            while (!audio.isStopped())
-//                Application.DoEvents();
 
             frmPlayList.getPlayList().addFile(filename);
-            //frmPlayList.AddList(filename);
 
             if (filename.toLowerCase().lastIndexOf(".zip") == -1) {
                 loadAndPlay(0, 0, filename, null);
@@ -1350,15 +1319,13 @@ public class FormMain extends JFrame {
 
                 frmPlayList.play();
             }
+            return true;
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
             JOptionPane.showMessageDialog(null, "Failed to read file.");
+            return false;
         }
     }
-
-//    @Override protected boolean getShowWithoutActivation() {
-//        return true;
-//    }
 
     private void allScreenInit() {
         //oldParam = new ScreenParams();
@@ -2882,7 +2849,7 @@ logger.log(Level.INFO, "filename: " + fn);
         // pbScreen
         //
         this.pbScreen.setBackground(Color.black);
-        new DropTarget(this.pbScreen, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.pbScreen, this::pbScreen_DragDrop);
         // the skin is blitted in as the frame buffer's background, see DoubleBuffer in frmMain_Load
         this.pbScreen.setName("pbScreen");
         this.pbScreen.addMouseListener(this.pbScreen_MouseClick);
@@ -3108,7 +3075,7 @@ logger.log(Level.INFO, "filename: " + fn);
         // opeButtonSetting
         //
 //        this.opeButtonSetting.AllowDrop = true;
-        new DropTarget(this.opeButtonSetting, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonSetting, this::pbScreen_DragDrop);
         this.opeButtonSetting.setBackground(Color.black);
         this.opeButtonSetting.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonSetting.setName("opeButtonSetting");
@@ -3119,7 +3086,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonStop
         //
-        new DropTarget(this.opeButtonStop, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonStop, this::pbScreen_DragDrop);
         this.opeButtonStop.setBackground(Color.black);
         this.opeButtonStop.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonStop.setName("opeButtonStop");
@@ -3129,7 +3096,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonPause
         //
-        new DropTarget(this.opeButtonPause, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonPause, this::pbScreen_DragDrop);
         this.opeButtonPause.setBackground(Color.black);
         this.opeButtonPause.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonPause.setName("opeButtonPause");
@@ -3140,7 +3107,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonFadeout
         //
-        new DropTarget(this.opeButtonFadeout, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonFadeout, this::pbScreen_DragDrop);
         this.opeButtonFadeout.setBackground(Color.black);
         this.opeButtonFadeout.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonFadeout.setName("opeButtonFadeout");
@@ -3150,7 +3117,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonPrevious
         //
-        new DropTarget(this.opeButtonPrevious, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonPrevious, this::pbScreen_DragDrop);
         this.opeButtonPrevious.setBackground(Color.black);
         this.opeButtonPrevious.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonPrevious.setName("opeButtonPrevious");
@@ -3160,7 +3127,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonSlow
         //
-        new DropTarget(this.opeButtonSlow, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonSlow, this::pbScreen_DragDrop);
         this.opeButtonSlow.setBackground(Color.black);
         this.opeButtonSlow.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonSlow.setName("opeButtonSlow");
@@ -3171,7 +3138,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonPlay
         //
-        new DropTarget(this.opeButtonPlay, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonPlay, this::pbScreen_DragDrop);
         this.opeButtonPlay.setBackground(Color.black);
         this.opeButtonPlay.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonPlay.setName("opeButtonPlay");
@@ -3182,7 +3149,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonFast
         //
-        new DropTarget(this.opeButtonFast, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonFast, this::pbScreen_DragDrop);
         this.opeButtonFast.setBackground(Color.black);
         this.opeButtonFast.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonFast.setName("opeButtonFast");
@@ -3193,7 +3160,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonNext
         //
-        new DropTarget(this.opeButtonNext, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonNext, this::pbScreen_DragDrop);
         this.opeButtonNext.setBackground(Color.black);
         this.opeButtonNext.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonNext.setName("opeButtonNext");
@@ -3207,7 +3174,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonZoom
         //
-        new DropTarget(this.opeButtonZoom, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonZoom, this::pbScreen_DragDrop);
         this.opeButtonZoom.setBackground(Color.black);
         this.opeButtonZoom.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonZoom.setName("opeButtonZoom");
@@ -3218,7 +3185,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonMIDIKBD
         //
-        new DropTarget(this.opeButtonMIDIKBD, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonMIDIKBD, this::pbScreen_DragDrop);
         this.opeButtonMIDIKBD.setBackground(Color.black);
         this.opeButtonMIDIKBD.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonMIDIKBD.setName("opeButtonMIDIKBD");
@@ -3229,7 +3196,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonVST
         //
-        new DropTarget(this.opeButtonVST, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonVST, this::pbScreen_DragDrop);
         this.opeButtonVST.setBackground(Color.black);
         this.opeButtonVST.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonVST.setName("opeButtonVST");
@@ -3240,7 +3207,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonKBD
         //
-        new DropTarget(this.opeButtonKBD, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonKBD, this::pbScreen_DragDrop);
         this.opeButtonKBD.setBackground(Color.black);
         this.opeButtonKBD.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonKBD.setName("opeButtonKBD");
@@ -3251,7 +3218,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonMixer
         //
-        new DropTarget(this.opeButtonMixer, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonMixer, this::pbScreen_DragDrop);
         this.opeButtonMixer.setBackground(Color.black);
         this.opeButtonMixer.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonMixer.setName("opeButtonMixer");
@@ -3262,7 +3229,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonInformation
         //
-        new DropTarget(this.opeButtonInformation, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonInformation, this::pbScreen_DragDrop);
         this.opeButtonInformation.setBackground(Color.black);
         this.opeButtonInformation.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonInformation.setName("opeButtonInformation");
@@ -3273,7 +3240,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonPlayList
         //
-        new DropTarget(this.opeButtonPlayList, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonPlayList, this::pbScreen_DragDrop);
         this.opeButtonPlayList.setBackground(Color.black);
         this.opeButtonPlayList.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonPlayList.setName("opeButtonPlayList");
@@ -3284,7 +3251,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonOpen
         //
-        new DropTarget(this.opeButtonOpen, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonOpen, this::pbScreen_DragDrop);
         this.opeButtonOpen.setBackground(Color.black);
         this.opeButtonOpen.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonOpen.setName("opeButtonOpen");
@@ -3295,7 +3262,7 @@ logger.log(Level.INFO, "filename: " + fn);
         //
         // opeButtonMode
         //
-        new DropTarget(this.opeButtonMode, DnDConstants.ACTION_COPY_OR_MOVE, new Common.DTListener(this::pbScreen_DragDrop), true);
+        Droppable.makeComponentSinglePathDroppable(this.opeButtonMode, this::pbScreen_DragDrop);
         this.opeButtonMode.setBackground(Color.black);
         this.opeButtonMode.setIcon(new ImageIcon(Common.getImage("ccFadeout")));
         this.opeButtonMode.setName("opeButtonMode");

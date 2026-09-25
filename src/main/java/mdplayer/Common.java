@@ -7,9 +7,6 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
@@ -32,7 +28,6 @@ import javax.swing.filechooser.FileFilter;
 import mdplayer.form.sys.setting.SettingAboutPanel;
 import musicDriverInterface.MetaData;
 import musicDriverInterface.MetaData.Tag;
-import vavi.awt.dnd.BasicDTListener;
 import vavi.util.ByteUtil;
 import vavi.util.StringUtil;
 
@@ -430,64 +425,6 @@ logger.log(Level.DEBUG, "delete attributes: " + dir);
         robot.keyPress(mod);
         robot.keyPress(key);
         robot.keyRelease(mod);
-    }
-
-    /**
-     * this is the DnD target sample for a file name from external applications
-     * <pre>
-     *   new DropTarget(component, DnDConstants.ACTION_COPY_OR_MOVE, new DTListener(), true);
-     * </pre>
-     */
-    public static class DTListener extends BasicDTListener {
-
-        private final Consumer<List<java.io.File>> drop;
-
-        public DTListener(Consumer<List<java.io.File>> drop) {
-            this.drop = drop;
-            this.dragAction = DnDConstants.ACTION_COPY_OR_MOVE;
-        }
-
-        /**
-         * Called by isDragOk
-         * Checks to see if the flavor drag flavor is acceptable
-         * @param ev the DropTargetDragEvent object
-         * @return whether the flavor is acceptable
-         */
-        @Override
-        protected boolean isDragFlavorSupported(DropTargetDragEvent ev) {
-            return ev.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
-        }
-
-        /**
-         * Called by drop
-         * Checks the flavors and operations
-         * @param ev the DropTargetDropEvent object
-         * @return the chosen dataFlavor or null if none match
-         */
-        @Override
-        protected DataFlavor chooseDropFlavor(DropTargetDropEvent ev) {
-// logger.log(Level.TRACE, ev.getCurrentDataFlavorsAsList());
-            if (ev.isLocalTransfer() && ev.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                return DataFlavor.javaFileListFlavor;
-            }
-            DataFlavor chosen = null;
-            if (ev.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                chosen = DataFlavor.javaFileListFlavor;
-            }
-            return chosen;
-        }
-
-        /**
-         * You need to implement here dropping procedure.
-         * data is deserialized clone
-         * @param data dropped
-         */
-        @Override
-        @SuppressWarnings("unchecked")
-        protected boolean dropImpl(DropTargetDropEvent ev, Object data) {
-            drop.accept((List<java.io.File>) data);
-            return true;
-        }
     }
 
     static {
