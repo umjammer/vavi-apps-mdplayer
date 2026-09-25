@@ -73,6 +73,8 @@ public abstract class BaseFileFormat implements FileFormat {
         music.titleJ = md.getFirst(Tag.TitleJ);
         music.game = md.getFirst(Tag.GameTitle);
         music.gameJ = md.getFirst(Tag.GameTitleJ);
+        music.system = md.getFirst(Tag.GameSystem);
+        music.systemJ = md.getFirst(Tag.GameSystemJ);
         music.composer = md.getFirst(Tag.Composer);
         music.composerJ = md.getFirst(Tag.ComposerJ);
         music.vgmby = md.getFirst(Tag.Maker);
@@ -86,7 +88,7 @@ public abstract class BaseFileFormat implements FileFormat {
         int tcSecond = (int) sec;
         sec -= tcSecond;
         int tcMillisecond = (int) (sec * 100.0);
-        music.duration = "%2d:%2d:%2d".formatted(tcMminutes, tcSecond, tcMillisecond);
+        music.duration = "%2d:%02d:%02d".formatted(tcMminutes, tcSecond, tcMillisecond);
 
         musics.add(music);
         return musics;

@@ -1,6 +1,7 @@
 package mdplayer.driver.vgm;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.System.Logger;
@@ -10,6 +11,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.zip.GZIPInputStream;
 import javax.sound.sampled.AudioFileFormat.Type;
 import javax.sound.sampled.AudioFormat.Encoding;
 
@@ -48,8 +50,17 @@ public class VGMFileFormat extends BaseFileFormat {
 
     @Override
     public List<PlayList.Music> getMusic(String file, byte[] buf, String zipFile /* = null */, Archive archive, Entry entry /* = null */) {
-        PlayList.Music music = new PlayList.Music();
-        return Collections.singletonList(music);
+        if (buf == null) return Collections.singletonList(new PlayList.Music());
+        // a .vgz comes here as it is on disk
+        if (buf.length > 2 && (buf[0] & 0xff) == 0x1f && (buf[1] & 0xff) == 0x8b) {
+            try (InputStream is = new GZIPInputStream(new ByteArrayInputStream(buf))) {
+                buf = is.readAllBytes();
+            } catch (IOException ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+                return Collections.singletonList(new PlayList.Music());
+            }
+        }
+        return getMusicCommon(null, buf, zipFile);
     }
 
     @Override
