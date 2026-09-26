@@ -167,6 +167,28 @@ public class FormPlayList extends JFrame {
         randomStack.clear();
         clearSort();
         refresh();
+        restoreLastPlayed();
+    }
+
+    /**
+     * Goes to the song that was played last when the list was saved: it is marked as the one
+     * played last, so that "play" and "next" go on from it, and is selected and scrolled to.
+     */
+    private void restoreLastPlayed() {
+        List<PlayList.Music> musics = playList.getMusics();
+        int last = playList.getLastPlayed();
+        if (last < 0 || last >= musics.size()) return;
+
+        playingMusic = musics.get(last);
+        lastPlayIndex = last;
+        dgvList.setRowSelectionInterval(last, last);
+        // the table has no size until the window is laid out
+        SwingUtilities.invokeLater(() -> {
+            int row = indexOf(playingMusic);
+            if (row >= 0 && row < dgvList.getRowCount()) {
+                dgvList.scrollRectToVisible(dgvList.getCellRect(row, 0, true));
+            }
+        });
     }
 
     /** {@link PlayList#changed}: songs were added, possibly from another thread. */
@@ -193,14 +215,20 @@ public class FormPlayList extends JFrame {
     /**
      * Marks a song as the one being played.
      *
-     * @param n the row, or -1 for the last one, or -2 for the first one
+     * @param n the row, or -1 for the last one, or -2 for the first one, or -3 for the one played
+     *          last (the first one when none was)
      * @return the song's type, song number, file and archive, or null when the list is empty
      */
     public Tuple4<Integer, Integer, String, String> setStart(int n) {
         List<PlayList.Music> musics = playList.getMusics();
         if (musics.isEmpty()) return null;
 
-        int i = n == -1 ? musics.size() - 1 : n == -2 ? 0 : n;
+        int i = switch (n) {
+            case -1 -> musics.size() - 1;
+            case -2 -> 0;
+            case -3 -> Math.max(indexOf(playingMusic), 0);
+            default -> n;
+        };
         if (i < 0 || i >= musics.size()) return null;
 
         PlayList.Music music = musics.get(i);
@@ -220,6 +248,7 @@ public class FormPlayList extends JFrame {
         if (setting.getOther().getEmptyPlayList()) {
             playList.setMusics(new ArrayList<>());
         }
+        playList.setLastPlayed(indexOf(playingMusic));
         playList.save(null);
     }
 
@@ -613,10 +642,12 @@ public class FormPlayList extends JFrame {
         try {
             m3u = filename.toLowerCase().endsWith(".m3u");
 
-            if (!m3u)
+            if (!m3u) {
+                playList.setLastPlayed(indexOf(playingMusic));
                 playList.save(filename);
-            else
+            } else {
                 playList.saveM3U(filename);
+            }
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
             JOptionPane.showMessageDialog(this, text("msgSaveFailed", "File saving failed."));

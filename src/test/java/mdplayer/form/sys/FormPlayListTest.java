@@ -162,6 +162,32 @@ class FormPlayListTest {
         assertEquals("d", form.getPlayingSongInfo().title, "next follows the list as moved");
     }
 
+    /** a list opened again goes to the song played last when it was saved */
+    @Test
+    void lastPlayed(@org.junit.jupiter.api.io.TempDir Path dir) throws Exception {
+        add("a", "b", "c", "d");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(2); form.play(); }); // c
+        String file = dir.resolve("pl.xml").toString();
+        SwingUtilities.invokeAndWait(() -> {
+            playList.setLastPlayed(2);
+            playList.save(file);
+        });
+
+        PlayList loaded = PlayList.load(file);
+        assertEquals(2, loaded.getLastPlayed());
+        SwingUtilities.invokeAndWait(() -> form.stop()); // as opening a list does
+        call("attach", new Class<?>[] {PlayList.class}, loaded);
+        playList = form.getPlayList();
+        assertEquals(2, table.getSelectedRow(), "the song played last is selected");
+        assertEquals(">", table.getValueAt(2, FormPlayList.cols.clmPlayingNow.ordinal()));
+        assertFalse(form.isPlaying(), "but not played");
+
+        SwingUtilities.invokeAndWait(() -> form.setStart(-3));
+        assertEquals("c", form.getPlayingSongInfo().title, "play starts from it");
+        SwingUtilities.invokeAndWait(() -> { form.play(); form.nextPlayMode(0); });
+        assertEquals("d", form.getPlayingSongInfo().title, "next goes on from it");
+    }
+
     @Test
     void sort() throws Exception {
         add("c", "a", "b");

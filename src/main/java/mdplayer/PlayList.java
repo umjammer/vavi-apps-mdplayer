@@ -113,6 +113,17 @@ public class PlayList implements Serializable, Cloneable {
         musics = value;
     }
 
+    /** the row of the song played last when the list was saved, or -1 */
+    private int lastPlayed = -1;
+
+    public int getLastPlayed() {
+        return lastPlayed;
+    }
+
+    public void setLastPlayed(int value) {
+        lastPlayed = value;
+    }
+
     @Override
     public PlayList clone() {
         PlayList playList = new PlayList();

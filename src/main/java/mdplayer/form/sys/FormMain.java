@@ -1766,7 +1766,7 @@ public class FormMain extends JFrame {
             playFn = frmPlayList.setStart(-1); // last
         } else {
             fn = new String[] {""};
-            playFn = frmPlayList.setStart(-2); // first
+            playFn = frmPlayList.setStart(-3); // the one played last, or first
         }
         if (playFn == null) return; // nothing could be added
 
