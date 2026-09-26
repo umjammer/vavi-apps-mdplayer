@@ -7,11 +7,13 @@
 package mdplayer.driver.ay;
 
 import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import mdplayer.Common.EnmModel;
 import mdplayer.chips.Ay8910Chip;
 import mdplayer.chips.ZxBeepChip;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.BasePlugin.HasSongNo;
 import mdsound.MDSound;
 import mdsound.instrument.MameAy8910Inst;
 
@@ -25,9 +27,15 @@ import static mdsound.MDSound.Chip.MAIN_TAG;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2025-02-19 nsano initial version <br>
  */
-public class AyPlugin extends BasePlugin<AyDriver> {
+public class AyPlugin extends BasePlugin<AyDriver> implements HasSongNo {
 
     private static final Logger logger = getLogger(AyPlugin.class.getName());
+
+    @Override
+    public void setSongNo(int songNo) {
+logger.log(Level.INFO, "songNo: " + songNo);
+        this.songNo = songNo;
+    }
 
     @Override
     public void prepare() {

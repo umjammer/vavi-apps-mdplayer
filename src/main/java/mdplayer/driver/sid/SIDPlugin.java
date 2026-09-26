@@ -7,6 +7,7 @@ import mdplayer.Common;
 import mdplayer.chips.SidChip;
 import mdplayer.driver.BasePlugin;
 import mdplayer.driver.BasePlugin.HasSongNo;
+import vavi.util.ByteUtil;
 
 import static java.lang.System.getLogger;
 
@@ -65,5 +66,14 @@ public class SIDPlugin extends BasePlugin<SidMdDriver> implements HasSongNo {
 logger.log(Level.INFO, "songNo: " + songNo);
         // 0 origin, as every other HasSongNo plugin - initChips is what makes it 1 origin
         this.songNo = songNo;
+    }
+
+    /** nothing selected plays the tune's own start song, the header's {@code startSong} (1 origin) */
+    @Override
+    public int getSongNo() {
+        if (songNo <= 0 && dataBuf != null && dataBuf.length >= 0x12) {
+            return Math.max(1, ByteUtil.readBeShort(dataBuf, 0x10) & 0xffff) - 1;
+        }
+        return songNo;
     }
 }

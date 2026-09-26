@@ -1760,6 +1760,7 @@ public class FmDspVisualizer extends JComponent {
         }
 
         renderVolumeDown(w);
+        renderPgmNumber(w);
 
         // loop / duration progress bar
         long loopLen = w != null ? w.loopTimerBCount() : 0L;
@@ -1873,6 +1874,21 @@ public class FmDspVisualizer extends JComponent {
                 blitNum(x, VOLDOWN_Y, 10);
                 if (minus && place == digits) blitMidBar(x, VOLDOWN_Y, 2);
             }
+        }
+    }
+
+    /**
+     * The {@code PGM NUMBER} counter, which FMDSP.COM fills only while FMR, the PC-98 song list
+     * resident, is running. Here it is the song number of a file holding several songs (NSF, GBS,
+     * SID, ...), see {@link WorkStateSource#songNo}. Three digits in the {@code VOLUME DOWN}
+     * counter's places, lit only as far as the number reaches: no leading zeros, and a file with no
+     * song numbers leaves all three blank.
+     */
+    private void renderPgmNumber(WorkStateSource w) {
+        int n = Math.min(999, Math.max(0, w != null ? w.songNo() : 0));
+        int digits = n == 0 ? 0 : n >= 100 ? 3 : n >= 10 ? 2 : 1;
+        for (int i = 0, p = n; i < VOLDOWN_DIGITS; i++, p /= 10) {
+            blitNum(VOLDOWN_NUM_X + NUM_W * (VOLDOWN_DIGITS - 1 - i), PGMNUM_Y, i < digits ? p % 10 : 10);
         }
     }
 

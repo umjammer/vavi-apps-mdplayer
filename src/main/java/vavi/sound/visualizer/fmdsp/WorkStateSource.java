@@ -62,6 +62,15 @@ public interface WorkStateSource {
         return 0;
     }
 
+    /**
+     * The number of the song being played among the file's songs, 1 origin - what the
+     * {@code PGM NUMBER} counter shows. 0, the default, is a file that has no song numbers, and
+     * leaves the counter blank.
+     */
+    default int songNo() {
+        return 0;
+    }
+
     /** True if a song is loaded and currently advancing. */
     boolean playing();
 

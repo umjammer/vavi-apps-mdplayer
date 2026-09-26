@@ -43,6 +43,9 @@ public abstract class BasePlugin<T extends BaseDriver> implements Plugin {
     /** for spi, 0 origin */
     public interface HasSongNo {
         void setSongNo(int songNo);
+
+        /** the song being played, 0 origin, what fmdsp's {@code PGM NUMBER} shows */
+        int getSongNo();
     }
 
     public final MDSound mds;
@@ -67,6 +70,11 @@ public abstract class BasePlugin<T extends BaseDriver> implements Plugin {
     public String playingFileName;
     public String playingArcFileName;
     protected int songNo = 0;
+
+    /** 0 origin, meaningful only for a {@link HasSongNo} plugin */
+    public int getSongNo() {
+        return songNo;
+    }
     protected List<Tuple<String, byte[]>> extendFiles = null;
 
     public List<Tuple<String, byte[]>> getExtendFiles() {
