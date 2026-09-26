@@ -71,6 +71,12 @@ public final class Audio {
         // running for good (with the Rococoa line an AVAudioEngine that is never released)
         closeLine();
 
+        // a song that ended by itself was never stopped (stop() skips a stopped plugin): a plugin
+        // with a synthesizer of its own (smaf, mfi) keeps it open until it prepares again, and
+        // another plugin prepares first
+        if (this.plugin != null && this.plugin != plugin) {
+            this.plugin.stop();
+        }
         this.plugin = plugin;
 
         try {
