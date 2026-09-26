@@ -60,7 +60,16 @@ public class KeyboardHook {
     }
 
     public void removeKeyboardHooked(NativeKeyListener handler) {
-        GlobalScreen.addNativeKeyListener(handler);
+        GlobalScreen.removeNativeKeyListener(handler);
+    }
+
+    /** Lets go of the native hook; its thread is not a daemon and keeps the jvm up until then. */
+    public void close() {
+        try {
+            if (GlobalScreen.isNativeHookRegistered()) GlobalScreen.unregisterNativeHook();
+        } catch (NativeHookException e) {
+            logger.log(Level.WARNING, e.getMessage(), e);
+        }
     }
 
     /**

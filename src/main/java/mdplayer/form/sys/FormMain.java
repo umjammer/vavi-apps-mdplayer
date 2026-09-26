@@ -205,8 +205,10 @@ public class FormMain extends JFrame {
     private final int[] oldButtonMode = new int[18];
     private final int[] newButtonMode = new int[18];
 
-    private boolean isRunning = false;
-    private boolean stopped = false;
+    /** the screen loop runs while this is set; the closing sequence clears it from the EDT */
+    private volatile boolean isRunning = false;
+    /** set by the screen loop once it has ended */
+    private volatile boolean stopped = true;
 
     private boolean isInitialOpenFolder = true;
 
@@ -469,7 +471,12 @@ public class FormMain extends JFrame {
 
         @Override
         public void windowClosing(WindowEvent e) {
-            frmMain_FormClosing(e);
+            // what is thrown out of here makes the frame skip EXIT_ON_CLOSE, and the jvm stays up
+            try {
+                frmMain_FormClosing(e);
+            } catch (Exception ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+            }
         }
     };
 
@@ -564,6 +571,8 @@ public class FormMain extends JFrame {
         //opeFolder = mdplayer.Common.GetOperationFolder(true);
         //startWatch(opeFolder);
         mmf = new MmfControl(false, "MDPlayer", 1024 * 4);
+
+        loaded = true;
     }
 
 //    private void startWatch(String opeFolder) {
@@ -871,6 +880,9 @@ public class FormMain extends JFrame {
         }
     }
 
+    /** set once {@link #frmMain_Load} has put every window and the play mode back */
+    private volatile boolean loaded;
+
     /** set once the closing sequence ran: a window close and a quit may both ask for it */
     private boolean closing;
 
@@ -882,6 +894,13 @@ public class FormMain extends JFrame {
      * so it is safe from the shutdown hook too.
      */
     private void recordWindowState() {
+        // closed while the start up was held up (a dialog from a window being restored): the
+        // windows past it and the play mode are not up yet, and what the settings hold is right
+        if (!loaded) {
+            logger.log(Level.INFO, "start up did not finish, window state left as it was");
+            return;
+        }
+
         Setting.Location location = setting.getLocation();
 
         location.setPMain(getLocation());
@@ -961,16 +980,16 @@ public class FormMain extends JFrame {
         StopMIDIInMonitoring();
         Request req = new Request(enmRequest.Die, null, null);
         OpeManager.requestToAudio(req);
-        while (!req.getEnd()) {  // No callbacks for suicide requests
-            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
-        }
+        // No callbacks for suicide requests; a stuck audio side must not keep the player from ending
+        if (!waitFor(req::getEnd)) logger.log(Level.WARNING, "audio did not stop, going on");
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 02");
 
         isRunning = false;
-        while (!stopped) {
-            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
-        }
+        // the screen loop may never have started, when a dialog held the start up
+        if (!waitFor(() -> stopped)) logger.log(Level.WARNING, "screen loop did not stop, going on");
+
+        keyboardHook1.close();
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 03");
 
@@ -1007,10 +1026,23 @@ public class FormMain extends JFrame {
 
         logger.log(Level.ERROR, "frmMain_FormClosing:STEP 06");
 
-        mmf.close();
+        if (mmf != null) mmf.close(); // not made yet when the start up was held up
 
         logger.log(Level.ERROR, "Termination process complete");
     }
+
+    /** Waits up to {@link #CLOSE_TIMEOUT} ms for {@code done}, and tells whether it came. */
+    private static boolean waitFor(java.util.function.BooleanSupplier done) {
+        long until = System.currentTimeMillis() + CLOSE_TIMEOUT;
+        while (!done.getAsBoolean()) {
+            if (System.currentTimeMillis() > until) return false;
+            try { Thread.sleep(10); } catch (InterruptedException e) { return false; }
+        }
+        return true;
+    }
+
+    /** how long closing waits for each part of the player to stop, in ms */
+    private static final long CLOSE_TIMEOUT = 5000;
 
     private final MouseMotionListener pbScreen_MouseMove = new MouseMotionAdapter() {
         @Override
@@ -2901,7 +2933,9 @@ logger.log(Level.INFO, "filename: " + fn);
         // tsmiExit
         //
         this.tsmiExit.setName("tsmiExit");
-        this.tsmiExit.addActionListener(_ -> this.setVisible(false));
+        // hiding the window used to be all Exit did: the closing sequence never ran, nothing was
+        // saved, and the other windows and threads kept the jvm up
+        this.tsmiExit.addActionListener(_ -> this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
         //
         // operationToolStripMenuItem
         //
