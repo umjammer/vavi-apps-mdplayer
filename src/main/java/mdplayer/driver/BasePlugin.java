@@ -494,6 +494,22 @@ logger.log(Level.INFO, "close enter");
         chipRegister.plugin(MidiPlugin.class).applyVolume();
     }
 
+    /**
+     * Moves the main window's master volume knob, which sits on top of the balance's
+     * {@link #masterVolume}, and is kept across songs.
+     *
+     * @see Setting.Location#getMasterFader()
+     */
+    public void setMasterFader(int volume) {
+        setting.getLocation().setMasterFader(volume);
+        chipRegister.plugin(MidiPlugin.class).applyVolume();
+    }
+
+    /** the mixer output's level in the balance's 2&times;dB unit: the balance's master plus the knob */
+    public int outputVolume() {
+        return masterVolume + setting.getLocation().getMasterFader();
+    }
+
     public FileFormat getFileFormat() {
         return fileFormat;
     }

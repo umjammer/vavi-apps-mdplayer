@@ -430,8 +430,8 @@ logger.log(Level.INFO, "stop: " + plugin.stopped + ", " + hashCode());
             // VST
             plugin.chipRegister.plugin(VstPlugin.class).update(buffer, offset, sampleCount);
 
+            int mul = (int) (16384.0 * Math.pow(10.0, plugin.outputVolume() / 40.0));
             for (int i = 0; i < sampleCount; i++) {
-                int mul = (int) (16384.0 * Math.pow(10.0, plugin.masterVolume / 40.0));
                 buffer[offset + i] = (short) Math.clamp((buffer[offset + i] * mul) >> 13, -0x8000, 0x7fff);
 
                 if (!plugin.fadeout) continue;

@@ -1074,7 +1074,9 @@ public class FormMain extends JFrame {
             if (faderMasterDrag) {
                 faderMasterVal = Common.range(px - 184, 0, 56);
                 if (audio.plugin != null) {
-                    audio.plugin.setMasterVolume(true, masterVolTbl[faderMasterVal]);
+                    audio.plugin.setMasterFader(masterVolTbl[faderMasterVal]);
+                } else {
+                    setting.getLocation().setMasterFader(masterVolTbl[faderMasterVal]);
                 }
             }
 
@@ -1098,7 +1100,9 @@ public class FormMain extends JFrame {
                 faderMasterDrag = true;
                 faderMasterVal = Common.range(px - 184, 0, 56);
                 if (audio.plugin != null) {
-                    audio.plugin.setMasterVolume(true, masterVolTbl[faderMasterVal]);
+                    audio.plugin.setMasterFader(masterVolTbl[faderMasterVal]);
+                } else {
+                    setting.getLocation().setMasterFader(masterVolTbl[faderMasterVal]);
                 }
             }
             if (faderTimeLineHover) {
@@ -1481,6 +1485,16 @@ public class FormMain extends JFrame {
     }
 
     private void screenChangeParams() {
+        // the knob is the user's, not the song's: it shows before the first song is loaded
+        if (faderMasterDrag) {
+            newParam.Master = Common.range(faderMasterVal, 0, 56);
+        } else {
+            int val = Common.range(setting.getLocation().getMasterFader(), -192, 20) + 192;
+            newParam.Master = (int) (val * ((7.0 * 8) / (20.0 - (-192))));
+        }
+        newParam.MasterHover = faderMasterHover ? 0 : 1;
+        newParam.MasterDrag = faderMasterDrag ? 0 : 1;
+
         if (audio.plugin == null) return;
 
         long w = audio.plugin.getCounter();
@@ -1507,22 +1521,9 @@ public class FormMain extends JFrame {
         sec -= newParam.LCsecond;
         newParam.LCmillisecond = (int) (sec * 100.0);
 
-        // Fader (Master Volume)
-        int val;
-        if (faderMasterDrag) {
-            newParam.Master = Common.range(faderMasterVal, 0, 56);
-        } else {
-            val = Common.range(setting.getBalance().getMasterVolume(), -192, 20) + 192;
-            val = (int) (val * ((7.0 * 8) / (20.0 - (-192))));
-            newParam.Master = val;
-        }
-
-        val = Common.range(visVolumeMaster / 220, 0, 56);
+        int val = Common.range(visVolumeMaster / 220, 0, 56);
         if (newParam.MasterVis > 0) newParam.MasterVis--;
         newParam.MasterVis = Math.max(newParam.MasterVis, val);
-
-        newParam.MasterHover = faderMasterHover ? 0 : 1;
-        newParam.MasterDrag = faderMasterDrag ? 0 : 1;
 
         // Fader (Timeline)
         double gc = (double) audio.plugin.getCounter();
@@ -1588,7 +1589,20 @@ public class FormMain extends JFrame {
         oldParam.LCsecond = newParam.LCsecond;
         oldParam.LCmillisecond = newParam.LCmillisecond;
 
-        // nothing is loaded yet: the skin, the buttons and the timers are all there is to show
+        // the master knob is shown whether a song is loaded or not
+        int[] od = {oldParam.MasterDrag};
+        int[] ov = {oldParam.MasterHover};
+        int[] oval1 = {oldParam.Master};
+        int[] oval2 = {oldParam.MasterVis};
+        drawFaderH(mainScreen, 23 * 8, 14,
+                newParam.MasterDrag, newParam.MasterHover, newParam.Master, newParam.MasterVis,
+                od, ov, oval1, oval2);
+        oldParam.MasterDrag = od[0];
+        oldParam.MasterHover = ov[0];
+        oldParam.Master = oval1[0];
+        oldParam.MasterVis = oval2[0];
+
+        // nothing is loaded yet: the skin, the buttons, the timers and the master knob are all there is to show
         if (audio.plugin == null) {
             refreshScreen();
             return;
@@ -1614,18 +1628,6 @@ public class FormMain extends JFrame {
                 mainScreen.drawFont8(0, 16, 0, "R.CHIP-EMU : %12d ".formatted(d));
             mainScreen.drawFont8(0, 24, 0, "PROC TIME  : %12d ".formatted(audio.plugin.procTimePer1Frame));
         }
-
-        int[] od = {oldParam.MasterDrag};
-        int[] ov = {oldParam.MasterHover};
-        int[] oval1 = {oldParam.Master};
-        int[] oval2 = {oldParam.MasterVis};
-        drawFaderH(mainScreen, 23 * 8, 14,
-                newParam.MasterDrag, newParam.MasterHover, newParam.Master, newParam.MasterVis,
-                od, ov, oval1, oval2);
-        oldParam.MasterDrag = od[0];
-        oldParam.MasterHover = ov[0];
-        oldParam.Master = oval1[0];
-        oldParam.MasterVis = oval2[0];
 
         int[] tod = {oldParam.TimeLineDrag};
         int[] tov = {oldParam.TimeLineHover};
