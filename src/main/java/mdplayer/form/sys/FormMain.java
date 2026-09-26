@@ -2585,13 +2585,8 @@ logger.log(Level.INFO, "filename: " + fn);
         } else {
             frmPlayList.stop();
 
-            try {
-                for (String f : fn) {
-                    frmPlayList.getPlayList().addFile(f);
-                }
-            } catch (Exception ex) {
-                logger.log(Level.ERROR, ex.getMessage(), ex);
-            }
+            // many files are read in the background, the list fills in as they are
+            frmPlayList.addFiles(Arrays.asList(fn));
         }
     }
 

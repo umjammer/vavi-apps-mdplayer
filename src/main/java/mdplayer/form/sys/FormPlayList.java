@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
@@ -46,6 +47,11 @@ import java.util.Random;
 import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.swing.AbstractAction;
@@ -256,7 +262,12 @@ public class FormPlayList extends JFrame {
             playList.setMusics(new ArrayList<>());
         }
         playList.setLastPlayed(indexOf(playingMusic));
-        playList.save(null);
+        try {
+            playList.save(null);
+        } catch (Exception e) {
+            // the old list is still there; the player ending goes on with the rest of what it saves
+            logger.log(Level.ERROR, "the play list was not saved: " + e.getMessage(), e);
+        }
     }
 
     /** Makes the table show the list as it is now. */
@@ -672,13 +683,14 @@ public class FormPlayList extends JFrame {
             playing = false;
 
             if (!m3u) {
-                attach(PlayList.load(filename));
+                // a large list takes a while to parse, the window is shown the list when it is done
+                reading = reader.submit(() -> {
+                    PlayList pl = PlayList.load(filename);
+                    SwingUtilities.invokeLater(() -> attach(pl));
+                });
             } else {
-                PlayList pl = PlayList.loadM3U(filename);
                 attach(new PlayList());
-                for (PlayList.Music ms : pl.getMusics()) {
-                    playList.addFile(ms.fileName);
-                }
+                read(() -> PlayList.loadM3U(filename).getMusics().stream().map(ms -> ms.fileName).toList(), null);
             }
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
@@ -770,39 +782,133 @@ public class FormPlayList extends JFrame {
         addFiles(List.of(fbd.getSelectedFile().getAbsolutePath()), -1);
     }
 
+    /** Adds songs to the end of the list, what is in a folder included. They come in as they are read. */
+    public void addFiles(List<String> files) {
+        addFiles(files, -1);
+    }
+
     /**
-     * Adds songs to the list, what is in a folder included.
+     * Adds songs to the list, what is in a folder included. The files are looked for and read on
+     * {@link #reader}, and the songs come into the list a few at a time as they are read, so that a
+     * large folder does not hold up the window.
      *
      * @param files files or folders
      * @param row the row to insert them before, or -1 for after the last one
-     * @return true when any was added
+     * @return true when there was anything to look at; whether songs were found in it is known later
      */
     private boolean addFiles(List<String> files, int row) {
-        List<String> filenames = new ArrayList<>();
-        getTrueFileNameList(filenames, files);
-        if (filenames.isEmpty()) return false;
+        if (files.isEmpty()) return false;
 
         List<PlayList.Music> musics = playList.getMusics();
-        int at = row < 0 || row > musics.size() ? musics.size() : row;
-        int before = musics.size();
+        // the rows may move while the files are read, the song they go before stays the same
+        PlayList.Music before = row >= 0 && row < musics.size() ? musics.get(row) : null;
+        read(() -> trueFileNameList(files), before);
+        return true;
+    }
 
-        Cursor cursor = getCursor();
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        try {
-            playList.insertFile(new int[] {at}, filenames.toArray(String[]::new));
-        } finally {
-            setCursor(cursor);
+    // ---- reading songs away from the window
+
+    /** reads the files songs are added from, one batch after another, in the order they were given */
+    private final ExecutorService reader = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "mdplayer-playlist-reader");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /** the last job handed to {@link #reader} */
+    private volatile Future<?> reading = CompletableFuture.completedFuture(null);
+
+    /** the batches handed to {@link #reader} and not yet done, touched on the EDT only */
+    private int batches = 0;
+
+    /** how often the songs read so far are put on the list */
+    private static final long chunkNanos = 200_000_000L;
+
+    /**
+     * Reads the songs of the files {@code names} lists on {@link #reader} and puts them on the list
+     * before {@code before}, or at the end when that is null or no longer there.
+     *
+     * @param names gives the files; it is called on the reader, a folder may take a while to list
+     */
+    private void read(Supplier<List<String>> names, PlayList.Music before) {
+        PlayList target = playList;
+        // the first song the batch added, to select what was added once it is all in
+        PlayList.Music[] first = new PlayList.Music[1];
+        int[] count = new int[1];
+        batches++;
+        reading = reader.submit(() -> {
+            try {
+                List<String> filenames = names.get();
+                List<PlayList.Music> chunk = new ArrayList<>();
+                long last = System.nanoTime();
+                for (int i = 0; i < filenames.size(); i++) {
+                    chunk.addAll(PlayList.read(filenames.get(i)));
+                    long now = System.nanoTime();
+                    if (now - last >= chunkNanos || i == filenames.size() - 1) {
+                        List<PlayList.Music> c = chunk;
+                        chunk = new ArrayList<>();
+                        last = now;
+                        int done = i + 1;
+                        SwingUtilities.invokeLater(() -> {
+                            progress(done, filenames.size());
+                            insert(target, before, c, first, count);
+                        });
+                    }
+                }
+            } catch (Exception ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    batches--;
+                    progress(0, 0);
+                    if (target == playList && count[0] > 0) {
+                        int at = indexOf(first[0]);
+                        if (at >= 0) {
+                            int end = Math.min(at + count[0], playList.getMusics().size()) - 1;
+                            dgvList.setRowSelectionInterval(at, end);
+                            dgvList.scrollRectToVisible(dgvList.getCellRect(at, 0, true));
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    /** Puts songs read on {@link #reader} on the list, on the EDT. */
+    private void insert(PlayList target, PlayList.Music before, List<PlayList.Music> added, PlayList.Music[] first, int[] count) {
+        if (target != playList || added.isEmpty()) return; // another list was opened meanwhile
+
+        List<PlayList.Music> musics = playList.getMusics();
+        int at = indexOf(before);
+        if (at < 0) at = musics.size();
+        if (first[0] == null) {
+            first[0] = added.getFirst();
+            dgvList.scrollRectToVisible(dgvList.getCellRect(at, 0, true));
         }
-
-        int added = musics.size() - before;
-        if (added <= 0) return false;
+        musics.addAll(at, added);
+        count[0] += added.size();
 
         clearSort();
         refresh();
         playIndex();
-        dgvList.setRowSelectionInterval(at, at + added - 1);
-        dgvList.scrollRectToVisible(dgvList.getCellRect(at, 0, true));
-        return true;
+        int from = indexOf(first[0]);
+        dgvList.setRowSelectionInterval(from, Math.min(from + count[0], musics.size()) - 1);
+    }
+
+    /** Shows how far the reading has got in the title, nothing when {@code total} is 0. */
+    private void progress(int done, int total) {
+        String title = text("$this.Text", "play list");
+        if (total > 0) {
+            title += " - " + text("msgReading", "reading") + " " + done + " / " + total;
+        } else if (batches > 0) {
+            title += " - " + text("msgReading", "reading");
+        }
+        setTitle(title);
+    }
+
+    /** Waits until what has been handed to {@link #reader} so far is read, for tests. */
+    void awaitReading() throws Exception {
+        reading.get();
     }
 
     /** A file or a folder dropped on the list. */
@@ -833,18 +939,24 @@ public class FormPlayList extends JFrame {
         return p.y >= r.y + r.height / 2 ? row + 1 : row;
     }
 
-    /** Lists the playable files among {@code files}, going into folders. */
-    private static void getTrueFileNameList(List<String> res, List<String> files) {
+    /** Lists the playable files among {@code files}, going into folders, each once. */
+    private static List<String> trueFileNameList(List<String> files) {
+        Set<String> res = new LinkedHashSet<>();
+        trueFileNameList(res, files);
+        return new ArrayList<>(res);
+    }
+
+    private static void trueFileNameList(Set<String> res, List<String> files) {
         for (String f : files) {
             Path path = Path.of(f);
             if (Files.isDirectory(path)) {
                 try (Stream<Path> s = Files.list(path)) {
-                    getTrueFileNameList(res, s.map(Path::toString).sorted().toList());
+                    trueFileNameList(res, s.map(Path::toString).sorted().toList());
                 } catch (IOException e) {
                     logger.log(Level.WARNING, e.getMessage(), e);
                 }
             } else if (Files.exists(path)) {
-                if (!res.contains(f) && sext.contains(getExtension(f).toLowerCase())) {
+                if (sext.contains(getExtension(f).toLowerCase())) {
                     res.add(f);
                 }
             }

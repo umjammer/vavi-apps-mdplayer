@@ -88,6 +88,9 @@ class FormPlayListTest {
                 throw new RuntimeException(e);
             }
         });
+        // songs are added on the list's reader thread and put in on the EDT
+        form.awaitReading();
+        SwingUtilities.invokeAndWait(() -> {});
         return r[0];
     }
 
