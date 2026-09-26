@@ -397,9 +397,14 @@ Debug.println("close");
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
     void testX() throws Exception {
+        CountDownLatch cdl = new CountDownLatch(1);
+        // the ide's junit runner has a shutdown hook that waits for the running test to end, so
+        // a quit (System.exit from the app) hung for good while this waited for nothing: end the
+        // test as soon as the jvm starts going down
+        Runtime.getRuntime().addShutdownHook(new Thread(cdl::countDown, "testX-end"));
+
         mdplayer.Program.main(new String[] {});
 
-        CountDownLatch cdl = new CountDownLatch(1);
         cdl.await();
     }
 
