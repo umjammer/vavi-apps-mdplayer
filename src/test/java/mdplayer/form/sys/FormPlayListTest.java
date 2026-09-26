@@ -188,6 +188,36 @@ class FormPlayListTest {
         assertEquals("d", form.getPlayingSongInfo().title, "next goes on from it");
     }
 
+    /** typing selects the first song that has it, Enter goes on to the next, round the end */
+    @Test
+    void search() throws Exception {
+        add("Alpha", "beta", "Gamma alpha", "delta", "ＡＬＰＨＡ ｶﾅ");
+        Field f = FormPlayList.class.getDeclaredField("tstSearch");
+        f.setAccessible(true);
+        javax.swing.JTextField search = (javax.swing.JTextField) f.get(form);
+        Runnable enter = () -> search.getActionMap().get("searchNext").actionPerformed(null);
+        Runnable shiftEnter = () -> search.getActionMap().get("searchPrevious").actionPerformed(null);
+
+        select(1);
+        SwingUtilities.invokeAndWait(() -> search.setText("a"));
+        assertEquals(1, table.getSelectedRow(), "the selected song still matches, so it stays");
+        SwingUtilities.invokeAndWait(() -> search.setText("alp"));
+        assertEquals(2, table.getSelectedRow(), "incremental: on from the selected one");
+        SwingUtilities.invokeAndWait(enter);
+        assertEquals(4, table.getSelectedRow(), "full width matches half width, case does not count");
+        SwingUtilities.invokeAndWait(enter);
+        assertEquals(0, table.getSelectedRow(), "round the end");
+        SwingUtilities.invokeAndWait(shiftEnter);
+        assertEquals(4, table.getSelectedRow(), "shift+enter goes back, round the top");
+        SwingUtilities.invokeAndWait(() -> search.setText("カナ"));
+        assertEquals(4, table.getSelectedRow());
+        SwingUtilities.invokeAndWait(() -> search.setText("zzz"));
+        assertEquals(4, table.getSelectedRow(), "no match leaves the selection");
+        assertEquals(new java.awt.Color(0xff, 0xd0, 0xd0), search.getBackground());
+        SwingUtilities.invokeAndWait(() -> search.setText("DELTA.vgm"));
+        assertEquals(3, table.getSelectedRow(), "the file name is searched too");
+    }
+
     @Test
     void sort() throws Exception {
         add("c", "a", "b");

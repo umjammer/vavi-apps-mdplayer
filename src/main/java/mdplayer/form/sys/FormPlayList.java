@@ -13,6 +13,7 @@ import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -29,6 +30,7 @@ import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +50,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -61,12 +64,16 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -531,6 +538,68 @@ public class FormPlayList extends JFrame {
         select(selected);
     }
 
+    // ---- searching
+
+    /**
+     * A search's text as it is compared: case, and full width against half width (ＡＢＣ, ｶﾅ),
+     * do not count.
+     */
+    static String normalize(String s) {
+        return Normalizer.normalize(s, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
+    }
+
+    /** Whether a song's titles, game, composer or file name have {@code query} in them. */
+    static boolean matches(PlayList.Music m, String query) {
+        for (String s : new String[] {m.title, m.titleJ, m.game, m.gameJ, m.composer, m.composerJ,
+                m.fileName == null ? null : Path.of(m.fileName).getFileName().toString(), m.arcFileName}) {
+            if (s != null && normalize(s).contains(query)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The row of the first song from {@code from} on that has {@code query} in it, going round at
+     * the end of the list.
+     *
+     * @param step 1 to go down, -1 to go up
+     * @return the row, or -1 when no song has it
+     */
+    int find(String query, int from, int step) {
+        List<PlayList.Music> musics = playList.getMusics();
+        int size = musics.size();
+        if (query.isEmpty() || size == 0) return -1;
+        String q = normalize(query);
+        for (int i = 0; i < size; i++) {
+            int row = Math.floorMod(from + i * step, size);
+            if (matches(musics.get(row), q)) return row;
+        }
+        return -1;
+    }
+
+    /**
+     * Goes to a song with the search box's text in it and selects it.
+     *
+     * @param next false while the text is being typed: the song selected stays while it still
+     *             matches; true for the one after it (Enter)
+     * @param step 1 to go down, -1 to go up
+     */
+    private void search(boolean next, int step) {
+        String query = tstSearch.getText();
+        if (query.isEmpty()) {
+            tstSearch.setBackground(UIManager.getColor("TextField.background"));
+            return;
+        }
+        int current = dgvList.getSelectedRow();
+        int from = current < 0 ? (step > 0 ? 0 : -1) : next ? current + step : current;
+        int row = find(query, from, step);
+        tstSearch.setBackground(row < 0 ? notFoundBackground : UIManager.getColor("TextField.background"));
+        if (row < 0) return;
+        dgvList.setRowSelectionInterval(row, row);
+        dgvList.scrollRectToVisible(dgvList.getCellRect(row, 0, true));
+    }
+
+    private static final Color notFoundBackground = new Color(0xff, 0xd0, 0xd0);
+
     // ---- sorting
 
     /** Sorts the list by a column; the same column again turns the order round. */
@@ -932,7 +1001,8 @@ public class FormPlayList extends JFrame {
 
         Font font = baseFont.deriveFont(baseFont.getSize2D() * zoom);
         for (Component c : toolStrip1.getComponents()) {
-            c.setFont(font);
+            // the search box is text to read, as the list is, so it stays at x1 with it
+            c.setFont(c == tstSearch ? baseFont : font);
             if (c instanceof AbstractButton b && b.getClientProperty(BASE_ICON) instanceof BufferedImage image) {
                 b.setIcon(scaled(image, zoom));
             }
@@ -1187,6 +1257,7 @@ public class FormPlayList extends JFrame {
         this.tsbTextExt = new JButton();
         this.tsbMMLExt = new JButton();
         this.tsbImgExt = new JButton();
+        this.tstSearch = new JTextField(14);
         this.timer1 = new Timer(1000, null);
 
         //
@@ -1333,6 +1404,8 @@ public class FormPlayList extends JFrame {
         this.toolStrip1.add(this.tsbTextExt);
         this.toolStrip1.add(this.tsbMMLExt);
         this.toolStrip1.add(this.tsbImgExt);
+        this.toolStrip1.add(Box.createHorizontalGlue());
+        this.toolStrip1.add(this.tstSearch);
 
         button(this.tsbOpenPlayList, "tsbOpenPlayList", "openPL", "Open a playlist file");
         this.tsbOpenPlayList.addActionListener(this::tsbOpenPlayList_Click);
@@ -1362,6 +1435,35 @@ public class FormPlayList extends JFrame {
         button(this.tsbImgExt, "tsbImgExt", "imgPL", "Open the image that goes with the song");
         this.tsbImgExt.addActionListener(this::tsbImgExt_Click);
         this.tsbImgExt.setEnabled(false);
+        //
+        // tstSearch
+        //
+        this.tstSearch.setName("tstSearch");
+        this.tstSearch.setToolTipText(text("tstSearch.ToolTipText",
+                "<html>Search titles, games, composers and file names<br>"
+                        + "Enter: next, Shift+Enter: previous, Esc: back to the list</html>"));
+        this.tstSearch.putClientProperty("JTextField.variant", "search"); // aqua draws it as a search field
+        this.tstSearch.setMaximumSize(this.tstSearch.getPreferredSize()); // a tool bar would stretch it
+        this.tstSearch.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { search(false, 1); }
+            @Override public void removeUpdate(DocumentEvent e) { search(false, 1); }
+            @Override public void changedUpdate(DocumentEvent e) {}
+        });
+        bindSearchKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "searchNext", () -> search(true, 1));
+        bindSearchKey(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), "searchPrevious", () -> search(true, -1));
+        bindSearchKey(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "searchEnd", () -> {
+            tstSearch.setText("");
+            dgvList.requestFocusInWindow();
+        });
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()), "search");
+        getRootPane().getActionMap().put("search", new AbstractAction("search") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                tstSearch.requestFocusInWindow();
+                tstSearch.selectAll();
+            }
+        });
         //
         // timer1
         //
@@ -1408,6 +1510,16 @@ public class FormPlayList extends JFrame {
         });
     }
 
+    private void bindSearchKey(KeyStroke key, String name, Runnable action) {
+        tstSearch.getInputMap(JComponent.WHEN_FOCUSED).put(key, name);
+        tstSearch.getActionMap().put(name, new AbstractAction(name) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                action.run();
+            }
+        });
+    }
+
     private void showPlayListPopup(MouseEvent e) {
         if (!e.isPopupTrigger()) return;
 
@@ -1436,6 +1548,7 @@ public class FormPlayList extends JFrame {
     private JMenuItem tsmiDelThis;
     private JPanel toolStripContainer1;
     private JToolBar toolStrip1;
+    private JTextField tstSearch;
     private JButton tsbOpenPlayList;
     private JButton tsbSavePlayList;
     private JButton tsbAddMusic;
