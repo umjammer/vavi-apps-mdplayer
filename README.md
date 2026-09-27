@@ -283,7 +283,7 @@ you can select a chip implementation variant by number.
     * ~~mxdrv: current-position counter reads 0~~
     * ~~mxdrv: pdx (see portable mdx)~~ ... it's pcm
     * ~~check ahx, hvl are HasSongNo?~~
-    * vgm: song title
+    * ~~vgm: song title~~
  * refactoring
    * ~~eliminate dotnet4j~~
    * ~~make VisWaveBuffer as one of view~~
@@ -291,7 +291,7 @@ you can select a chip implementation variant by number.
    * ~~`Common#copyField` ... i don't like it~~
    * chip class should handle one chip
    * real chip is one of instrument?
-   * \[ym] move ym2149ex to mdsound
+   * \[ym] move ym2149ex to instruments
    * chip refactoring about masking
    * settings ...  demolish each driver and chips
    * abstract m3u, zip
