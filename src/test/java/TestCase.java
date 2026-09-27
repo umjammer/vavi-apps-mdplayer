@@ -58,6 +58,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -397,9 +398,14 @@ Debug.println("close");
     @Test
     @EnabledIfSystemProperty(named = "vavi.test", matches = "ide")
     void testX() throws Exception {
+        CountDownLatch cdl = new CountDownLatch(1);
+        // the ide's junit runner has a shutdown hook that waits for the running test to end, so
+        // a quit (System.exit from the app) hung for good while this waited for nothing: end the
+        // test as soon as the jvm starts going down
+        Runtime.getRuntime().addShutdownHook(new Thread(cdl::countDown, "testX-end"));
+
         mdplayer.Program.main(new String[] {});
 
-        CountDownLatch cdl = new CountDownLatch(1);
         cdl.await();
     }
 
@@ -462,6 +468,26 @@ Debug.println("Stop took: " + duration + " ms");
         Setting loaded = new Setting();
         Serdes.Util.deserialize(new ByteArrayInputStream(baos.toByteArray()), loaded);
         System.out.println("Deserialized successfully!");
+    }
+
+    @Test
+    @DisplayName("the main window's master knob is saved apart from the balance, which a preset replaces")
+    void testMasterFaderSerialization() throws Exception {
+        Setting setting = new Setting();
+        setting.init();
+        setting.getLocation().setMasterFader(-42);
+        setting.getBalance().setMasterVolume(-6);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Serdes.Util.serialize(setting, baos);
+
+        Setting loaded = Serdes.Util.deserialize(new ByteArrayInputStream(baos.toByteArray()), new Setting());
+        assertEquals(-42, loaded.getLocation().getMasterFader());
+        assertEquals(-6, loaded.getBalance().getMasterVolume());
+
+        // a driver preset replacing the balance leaves the knob where it is
+        loaded.setBalance(new Setting.Balance());
+        assertEquals(-42, loaded.getLocation().getMasterFader());
     }
 
     @Test

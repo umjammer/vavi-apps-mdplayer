@@ -172,10 +172,6 @@ class FormMixer2 extends JFrame {
         frameBuffer.refresh(null);
     }
 
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {

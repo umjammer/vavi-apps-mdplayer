@@ -46,6 +46,7 @@ public class NSFFileFormat extends BaseFileFormat {
 
     @Override
     public List<PlayList.Music> getMusic(String file, byte[] buf, String zipFile /* = null */, Archive archive, Entry entry /* = null */) {
+        this.srcBuf = buf; // getMetaData() reads it, and addFileLoop() never load()s
         List<PlayList.Music> musics = new ArrayList<>();
         PlayList.Music music = new PlayList.Music();
 

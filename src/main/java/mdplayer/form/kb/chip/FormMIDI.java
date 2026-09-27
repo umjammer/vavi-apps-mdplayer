@@ -79,10 +79,6 @@ public class FormMIDI extends FormBase implements View {
         frameBuffer.refresh(null);
     }
 
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private final WindowListener windowListener = new WindowAdapter() {
         @Override
         public void windowClosed(WindowEvent e) {

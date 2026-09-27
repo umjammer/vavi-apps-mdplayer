@@ -109,7 +109,7 @@ public class M3U {
             // If there is no "::", the whole file will be treated as a file name and processing will end.
             if (!line.contains("::")) {
                 ms.fileName = line;
-                if (!Path.of(ms.fileName).isAbsolute() && rootPath.isEmpty()) {
+                if (!Path.of(ms.fileName).isAbsolute() && !rootPath.isEmpty()) {
                     ms.fileName = Path.of(rootPath, ms.fileName).toString();
                 }
 

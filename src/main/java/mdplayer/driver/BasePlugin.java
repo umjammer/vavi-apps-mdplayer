@@ -43,6 +43,9 @@ public abstract class BasePlugin<T extends BaseDriver> implements Plugin {
     /** for spi, 0 origin */
     public interface HasSongNo {
         void setSongNo(int songNo);
+
+        /** the song being played, 0 origin, what fmdsp's {@code PGM NUMBER} shows */
+        int getSongNo();
     }
 
     public final MDSound mds;
@@ -67,6 +70,11 @@ public abstract class BasePlugin<T extends BaseDriver> implements Plugin {
     public String playingFileName;
     public String playingArcFileName;
     protected int songNo = 0;
+
+    /** 0 origin, meaningful only for a {@link HasSongNo} plugin */
+    public int getSongNo() {
+        return songNo;
+    }
     protected List<Tuple<String, byte[]>> extendFiles = null;
 
     public List<Tuple<String, byte[]>> getExtendFiles() {
@@ -484,6 +492,22 @@ logger.log(Level.INFO, "close enter");
         setting.getBalance().setMasterVolume(masterVolume);
         // a MIDI song is not in the mix this volume multiplies, it has to be told
         chipRegister.plugin(MidiPlugin.class).applyVolume();
+    }
+
+    /**
+     * Moves the main window's master volume knob, which sits on top of the balance's
+     * {@link #masterVolume}, and is kept across songs.
+     *
+     * @see Setting.Location#getMasterFader()
+     */
+    public void setMasterFader(int volume) {
+        setting.getLocation().setMasterFader(volume);
+        chipRegister.plugin(MidiPlugin.class).applyVolume();
+    }
+
+    /** the mixer output's level in the balance's 2&times;dB unit: the balance's master plus the knob */
+    public int outputVolume() {
+        return masterVolume + setting.getLocation().getMasterFader();
     }
 
     public FileFormat getFileFormat() {

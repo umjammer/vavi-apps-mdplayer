@@ -111,7 +111,7 @@ public class UnknownFileFormat extends BaseFileFormat {
             metaData = (new VgmDriver()).retrieveMetaData(buf, vgmGd3);
         }
 
-        int TotalCounter = ByteUtil.readLeInt(buf, 0x18);
+        int totalCounter = ByteUtil.readLeInt(buf, 0x18);
         int vgmLoopOffset = ByteUtil.readLeInt(buf, 0x1c);
         int loopCounter = ByteUtil.readLeInt(buf, 0x20);
 
@@ -126,13 +126,13 @@ public class UnknownFileFormat extends BaseFileFormat {
         music.converted = metaData.getFirst(Tag.Converter);
         music.notes = metaData.getFirst(Tag.Note);
 
-        double sec = (double) TotalCounter / (double) Setting.getInstance().getOutputDevice().getSampleRate();
-        int TCminutes = (int) (sec / 60);
-        sec -= TCminutes * 60;
-        int TCsecond = (int) sec;
-        sec -= TCsecond;
-        int TCmillisecond = (int) (sec * 100.0);
-        music.duration = "%2d:%2d:%2d".formatted(TCminutes, TCsecond, TCmillisecond);
+        double sec = (double) totalCounter / (double) Setting.getInstance().getOutputDevice().getSampleRate();
+        int tcMinutes = (int) (sec / 60);
+        sec -= tcMinutes * 60;
+        int tcSecond = (int) sec;
+        sec -= tcSecond;
+        int tcMillisecond = (int) (sec * 100.0);
+        music.duration = "%2d:%02d:%02d".formatted(tcMinutes, tcSecond, tcMillisecond);
 
         return musics;
     }

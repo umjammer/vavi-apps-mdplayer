@@ -1286,6 +1286,12 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
         return d != null ? d.getName() : null;
     }
 
+    /** the playing plugin's song, for a format that numbers them (NSF, GBS, SID, ...) */
+    @Override
+    public int songNo() {
+        return plugin instanceof BasePlugin.HasSongNo hasSongNo ? hasSongNo.getSongNo() + 1 : 0;
+    }
+
     /**
      * The tags a group's part may be trimmed with behind its chip's {@code MAIN} volume. They are
      * per chip rather than a convention - the OPNA spells its SSG {@code SSG} and the OPN

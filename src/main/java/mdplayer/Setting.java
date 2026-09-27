@@ -2672,6 +2672,21 @@ public class Setting implements Serializable, Cloneable {
             playMode = value;
         }
 
+        /**
+         * the main window's master volume knob, in the balance's 2&times;dB unit, -192..20.
+         * <p>
+         * The user's own level, applied on top of {@link Balance#getMasterVolume()}: that one is
+         * the driver's calibration and is replaced by the driver's preset every song, which is
+         * why the knob does not live there.
+         */
+        private int masterFader = 0;
+        public int getMasterFader() {
+            return masterFader;
+        }
+        public void setMasterFader(int value) {
+            masterFader = Math.clamp(value, -192, 20);
+        }
+
         /** which titles the play list shows: "all", "en" or "ja" */
         private String playListLang = "all";
         public String getPlayListLang() {
@@ -2714,6 +2729,7 @@ public class Setting implements Serializable, Cloneable {
             location.viewPos = new HashMap<>(this.viewPos);
             location.viewOpen = new HashMap<>(this.viewOpen);
             location.playMode = this.playMode;
+            location.masterFader = this.masterFader;
             location.playListLang = this.playListLang;
             location.playListColumnWidths = this.playListColumnWidths;
 

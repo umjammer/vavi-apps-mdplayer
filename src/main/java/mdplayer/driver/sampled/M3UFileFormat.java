@@ -2,6 +2,8 @@ package mdplayer.driver.sampled;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +24,8 @@ import vavi.util.archive.Entry;
  * @version 0.00 2022-07-07 nsano initial version <br>
  */
 public class M3UFileFormat extends BaseFileFormat {
+
+    private static final Logger logger = System.getLogger(M3UFileFormat.class.getName());
 
     @Override
     public String[] getExtensions() {
@@ -47,7 +51,8 @@ public class M3UFileFormat extends BaseFileFormat {
     @Override
     public List<PlayList.Music> addFileLoop(PlayList.Music mc, Archive archive, Entry entry /* = null */) {
 
-        String rootPath = Path.of(mc.fileName).getParent().toString();
+        Path parent = Path.of(mc.fileName).getParent();
+        String rootPath = parent != null ? parent.toString() : "";
         PlayList pl;
         if (entry == null) pl = M3U.loadM3U(mc.fileName, rootPath);
         else pl = M3U.loadM3U(archive, entry, mc.arcFileName);
@@ -55,14 +60,26 @@ public class M3UFileFormat extends BaseFileFormat {
         if (pl.getMusics() == null || pl.getMusics().isEmpty()) return null;
 
         List<PlayList.Music> musics = new ArrayList<>();
-        for (PlayList.Music m : pl.getMusics()) musics.addAll(addFileLoop(m, archive, entry));
+        // each song is read by its own format, the m3u only names them
+        for (PlayList.Music m : pl.getMusics()) {
+            if (m.format == null) continue;
+            Entry e = entry != null ? archive.getEntry(m.fileName) : null;
+            if (entry != null && e == null) continue;
+            try {
+                List<PlayList.Music> added = m.format.addFileLoop(m, archive, e);
+                if (added != null) musics.addAll(added);
+            } catch (IOException ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+            }
+        }
         return musics;
     }
 
     @Override
     public List<PlayList.Music> addFileLoop(int index, PlayList.Music mc, Archive archive, Entry entry /* = null */) {
 
-        String rootPath = Path.of(mc.fileName).getParent().toString();
+        Path parent = Path.of(mc.fileName).getParent();
+        String rootPath = parent != null ? parent.toString() : "";
         PlayList pl;
         if (entry == null) pl = M3U.loadM3U(mc.fileName, rootPath);
         else pl = M3U.loadM3U(archive, entry, mc.arcFileName);
@@ -70,7 +87,18 @@ public class M3UFileFormat extends BaseFileFormat {
         if (pl.getMusics() == null || pl.getMusics().isEmpty()) return null;
 
         List<PlayList.Music> musics = new ArrayList<>();
-        for (PlayList.Music m : pl.getMusics()) musics.addAll(addFileLoop(index, m, archive, entry));
+        // each song is read by its own format, the m3u only names them
+        for (PlayList.Music m : pl.getMusics()) {
+            if (m.format == null) continue;
+            Entry e = entry != null ? archive.getEntry(m.fileName) : null;
+            if (entry != null && e == null) continue;
+            try {
+                List<PlayList.Music> added = m.format.addFileLoop(index, m, archive, e);
+                if (added != null) musics.addAll(added);
+            } catch (IOException ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+            }
+        }
         return musics;
     }
 

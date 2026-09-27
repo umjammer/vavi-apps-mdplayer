@@ -180,10 +180,6 @@ public class FormVisWave extends FormBase {
         }
     };
 
-    protected boolean getShowWithoutActivation() {
-        return true;
-    }
-
     private void tsbDispType2_Click(ActionEvent ev) {
         dispType = 2;
     }

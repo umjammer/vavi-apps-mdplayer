@@ -34,6 +34,10 @@ public class SmafPlugin extends BasePlugin<SmafDriver2> {
 
     @Override
     public void prepare() {
+        // a song that ended by itself was never stopped (Audio#stop skips a stopped plugin)
+        if (driverVirtual != null) {
+            driverVirtual.stopSynth();
+        }
         driverVirtual = new SmafDriver2(this);
 //        driverVirtual = new SmafDriver(this); // the emulated PC, see the class comment
 

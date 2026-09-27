@@ -1,10 +1,12 @@
 package mdplayer.driver.hes;
 
 import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import mdplayer.Common;
 import mdplayer.chips.HuC6280Chip;
 import mdplayer.driver.BasePlugin;
+import mdplayer.driver.BasePlugin.HasSongNo;
 import mdsound.MDSound;
 
 import static java.lang.System.getLogger;
@@ -17,9 +19,15 @@ import static mdsound.MDSound.Chip.MAIN_TAG;
  * @author <a href="mailto:umjammer@gmail.com">Naohide Sano</a> (nsano)
  * @version 0.00 2022-07-08 nsano initial version <br>
  */
-public class HESPlugin extends BasePlugin<HesDriver> {
+public class HESPlugin extends BasePlugin<HesDriver> implements HasSongNo {
 
     private static final Logger logger = getLogger(HESPlugin.class.getName());
+
+    @Override
+    public void setSongNo(int songNo) {
+logger.log(Level.INFO, "songNo: " + songNo);
+        this.songNo = songNo;
+    }
 
     @Override
     public void prepare() {

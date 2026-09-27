@@ -217,7 +217,7 @@ public class MidiPlugin implements Plugin {
      */
     private double midiGain() {
         Setting.Balance balance = setting.getBalance();
-        return Math.pow(10.0, (balance.getMasterVolume() + balance.getMidiVolume()) / 40.0);
+        return Math.pow(10.0, (balance.getMasterVolume() + setting.getLocation().getMasterFader() + balance.getMidiVolume()) / 40.0);
     }
 
     /**
@@ -241,8 +241,8 @@ public class MidiPlugin implements Plugin {
      */
     public synchronized void applyVolume() {
         if (outs.isEmpty()) return;
-logger.log(Level.DEBUG, "midi volume: gain=%.3f (master=%d, midi=%d)".formatted(
-        midiGain(), setting.getBalance().getMasterVolume(), setting.getBalance().getMidiVolume()));
+logger.log(Level.DEBUG, "midi volume: gain=%.3f (master=%d, fader=%d, midi=%d)".formatted(
+        midiGain(), setting.getBalance().getMasterVolume(), setting.getLocation().getMasterFader(), setting.getBalance().getMidiVolume()));
         for (Receiver out : outs) {
             if (out == null) continue;
             for (int ch = 0; ch < MIDI_CHANNELS; ch++) {
