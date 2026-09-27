@@ -972,7 +972,7 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
         if (d == null) return;
 
         // a memo that is a screen image is shown as it was laid out, the tags having lost the indent
-        String[] laidOut = d.getMetaData().getAll(Tag.Comments).toArray(String[]::new);
+        String[] laidOut = d.getMetaData() != null ? d.getMetaData().getAll(Tag.Comments).toArray(String[]::new) : new String[0];
         if (laidOut.length > 0) {
             for (int i = 0; i < comments.length; i++) {
                 if (comments[i] == null && i < laidOut.length) comments[i] = laidOut[i];
