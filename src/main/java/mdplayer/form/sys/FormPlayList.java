@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.util.ArrayDeque;
@@ -37,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -498,6 +500,48 @@ public class FormPlayList extends JFrame {
         lastPlayIndex = -1;
         clearSort();
         refresh();
+    }
+
+    /**
+     * The same song: the same file, the same entry in the same archive and the same song number.
+     * A file with several songs in it may be on the list once per song.
+     */
+    private static List<Object> identity(PlayList.Music music) {
+        return Arrays.asList(normalized(music.fileName), normalized(music.arcFileName), music.songNo);
+    }
+
+    private static String normalized(String path) {
+        if (path == null || path.isEmpty()) return null;
+        try {
+            return Path.of(path).toAbsolutePath().normalize().toString();
+        } catch (InvalidPathException e) {
+            return path;
+        }
+    }
+
+    /**
+     * Removes the songs that are on the list more than once, keeping the first of each. The song
+     * being played is kept in place of an earlier copy of it, so that it goes on being played.
+     */
+    private void tsmiDelDuplicated_Click(ActionEvent ev) {
+        List<PlayList.Music> musics = playList.getMusics();
+        List<Object> playingId = playingMusic != null && indexOf(playingMusic) >= 0 ? identity(playingMusic) : null;
+        Set<List<Object>> seen = new HashSet<>();
+        Set<PlayList.Music> removed = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (PlayList.Music music : musics) {
+            List<Object> id = identity(music);
+            if (id.equals(playingId) ? music != playingMusic : !seen.add(id)) removed.add(music);
+        }
+        if (removed.isEmpty()) return;
+
+        List<PlayList.Music> selected = selectedMusics();
+        musics.removeIf(removed::contains);
+        randomStack.removeIf(removed::contains);
+        clearSort();
+        refresh();
+        playIndex();
+        select(selected.stream().filter(m -> !removed.contains(m)).toList());
+        logger.log(Level.INFO, removed.size() + " duplicated songs were removed from the play list");
     }
 
     /**
@@ -1351,6 +1395,7 @@ public class FormPlayList extends JFrame {
         this.tsmiPlayThis = new JMenuItem();
         this.tsmiDelThis = new JMenuItem();
         this.tsmiDelAllMusic = new JMenuItem();
+        this.tsmiDelDuplicated = new JMenuItem();
         this.tsmiOpenFolder = new JMenuItem();
         this.toolStrip1 = new JToolBar();
         this.tsbOpenPlayList = new JButton();
@@ -1461,6 +1506,7 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList.add(this.tsmiPlayThis);
         this.cmsPlayList.add(this.tsmiDelThis);
         this.cmsPlayList.addSeparator();
+        this.cmsPlayList.add(this.tsmiDelDuplicated);
         this.cmsPlayList.add(this.tsmiDelAllMusic);
         this.cmsPlayList.add(this.tsmiOpenFolder);
         //
@@ -1490,6 +1536,11 @@ public class FormPlayList extends JFrame {
         //
         menuItem(this.tsmiDelAllMusic, "tsmiDelAllMusic", "Remove all songs");
         this.tsmiDelAllMusic.addActionListener(this::tsmiDelAllMusic_Click);
+        //
+        // tsmiDelDuplicated
+        //
+        menuItem(this.tsmiDelDuplicated, "tsmiDelDuplicated", "Remove duplicated songs");
+        this.tsmiDelDuplicated.addActionListener(this::tsmiDelDuplicated_Click);
         //
         // tsmiOpenFolder
         //
@@ -1646,6 +1697,7 @@ public class FormPlayList extends JFrame {
         tsmiDelThis.setEnabled(onRow);
         tsmiOpenFolder.setEnabled(onRow);
         tsmiDelAllMusic.setEnabled(!playList.getMusics().isEmpty());
+        tsmiDelDuplicated.setEnabled(playList.getMusics().size() > 1);
         tsmiDelThis.setText(dgvList.getSelectedRowCount() > 1
                 ? text("tsmiDelThis.Text.plural", "Remove the selected songs")
                 : text("tsmiDelThis.Text", "Remove this song"));
@@ -1667,6 +1719,7 @@ public class FormPlayList extends JFrame {
     private JButton tsbUp;
     private JButton tsbDown;
     private JMenuItem tsmiDelAllMusic;
+    private JMenuItem tsmiDelDuplicated;
     private JButton tsbAddFolder;
     private JToggleButton tsbJapanese;
     private JToggleButton tsbEnglish;
