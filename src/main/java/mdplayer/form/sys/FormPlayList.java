@@ -26,11 +26,14 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,11 +41,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.Random;
@@ -53,6 +59,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -524,12 +531,21 @@ public class FormPlayList extends JFrame {
      * being played is kept in place of an earlier copy of it, so that it goes on being played.
      */
     private void tsmiDelDuplicated_Click(ActionEvent ev) {
+        removeDuplicates(FormPlayList::identity);
+    }
+
+    /**
+     * Removes the songs whose {@code identity} is that of an earlier one, keeping the song being
+     * played as {@link #tsmiDelDuplicated_Click} does. A song whose identity is null is kept.
+     */
+    private void removeDuplicates(Function<PlayList.Music, Object> identity) {
         List<PlayList.Music> musics = playList.getMusics();
-        List<Object> playingId = playingMusic != null && indexOf(playingMusic) >= 0 ? identity(playingMusic) : null;
-        Set<List<Object>> seen = new HashSet<>();
+        Object playingId = playingMusic != null && indexOf(playingMusic) >= 0 ? identity.apply(playingMusic) : null;
+        Set<Object> seen = new HashSet<>();
         Set<PlayList.Music> removed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (PlayList.Music music : musics) {
-            List<Object> id = identity(music);
+            Object id = identity.apply(music);
+            if (id == null) continue;
             if (id.equals(playingId) ? music != playingMusic : !seen.add(id)) removed.add(music);
         }
         if (removed.isEmpty()) return;
@@ -542,6 +558,63 @@ public class FormPlayList extends JFrame {
         playIndex();
         select(selected.stream().filter(m -> !removed.contains(m)).toList());
         logger.log(Level.INFO, removed.size() + " duplicated songs were removed from the play list");
+    }
+
+    /**
+     * Removes the songs whose files have the same contents as an earlier one's, the same song of
+     * the same file under another name or in another folder. The files are hashed on
+     * {@link #reader}, which may take a while on a long list; songs added meanwhile are kept.
+     * A song in an archive is the archive's contents plus its entry, the entry is not unpacked.
+     */
+    private void tsmiDelDuplicatedByHash_Click(ActionEvent ev) {
+        PlayList target = playList;
+        List<PlayList.Music> snapshot = new ArrayList<>(playList.getMusics());
+        batches++;
+        progress("msgHashing", "hashing", 0, 0);
+        reading = reader.submit(() -> {
+            Map<PlayList.Music, Object> ids = new IdentityHashMap<>();
+            try {
+                Map<String, String> hashes = new HashMap<>(); // a file's path to its contents' hash
+                long last = System.nanoTime();
+                for (int i = 0; i < snapshot.size(); i++) {
+                    PlayList.Music music = snapshot.get(i);
+                    boolean inArchive = music.arcFileName != null && !music.arcFileName.isEmpty();
+                    String file = normalized(inArchive ? music.arcFileName : music.fileName);
+                    String hash = file == null ? null : hashes.computeIfAbsent(file, FormPlayList::hash);
+                    if (hash != null) {
+                        ids.put(music, Arrays.asList(hash, inArchive ? music.fileName : null, music.songNo));
+                    }
+                    long now = System.nanoTime();
+                    if (now - last >= chunkNanos) {
+                        last = now;
+                        int done = i + 1;
+                        SwingUtilities.invokeLater(() -> progress("msgHashing", "hashing", done, snapshot.size()));
+                    }
+                }
+            } catch (Exception ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+                ids.clear();
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    batches--;
+                    progress(0, 0);
+                    if (target == playList && !ids.isEmpty()) removeDuplicates(ids::get);
+                });
+            }
+        });
+    }
+
+    /** The hash of a file's contents, or null when it cannot be read. */
+    private static String hash(String file) {
+        try (InputStream is = Files.newInputStream(Path.of(file))) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[64 * 1024];
+            for (int n; (n = is.read(buf)) > 0; ) md.update(buf, 0, n);
+            return HexFormat.of().formatHex(md.digest());
+        } catch (IOException | InvalidPathException | NoSuchAlgorithmException e) {
+            logger.log(Level.DEBUG, file + ": " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -941,11 +1014,16 @@ public class FormPlayList extends JFrame {
 
     /** Shows how far the reading has got in the title, nothing when {@code total} is 0. */
     private void progress(int done, int total) {
+        progress("msgReading", "reading", done, total);
+    }
+
+    /** Shows how far {@code what} has got in the title, nothing when {@code total} is 0 and nothing is going on. */
+    private void progress(String what, String defaultWhat, int done, int total) {
         String title = text("$this.Text", "play list");
         if (total > 0) {
-            title += " - " + text("msgReading", "reading") + " " + done + " / " + total;
+            title += " - " + text(what, defaultWhat) + " " + done + " / " + total;
         } else if (batches > 0) {
-            title += " - " + text("msgReading", "reading");
+            title += " - " + text(what, defaultWhat);
         }
         setTitle(title);
     }
@@ -1396,6 +1474,7 @@ public class FormPlayList extends JFrame {
         this.tsmiDelThis = new JMenuItem();
         this.tsmiDelAllMusic = new JMenuItem();
         this.tsmiDelDuplicated = new JMenuItem();
+        this.tsmiDelDuplicatedByHash = new JMenuItem();
         this.tsmiOpenFolder = new JMenuItem();
         this.toolStrip1 = new JToolBar();
         this.tsbOpenPlayList = new JButton();
@@ -1507,6 +1586,7 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList.add(this.tsmiDelThis);
         this.cmsPlayList.addSeparator();
         this.cmsPlayList.add(this.tsmiDelDuplicated);
+        this.cmsPlayList.add(this.tsmiDelDuplicatedByHash);
         this.cmsPlayList.add(this.tsmiDelAllMusic);
         this.cmsPlayList.add(this.tsmiOpenFolder);
         //
@@ -1541,6 +1621,11 @@ public class FormPlayList extends JFrame {
         //
         menuItem(this.tsmiDelDuplicated, "tsmiDelDuplicated", "Remove duplicated songs");
         this.tsmiDelDuplicated.addActionListener(this::tsmiDelDuplicated_Click);
+        //
+        // tsmiDelDuplicatedByHash
+        //
+        menuItem(this.tsmiDelDuplicatedByHash, "tsmiDelDuplicatedByHash", "Remove duplicated songs by contents");
+        this.tsmiDelDuplicatedByHash.addActionListener(this::tsmiDelDuplicatedByHash_Click);
         //
         // tsmiOpenFolder
         //
@@ -1698,6 +1783,7 @@ public class FormPlayList extends JFrame {
         tsmiOpenFolder.setEnabled(onRow);
         tsmiDelAllMusic.setEnabled(!playList.getMusics().isEmpty());
         tsmiDelDuplicated.setEnabled(playList.getMusics().size() > 1);
+        tsmiDelDuplicatedByHash.setEnabled(playList.getMusics().size() > 1);
         tsmiDelThis.setText(dgvList.getSelectedRowCount() > 1
                 ? text("tsmiDelThis.Text.plural", "Remove the selected songs")
                 : text("tsmiDelThis.Text", "Remove this song"));
@@ -1720,6 +1806,7 @@ public class FormPlayList extends JFrame {
     private JButton tsbDown;
     private JMenuItem tsmiDelAllMusic;
     private JMenuItem tsmiDelDuplicated;
+    private JMenuItem tsmiDelDuplicatedByHash;
     private JButton tsbAddFolder;
     private JToggleButton tsbJapanese;
     private JToggleButton tsbEnglish;
