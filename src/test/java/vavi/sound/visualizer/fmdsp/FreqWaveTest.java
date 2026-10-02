@@ -46,25 +46,23 @@ class FreqWaveTest {
             @Override public LevelDataSource level() { return null; }
             @Override public WorkStateSource work() { return null; }
             @Override public TrackStatusSource trackStatus() {
-                return new TrackStatusSource() {
-                    @Override public void readStatus(TrackId track, TrackStatus out) {
-                        out.playing = track == TrackId.FM_1 && playing;
-                        out.info = TrackInfo.NORMAL;
-                        out.ticks = 64;
-                        out.ticksLeft = 32;
-                        out.key = out.playing ? 0x40 : 0xff;
-                        out.actualKey = out.key;
-                        out.toneNum = 0;
-                        out.volume = 100;
-                        out.gate = 8;
-                        out.detune = 0;
-                        out.pitchDeviation = out.playing ? pitchDeviation : 0;
-                        out.status = status;
-                        out.ppz8Ch = 0;
-                        out.ssgTone = false;
-                        out.ssgNoise = false;
-                        out.ssgNoiseFreq = 0;
-                    }
+                return (track, out) -> {
+                    out.playing = track == TrackId.FM_1 && playing;
+                    out.info = TrackInfo.NORMAL;
+                    out.ticks = 64;
+                    out.ticksLeft = 32;
+                    out.key = out.playing ? 0x40 : 0xff;
+                    out.actualKey = out.key;
+                    out.toneNum = 0;
+                    out.volume = 100;
+                    out.gate = 8;
+                    out.detune = 0;
+                    out.pitchDeviation = out.playing ? pitchDeviation : 0;
+                    out.status = status;
+                    out.ppz8Ch = 0;
+                    out.ssgTone = false;
+                    out.ssgNoise = false;
+                    out.ssgNoiseFreq = 0;
                 };
             }
         });

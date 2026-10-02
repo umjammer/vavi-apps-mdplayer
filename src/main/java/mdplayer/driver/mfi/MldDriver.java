@@ -97,7 +97,8 @@ public class MldDriver extends BaseDriver implements MasterVolumeSub {
     // the synthesizer's rate to the output rate
     private double step = 1;
     private double frac;
-    private int[] left = new int[BLOCK], right = new int[BLOCK];
+    private final int[] left = new int[BLOCK];
+    private final int[] right = new int[BLOCK];
     private int blockPos = BLOCK, blockLen = BLOCK;
 
     /** the frames of the buffer being rendered, the synthesizer leveled and the adpcm, before the clamp */

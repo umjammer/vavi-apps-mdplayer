@@ -53,6 +53,7 @@ public class MPcmChip extends BaseChip {
     }
 
     /** the voices, as the playing back end reports them; see {@code mdsound.chips.MPcmPP#getInfo} */
+    @Override
     public Map<String, Object> getInfo(int chipId) {
         Instrument inst = context.mds.inst(inst(chipId));
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");

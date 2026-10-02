@@ -29,7 +29,7 @@ import static java.lang.System.getLogger;
  * <b>What paces it.</b> The emulated player keeps time the way it would on real hardware: it
  * hands the sound card a buffer, and cannot hand it the next one until the card has played the
  * last. So the emulated card has to take its samples at the rate they are meant to be heard at,
- * no faster - which is exactly what happens when {@link #write} blocks until {@link #read} has
+ * no faster - which is exactly what happens when {@link Sink#write} blocks until {@link #read} has
  * made room. Let it take them as fast as the emulator can make them and the player's own sense
  * of time goes with it: the song comes out at the wrong speed and ends in the wrong place.
  * <p>

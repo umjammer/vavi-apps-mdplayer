@@ -39,7 +39,7 @@ public class FormVisWave extends FormBase {
     public int y = -1;
 
     private final short[][] buf = {new short[2048], new short[2048]};
-    private Graphics2D g;
+    private final Graphics2D g;
     private final BufferedImage bmp;
     private int dispType = 1;
     private double dispHeight = 1.0;

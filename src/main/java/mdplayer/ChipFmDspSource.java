@@ -946,13 +946,6 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
     // ----- work state -----
 
     /**
-     * The tick counter fmdsp wants for its clock, its loop bar and the circle animation, rebuilt
-     * the way {@code OPNATimer} does it from the driver's sample counter: one TimerB step is
-     * {@code opnaClock / 72 / 2} = 55467 Hz, and TimerB overflows every {@code (256 - timerB) * 16}
-     * steps. The period comes from the FM chip that owns the rows; a song that never programs
-     * TimerB gets {@link #defaultTimerB}.
-     */
-    /**
      * The first of {@code tags} the metadata has anything for, keeping what the line already shows
      * - a driver can fill its metadata in late, but never has a second thing to say on one line.
      * Only the first line of a tag is taken: there is room for one, and a note can run long.
@@ -966,6 +959,13 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
         return current;
     }
 
+    /**
+     * The tick counter fmdsp wants for its clock, its loop bar and the circle animation, rebuilt
+     * the way {@code OPNATimer} does it from the driver's sample counter: one TimerB step is
+     * {@code opnaClock / 72 / 2} = 55467 Hz, and TimerB overflows every {@code (256 - timerB) * 16}
+     * steps. The period comes from the FM chip that owns the rows; a song that never programs
+     * TimerB gets {@link #defaultTimerB}.
+     */
     private void state() {
         BaseDriver d = driver.get();
         work = d;

@@ -177,7 +177,7 @@ public class SmafReader implements FmDspChipReader {
         double cents = (channel.bend - 0x2000) / 8192.0 * BEND_SEMITONES * 100;
         int semitones = (int) Math.round(cents / 100);
         out.note = note.key() + semitones;
-        out.detune = (int) Math.round(Math.max(-50, Math.min(50, cents - semitones * 100.0)));
+        out.detune = (int) Math.round(Math.clamp(cents - semitones * 100.0, -50, 50));
         out.amplitude = amplitude(channel, note);
     }
 

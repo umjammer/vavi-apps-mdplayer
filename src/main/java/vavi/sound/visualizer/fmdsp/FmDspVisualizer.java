@@ -551,7 +551,7 @@ public class FmDspVisualizer extends JComponent {
         this.rightMode = mode;
     }
 
-    /** Switch palette index (0..{@link Palette#COUNT}-1). */
+    /** Switch palette index (0..{@code Palette#COUNT}-1). */
     public void setPaletteIndex(int index) {
         palette.select(index);
     }
@@ -1885,7 +1885,7 @@ public class FmDspVisualizer extends JComponent {
      * song numbers leaves all three blank.
      */
     private void renderPgmNumber(WorkStateSource w) {
-        int n = Math.min(999, Math.max(0, w != null ? w.songNo() : 0));
+        int n = Math.clamp(w != null ? w.songNo() : 0, 0, 999);
         int digits = n == 0 ? 0 : n >= 100 ? 3 : n >= 10 ? 2 : 1;
         for (int i = 0, p = n; i < VOLDOWN_DIGITS; i++, p /= 10) {
             blitNum(VOLDOWN_NUM_X + NUM_W * (VOLDOWN_DIGITS - 1 - i), PGMNUM_Y, i < digits ? p % 10 : 10);

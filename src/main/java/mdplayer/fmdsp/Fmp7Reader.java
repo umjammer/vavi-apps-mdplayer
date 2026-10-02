@@ -297,7 +297,7 @@ public class Fmp7Reader implements FmDspChipReader {
         // the pitch is counted in sixty-fourths of a semitone and reads one semitone high; what
         // it sits away from the note it was asked to play is the bend and the vibrato in it
         double cents = ((double) work.freq(part) / Fmp7Work.SEMITONE - 1 - out.note) * 100;
-        out.detune = (int) Math.round(Math.max(-50, Math.min(50, cents)));
+        out.detune = (int) Math.round(Math.clamp(cents, -50, 50));
         out.amplitude = Math.min(1, work.volume(part) / (double) VOLUME_MAX);
     }
 
