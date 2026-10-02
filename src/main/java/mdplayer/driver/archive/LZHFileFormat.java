@@ -3,6 +3,8 @@ package mdplayer.driver.archive;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +33,8 @@ import static vavi.util.compat.Util.getExtension;
  * @version 0.00 2022-07-07 nsano initial version <br>
  */
 public class LZHFileFormat extends BaseFileFormat {
+
+    private static final Logger logger = System.getLogger(LZHFileFormat.class.getName());
 
     @Override
     public String[] getExtensions() {
@@ -113,7 +117,13 @@ public class LZHFileFormat extends BaseFileFormat {
                     m.format = FileFormat.getFileFormat(m.fileName);
                     m.arcFileName = mc.arcFileName;
                     m.arcType = mc.arcType;
-                    musics.addAll(addFileLoop(m, archive, e));
+                    // each member is read by its own format
+                    try {
+                        List<PlayList.Music> added = m.format != null ? m.format.addFileLoop(m, archive, e) : null;
+                        if (added != null) musics.addAll(added);
+                    } catch (IOException ex) {
+                        logger.log(Level.ERROR, ex.getMessage(), ex);
+                    }
 
                     // When multiple m3u files are included, there are cases where multiple files with the same name are added.
                     // To prevent this, we will break here.
@@ -185,7 +195,13 @@ public class LZHFileFormat extends BaseFileFormat {
                     m.format = FileFormat.getFileFormat(m.fileName);
                     m.arcFileName = mc.arcFileName;
                     m.arcType = mc.arcType;
-                    musics.addAll(addFileLoop(index, m, archive, ent));
+                    // each member is read by its own format
+                    try {
+                        List<PlayList.Music> added = m.format != null ? m.format.addFileLoop(index, m, archive, ent) : null;
+                        if (added != null) musics.addAll(added);
+                    } catch (IOException ex) {
+                        logger.log(Level.ERROR, ex.getMessage(), ex);
+                    }
 
                     // When multiple m3u files are included, there are cases where multiple files with the same name are added.
                     // To prevent this, we will break here.

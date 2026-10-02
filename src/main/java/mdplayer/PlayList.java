@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Scanner;
 import java.util.StringJoiner;
 import javax.swing.JOptionPane;
 
@@ -31,7 +30,6 @@ import vavi.util.serdes.JacksonXMLBeanBinder;
 import vavi.util.serdes.Serdes;
 
 import static java.lang.System.getLogger;
-import static mdplayer.Common.charset;
 
 
 @Serdes(beanBinder = JacksonXMLBeanBinder.class)
@@ -249,31 +247,8 @@ public class PlayList implements Serializable, Cloneable {
     }
 
     public static PlayList loadM3U(String filename) {
-        try {
-            PlayList pl = new PlayList();
-
-            try (Scanner sr = new Scanner(Files.newInputStream(Path.of(filename)), charset)) {
-                String line;
-                while (sr.hasNextLine()) {
-                    line = sr.nextLine();
-                    line = line.trim();
-                    if (line.isEmpty()) continue;
-                    if (line.charAt(0) == '#') continue;
-
-                    if (Path.of(line).getParent() != null) {
-                        line = Path.of(filename).getParent().resolve(line).toString();
-                    }
-                    Music ms = new Music();
-                    ms.fileName = line;
-                    pl.musics.add(ms);
-                }
-            }
-
-            return pl;
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-            return new PlayList();
-        }
+        Path parent = Path.of(filename).toAbsolutePath().getParent();
+        return M3U.loadM3U(filename, parent != null ? parent.toString() : "");
     }
 
     /**

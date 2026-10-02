@@ -29,7 +29,7 @@ public class M3UFileFormat extends BaseFileFormat {
 
     @Override
     public String[] getExtensions() {
-        return new String[] {".m3u"};
+        return new String[] {".m3u", ".m3u8"};
     }
 
     @Override
