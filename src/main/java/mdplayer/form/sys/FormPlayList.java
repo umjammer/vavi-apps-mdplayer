@@ -754,9 +754,21 @@ public class FormPlayList extends JFrame {
     }
 
     private static Object sortKey(PlayList.Music m, int column) {
-        Object v = value(m, cols.values()[column]);
+        // the file name column shows the name only, but sorts by where the file is, so a folder stays together
+        Object v = column == cols.clmDispFileName.ordinal() ? fullPath(m) : value(m, cols.values()[column]);
         if (v instanceof String s && s.isBlank()) return null;
         return v;
+    }
+
+    /**
+     * The song's file with its folders, an archive member after the archive it is in.
+     * The separators become the lowest character, so {@code a/b/x} sorts before {@code a/b-c/x}
+     * and a folder's files stay together.
+     */
+    private static String fullPath(PlayList.Music m) {
+        if (m.fileName == null) return null;
+        String path = m.arcFileName == null || m.arcFileName.isEmpty() ? m.fileName : m.arcFileName + '/' + m.fileName;
+        return path.replace(File.separatorChar, '\0').replace('/', '\0');
     }
 
     /** The list order is no longer the sorted one. */
