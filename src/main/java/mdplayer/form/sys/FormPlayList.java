@@ -743,7 +743,7 @@ public class FormPlayList extends JFrame {
             if (b == null) return -1;
             int r = a instanceof Integer ia && b instanceof Integer ib
                     ? Integer.compare(ia, ib)
-                    : String.CASE_INSENSITIVE_ORDER.compare(a.toString(), b.toString());
+                    : naturalCompare(a.toString(), b.toString());
             return sortAscending ? r : -r;
         });
         playList.getMusics().sort(c); // a stable sort, so sorting by one column then another works
@@ -769,6 +769,45 @@ public class FormPlayList extends JFrame {
         if (m.fileName == null) return null;
         String path = m.arcFileName == null || m.arcFileName.isEmpty() ? m.fileName : m.arcFileName + '/' + m.fileName;
         return path.replace(File.separatorChar, '\0').replace('/', '\0');
+    }
+
+    /**
+     * Compares like {@link String#CASE_INSENSITIVE_ORDER}, but a run of digits counts as the number it is,
+     * so {@code Trk 2} goes before {@code Trk 10} and {@code 2.m} before {@code 10.m}.
+     * Numbers equal in value fall back to fewer leading zeros first.
+     */
+    static int naturalCompare(String a, String b) {
+        int i = 0, j = 0;
+        int zeros = 0; // the first difference in leading zeros, used only when all else is equal
+        while (i < a.length() && j < b.length()) {
+            char ca = a.charAt(i), cb = b.charAt(j);
+            if (isDigit(ca) && isDigit(cb)) {
+                int si = i, sj = j;
+                while (i < a.length() && a.charAt(i) == '0') i++;
+                while (j < b.length() && b.charAt(j) == '0') j++;
+                int ni = i, nj = j;
+                while (i < a.length() && isDigit(a.charAt(i))) i++;
+                while (j < b.length() && isDigit(b.charAt(j))) j++;
+                int r = Integer.compare(i - ni, j - nj); // a longer number is a bigger one
+                if (r == 0) r = a.substring(ni, i).compareTo(b.substring(nj, j));
+                if (r != 0) return r;
+                if (zeros == 0) zeros = Integer.compare(ni - si, nj - sj);
+            } else {
+                if (ca != cb) {
+                    ca = Character.toLowerCase(Character.toUpperCase(ca));
+                    cb = Character.toLowerCase(Character.toUpperCase(cb));
+                    if (ca != cb) return ca - cb;
+                }
+                i++;
+                j++;
+            }
+        }
+        int r = Integer.compare(a.length() - i, b.length() - j);
+        return r != 0 ? r : zeros;
+    }
+
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
     }
 
     /** The list order is no longer the sorted one. */

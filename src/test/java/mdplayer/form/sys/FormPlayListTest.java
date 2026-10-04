@@ -233,6 +233,15 @@ class FormPlayListTest {
     }
 
     @Test
+    void sortNumbersNaturally() throws Exception {
+        add("Trk 10", "Trk 2", "Trk 1");
+        call("sortBy", new Class<?>[] {int.class}, FormPlayList.cols.clmTitle.ordinal());
+        assertEquals(List.of("Trk 1", "Trk 2", "Trk 10"), titles());
+        call("sortBy", new Class<?>[] {int.class}, FormPlayList.cols.clmDispFileName.ordinal());
+        assertEquals(List.of("Trk 1", "Trk 2", "Trk 10"), titles(), "file names too");
+    }
+
+    @Test
     void remove() throws Exception {
         add("a", "b", "c", "d");
         SwingUtilities.invokeAndWait(() -> { form.setStart(2); form.play(); }); // c
