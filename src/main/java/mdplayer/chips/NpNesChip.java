@@ -428,7 +428,24 @@ public class NpNesChip extends BaseChip {
         map.put("volume", volume);
         map.put("register", apuRegisters(chipId));
         map.put("dmcRegister", dmcRegisters(chipId));
+        int[] levels = levels(chipId);
+        if (levels != null) map.put("levels", levels);
         return map;
+    }
+
+    /**
+     * What the pulses, the triangle, the noise and the delta PCM are putting out now, in that
+     * order, or null when no NSF is playing. The registers alone cannot say: a channel on its
+     * envelope keeps only the envelope period there, and a length counter that ran out leaves
+     * them as they were.
+     */
+    private int[] levels(int chipId) {
+        if (nsf == null || nsf.apu == null || nsf.apu.apu == null
+                || nsf.dmc == null || nsf.dmc.dmc == null || chipId == 1) return null;
+        return new int[] {
+                nsf.apu.apu.level(0), nsf.apu.apu.level(1),
+                nsf.dmc.dmc.level(0), nsf.dmc.dmc.level(1), nsf.dmc.dmc.level(2)
+        };
     }
 
     /**
