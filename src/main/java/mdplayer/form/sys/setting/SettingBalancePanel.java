@@ -8,6 +8,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -68,50 +69,35 @@ public class SettingBalancePanel extends SettingTab {
         //
         // groupBox18
         //
-        this.groupBox18.add(this.groupBox24);
-        this.groupBox18.add(this.groupBox23);
         this.groupBox18.setName("groupBox18");
         //
         // groupBox19
         //
-        this.groupBox19.add(this.rbAutoBalanceNotLoadSongBalance);
-        this.groupBox19.add(this.rbAutoBalanceLoadSongBalance);
         this.groupBox19.setName("groupBox19");
         //
         // groupBox20
         //
-        this.groupBox20.add(this.rbAutoBalanceNotLoadDriverBalance);
-        this.groupBox20.add(this.rbAutoBalanceLoadDriverBalance);
         this.groupBox20.setName("groupBox20");
         this.groupBox20.addFocusListener(this.groupBox20_Enter);
         //
         // groupBox21
         //
-        this.groupBox21.add(this.rbAutoBalanceNotSaveSongBalance);
-        this.groupBox21.add(this.rbAutoBalanceSaveSongBalance);
         this.groupBox21.setName("groupBox21");
         //
         // groupBox22
         //
-        this.groupBox22.add(this.label4);
         this.groupBox22.setName("groupBox22");
         //
         // groupBox23
         //
-        this.groupBox23.add(this.groupBox19);
-        this.groupBox23.add(this.groupBox20);
         this.groupBox23.setName("groupBox23");
         //
         // groupBox24
         //
-        this.groupBox24.add(this.groupBox21);
-        this.groupBox24.add(this.groupBox22);
         this.groupBox24.setName("groupBox24");
         //
         // groupBox25
         //
-        this.groupBox25.add(this.rbAutoBalanceNotSamePositionAsSongData);
-        this.groupBox25.add(this.rbAutoBalanceSamePositionAsSongData);
         this.groupBox25.setName("groupBox25");
         //
         // label4
@@ -156,10 +142,34 @@ public class SettingBalancePanel extends SettingTab {
         //
         // tpBalance
         //
-        this.add(this.groupBox25);
-        this.add(this.cbAutoBalanceUseThis);
-        this.add(this.groupBox18);
         this.setName("tpBalance");
+        // layout
+        new Grid(Grid.group(this.groupBox19))
+                .add(this.rbAutoBalanceLoadSongBalance).next()
+                .add(this.rbAutoBalanceNotLoadSongBalance).end();
+        new Grid(Grid.group(this.groupBox20))
+                .add(this.rbAutoBalanceLoadDriverBalance).next()
+                .add(this.rbAutoBalanceNotLoadDriverBalance).end();
+        new Grid(Grid.group(this.groupBox23))
+                .span(this.groupBox19).next()
+                .span(this.groupBox20).end();
+        new Grid(Grid.group(this.groupBox21))
+                .add(this.rbAutoBalanceSaveSongBalance).next()
+                .add(this.rbAutoBalanceNotSaveSongBalance).end();
+        new Grid(Grid.group(this.groupBox22))
+                .add(this.label4).end();
+        new Grid(Grid.group(this.groupBox24))
+                .span(this.groupBox21).next()
+                .span(this.groupBox22).end();
+        new Grid(Grid.group(this.groupBox18))
+                .add(this.cbAutoBalanceUseThis).next()
+                .span(this.groupBox23).next()
+                .span(this.groupBox24).end();
+        new Grid(Grid.group(this.groupBox25))
+                .add(this.rbAutoBalanceNotSamePositionAsSongData).add(this.rbAutoBalanceSamePositionAsSongData).end();
+        new Grid(this)
+                .span(this.groupBox18).next()
+                .span(this.groupBox25).end();
     }
 
     @Override

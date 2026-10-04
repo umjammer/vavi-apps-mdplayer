@@ -16,6 +16,7 @@ import javax.swing.JPanel;
 import javax.swing.event.ChangeEvent;
 import mdplayer.Common;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 
@@ -31,7 +32,7 @@ public class SettingOutputPanel extends SettingTab {
 
     private static final Logger logger = getLogger(SettingOutputPanel.class.getName());
 
-    /** the designer's geometry and captions, converted from frmSetting.resx */
+    /** the designer's captions, converted from frmSetting.resx */
     private static final ResourceBundle resources = ResourceBundle.getBundle("mdplayer/form/sys/frmSetting", Locale.getDefault());
 
     private final JPanel gbWaveOut;
@@ -164,30 +165,22 @@ public class SettingOutputPanel extends SettingTab {
         //
         // gbAsioOut
         //
-        this.gbAsioOut.add(this.btnASIOControlPanel);
-        this.gbAsioOut.add(this.cmbAsioDevice);
         this.gbAsioOut.setName("gbAsioOut");
         //
         // gbDirectSound
         //
-        this.gbDirectSound.add(this.cmbDirectSoundDevice);
         this.gbDirectSound.setName("gbDirectSound");
         //
         // gbWasapiOut
         //
-        this.gbWasapiOut.add(this.rbExclusive);
-        this.gbWasapiOut.add(this.rbShare);
-        this.gbWasapiOut.add(this.cmbWasapiDevice);
         this.gbWasapiOut.setName("gbWasapiOut");
         //
         // gbWaveOut
         //
-        this.gbWaveOut.add(this.cmbWaveOutDevice);
         this.gbWaveOut.setName("gbWaveOut");
         //
         // groupBox16
         //
-        this.groupBox16.add(this.cmbSPPCMDevice);
         this.groupBox16.setName("groupBox16");
         //
         // label28
@@ -259,28 +252,33 @@ public class SettingOutputPanel extends SettingTab {
         //
         // tpOutput
         //
-        this.add(this.rbNullDevice);
-        this.add(this.label36);
-        this.add(this.lblWaitTime);
-        this.add(this.label66);
-        this.add(this.lblLatencyUnit);
-        this.add(this.label28);
-        this.add(this.label65);
-        this.add(this.lblLatency);
-        this.add(this.cmbWaitTime);
-        this.add(this.cmbSampleRate);
-        this.add(this.cmbLatency);
-        this.add(this.rbSPPCM);
-        this.add(this.rbDirectSoundOut);
-        this.add(this.rbWaveOut);
-        this.add(this.rbAsioOut);
-        this.add(this.gbWaveOut);
-        this.add(this.rbWasapiOut);
-        this.add(this.groupBox16);
-        this.add(this.gbAsioOut);
-        this.add(this.gbDirectSound);
-        this.add(this.gbWasapiOut);
         this.setName("tpOutput");
+        // layout
+        new Grid(Grid.group(this.gbWaveOut))
+                .add(this.rbWaveOut).next()
+                .span(this.cmbWaveOutDevice).end();
+        new Grid(Grid.group(this.gbDirectSound))
+                .add(this.rbDirectSoundOut).next()
+                .span(this.cmbDirectSoundDevice).end();
+        new Grid(Grid.group(this.gbWasapiOut))
+                .add(this.rbWasapiOut).next()
+                .fill(this.cmbWasapiDevice).add(this.rbShare).add(this.rbExclusive).end();
+        new Grid(Grid.group(this.gbAsioOut))
+                .add(this.rbAsioOut).next()
+                .fill(this.cmbAsioDevice).add(this.btnASIOControlPanel).end();
+        new Grid(Grid.group(this.groupBox16))
+                .add(this.rbSPPCM).next()
+                .span(this.cmbSPPCMDevice).end();
+        new Grid(this)
+                .add(this.label36).span(Grid.trailing(this.label65, this.cmbSampleRate, this.label66)).next()
+                .span(this.gbWaveOut).next()
+                .span(this.gbDirectSound).next()
+                .span(this.gbWasapiOut).next()
+                .span(this.gbAsioOut).next()
+                .add(this.rbNullDevice).span(this.groupBox16).next()
+                .add(this.lblLatency).span(Grid.row(this.cmbLatency, this.lblLatencyUnit)).next()
+                .add(this.label28).span(Grid.row(this.cmbWaitTime, this.lblWaitTime)).next()
+                .end();
     }
 
     @Override

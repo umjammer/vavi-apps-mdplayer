@@ -1,6 +1,6 @@
 package mdplayer.form.sys;
 
-import java.awt.Dimension;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -31,6 +31,7 @@ import javax.swing.JTextField;
 
 import mdplayer.Common;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.Layouts;
 import mdplayer.form.SettingTab;
 import mdplayer.form.kb.ViewProvider;
@@ -51,7 +52,7 @@ public class FormSetting extends JDialog {
 
     private static final Logger logger = getLogger(FormSetting.class.getName());
 
-    /** the designer's geometry and captions, converted from frmSetting.resx */
+    /** the designer's captions, converted from frmSetting.resx */
     private static final ResourceBundle resources = ResourceBundle.getBundle("mdplayer/form/sys/frmSetting", Locale.getDefault());
 
     public static final boolean asioSupported = true;
@@ -288,15 +289,14 @@ public class FormSetting extends JDialog {
         //
         // frmSetting
         //
-        this.getContentPane().add(this.tcSetting);
-        this.getContentPane().add(this.btnCancel);
-        this.getContentPane().add(this.btnOK);
+        this.getContentPane().add(this.tcSetting, BorderLayout.CENTER);
+        this.getContentPane().add(Grid.trailing(this.btnOK, this.btnCancel), BorderLayout.SOUTH);
         this.setTitle("frmSetting");
         this.addWindowListener(this.windowListener);
-        // this form's geometry never lived in code: it was all resources.ApplyResources()
-        Layouts.absolute(this.getContentPane(), resources);
-        this.getContentPane().setPreferredSize(Layouts.clientSize(resources, new Dimension(504, 481)));
+        // the layout is in the code now, the .resx only gives the captions
+        Layouts.labels(this.getContentPane(), resources);
         this.pack();
+        this.setMinimumSize(this.getSize());
     }
 
     private JButton btnOK;

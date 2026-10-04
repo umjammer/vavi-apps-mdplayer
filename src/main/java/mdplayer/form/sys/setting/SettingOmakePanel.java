@@ -10,10 +10,11 @@ import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import mdplayer.Common;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 
@@ -35,16 +36,16 @@ public class SettingOmakePanel extends SettingTab {
     private final JCheckBox cbDispFrameCounter;
     private final JLabel label14;
     private final JButton btVST;
-    private final JTextArea tbVST;
+    private final JTextField tbVST;
     private final JLabel label67;
-    private final JTextArea tbSCCbaseAddress;
+    private final JTextField tbSCCbaseAddress;
 
     public SettingOmakePanel() {
         this.label67 = new JLabel();
         this.label14 = new JLabel();
         this.btVST = new JButton();
-        this.tbSCCbaseAddress = new JTextArea();
-        this.tbVST = new JTextArea();
+        this.tbSCCbaseAddress = new JTextField();
+        this.tbVST = new JTextField();
         this.groupBox5 = new JPanel();
         this.cbDispFrameCounter = new JCheckBox();
 
@@ -60,7 +61,6 @@ public class SettingOmakePanel extends SettingTab {
         //
         // groupBox5
         //
-        this.groupBox5.add(this.cbDispFrameCounter);
         this.groupBox5.setName("groupBox5");
         //
         // label14
@@ -81,13 +81,15 @@ public class SettingOmakePanel extends SettingTab {
         //
         // tpOmake
         //
-        this.add(this.label67);
-        this.add(this.label14);
-        this.add(this.btVST);
-        this.add(this.tbSCCbaseAddress);
-        this.add(this.tbVST);
-        this.add(this.groupBox5);
         this.setName("tpOmake");
+        // layout
+        new Grid(Grid.group(this.groupBox5))
+                .add(this.cbDispFrameCounter).end();
+        this.tbSCCbaseAddress.setColumns(6);
+        new Grid(this)
+                .add(this.groupBox5, 3).next()
+                .add(this.label14).fill(this.tbVST).add(this.btVST).next()
+                .add(this.label67).add(this.tbSCCbaseAddress).end();
     }
 
     @Override

@@ -1,5 +1,7 @@
 package mdplayer.form.sys.setting;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.lang.System.Logger;
@@ -19,6 +21,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -29,6 +32,7 @@ import mdplayer.ChipRegister;
 import mdplayer.MidiOutInfo;
 import mdplayer.Setting;
 import mdplayer.chips.VstPlugin;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 import mdplayer.vst.VstFileChooser;
@@ -326,104 +330,84 @@ public class SettingMIDIOutPanel extends SettingTab {
         //
         // tabPage1
         //
-        this.tabPage1.add(this.dgvMIDIoutListA);
-        this.tabPage1.add(this.btnUP_A);
-        this.tabPage1.add(this.btnDOWN_A);
         this.tabPage1.setName("tabPage1");
         //
         // tabPage10
         //
-        this.tabPage10.add(this.dgvMIDIoutListJ);
-        this.tabPage10.add(this.button17);
-        this.tabPage10.add(this.btnDOWN_J);
         this.tabPage10.setName("tabPage10");
         //
         // tabPage2
         //
-        this.tabPage2.add(this.dgvMIDIoutListB);
-        this.tabPage2.add(this.btnUP_B);
-        this.tabPage2.add(this.btnDOWN_B);
         this.tabPage2.setName("tabPage2");
         //
         // tabPage3
         //
-        this.tabPage3.add(this.dgvMIDIoutListC);
-        this.tabPage3.add(this.btnUP_C);
-        this.tabPage3.add(this.btnDOWN_C);
         this.tabPage3.setName("tabPage3");
         //
         // tabPage4
         //
-        this.tabPage4.add(this.dgvMIDIoutListD);
-        this.tabPage4.add(this.btnUP_D);
-        this.tabPage4.add(this.btnDOWN_D);
         this.tabPage4.setName("tabPage4");
         //
         // tabPage5
         //
-        this.tabPage5.add(this.dgvMIDIoutListE);
-        this.tabPage5.add(this.btnUP_E);
-        this.tabPage5.add(this.btnDOWN_E);
         this.tabPage5.setName("tabPage5");
         //
         // tabPage6
         //
-        this.tabPage6.add(this.dgvMIDIoutListF);
-        this.tabPage6.add(this.btnUP_F);
-        this.tabPage6.add(this.btnDOWN_F);
         this.tabPage6.setName("tabPage6");
         //
         // tabPage7
         //
-        this.tabPage7.add(this.dgvMIDIoutListG);
-        this.tabPage7.add(this.btnUP_G);
-        this.tabPage7.add(this.btnDOWN_G);
         this.tabPage7.setName("tabPage7");
         //
         // tabPage8
         //
-        this.tabPage8.add(this.dgvMIDIoutListH);
-        this.tabPage8.add(this.btnUP_H);
-        this.tabPage8.add(this.btnDOWN_H);
         this.tabPage8.setName("tabPage8");
         //
         // tabPage9
         //
-        this.tabPage9.add(this.dgvMIDIoutListI);
-        this.tabPage9.add(this.btnUP_I);
-        this.tabPage9.add(this.btnDOWN_I);
         this.tabPage9.setName("tabPage9");
         //
         // tbcMIDIoutList
         //
-        this.tbcMIDIoutList.add(this.tabPage1);
-        this.tbcMIDIoutList.add(this.tabPage2);
-        this.tbcMIDIoutList.add(this.tabPage3);
-        this.tbcMIDIoutList.add(this.tabPage4);
-        this.tbcMIDIoutList.add(this.tabPage5);
-        this.tbcMIDIoutList.add(this.tabPage6);
-        this.tbcMIDIoutList.add(this.tabPage7);
-        this.tbcMIDIoutList.add(this.tabPage8);
-        this.tbcMIDIoutList.add(this.tabPage9);
-        this.tbcMIDIoutList.add(this.tabPage10);
         this.tbcMIDIoutList.setName("tbcMIDIoutList");
-        this.tbcMIDIoutList.setSelectedIndex(0);
         //
         // tpMIDIOut
         //
-        this.add(this.btnAddVST);
-        this.add(this.tbcMIDIoutList);
-        this.add(this.btnSubMIDIout);
-        this.add(this.btnAddMIDIout);
-        this.add(this.label18);
-        this.add(this.dgvMIDIoutPallet);
-        this.add(this.label16);
         this.setName("tpMIDIOut");
+        // layout
+        page(this.tabPage1, this.dgvMIDIoutListA, this.btnUP_A, this.btnDOWN_A);
+        page(this.tabPage2, this.dgvMIDIoutListB, this.btnUP_B, this.btnDOWN_B);
+        page(this.tabPage3, this.dgvMIDIoutListC, this.btnUP_C, this.btnDOWN_C);
+        page(this.tabPage4, this.dgvMIDIoutListD, this.btnUP_D, this.btnDOWN_D);
+        page(this.tabPage5, this.dgvMIDIoutListE, this.btnUP_E, this.btnDOWN_E);
+        page(this.tabPage6, this.dgvMIDIoutListF, this.btnUP_F, this.btnDOWN_F);
+        page(this.tabPage7, this.dgvMIDIoutListG, this.btnUP_G, this.btnDOWN_G);
+        page(this.tabPage8, this.dgvMIDIoutListH, this.btnUP_H, this.btnDOWN_H);
+        page(this.tabPage9, this.dgvMIDIoutListI, this.btnUP_I, this.btnDOWN_I);
+        page(this.tabPage10, this.dgvMIDIoutListJ, this.button17, this.btnDOWN_J);
+        this.dgvMIDIoutPallet.setPreferredScrollableViewportSize(new Dimension(450, 120));
+        new Grid(this)
+                .add(this.label16).next()
+                .span(new JScrollPane(this.dgvMIDIoutPallet)).next()
+                .add(this.label18).span(Grid.row(this.btnAddMIDIout, this.btnSubMIDIout, this.btnAddVST)).next()
+                .grow(this.tbcMIDIoutList);
 
         dgv = new JTable[] {
                 dgvMIDIoutListA, dgvMIDIoutListB, dgvMIDIoutListC, dgvMIDIoutListD, dgvMIDIoutListE,
                 dgvMIDIoutListF, dgvMIDIoutListG, dgvMIDIoutListH, dgvMIDIoutListI, dgvMIDIoutListJ
         };
+    }
+
+    /** one of the MIDI out list tabs: the table, with the buttons moving a row up and down at its side */
+    private void page(JPanel page, JTable table, JButton up, JButton down) {
+        JPanel buttons = new JPanel(new BorderLayout());
+        buttons.add(up, BorderLayout.NORTH);
+        buttons.add(down, BorderLayout.SOUTH);
+        page.setLayout(new BorderLayout());
+        page.add(new JScrollPane(table));
+        page.add(buttons, BorderLayout.EAST);
+        this.tbcMIDIoutList.add(page);
     }
 
     @Override

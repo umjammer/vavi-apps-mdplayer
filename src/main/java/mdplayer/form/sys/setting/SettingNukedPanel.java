@@ -3,6 +3,7 @@ package mdplayer.form.sys.setting;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 
 /** the "Nuked" page of the settings dialog, split out of the original FormSetting */
@@ -45,17 +46,10 @@ public class SettingNukedPanel extends SettingTab {
         //
         // groupBox26
         //
-        this.groupBox26.add(this.rbNukedOPN2OptionYM2612u);
-        this.groupBox26.add(this.rbNukedOPN2OptionYM2612);
-        this.groupBox26.add(this.rbNukedOPN2OptionDiscrete);
-        this.groupBox26.add(this.rbNukedOPN2OptionASIClp);
-        this.groupBox26.add(this.rbNukedOPN2OptionASIC);
         this.groupBox26.setName("groupBox26");
         //
         // groupBox29
         //
-        this.groupBox29.add(this.cbGensSSGEG);
-        this.groupBox29.add(this.cbGensDACHPF);
         this.groupBox29.setName("groupBox29");
         //
         // rbNukedOPN2OptionASIC
@@ -80,9 +74,20 @@ public class SettingNukedPanel extends SettingTab {
         //
         // tpNuked
         //
-        this.add(this.groupBox29);
-        this.add(this.groupBox26);
         this.setName("tpNuked");
+        // layout
+        new Grid(Grid.group(this.groupBox26))
+                .add(this.rbNukedOPN2OptionDiscrete).next()
+                .add(this.rbNukedOPN2OptionASIC).next()
+                .add(this.rbNukedOPN2OptionYM2612).next()
+                .add(this.rbNukedOPN2OptionYM2612u).next()
+                .add(this.rbNukedOPN2OptionASIClp).end();
+        new Grid(Grid.group(this.groupBox29))
+                .add(this.cbGensDACHPF).next()
+                .add(this.cbGensSSGEG).end();
+        new Grid(this)
+                .wide(this.groupBox26).next()
+                .wide(this.groupBox29).end();
     }
 
     @Override

@@ -148,8 +148,10 @@ public class SettingAboutPanel extends SettingTab {
         //
         // tpAbout
         //
-        this.add(this.tableLayoutPanel);
         this.setName("tpAbout");
+        // layout
+        this.setLayout(new BorderLayout());
+        this.add(this.tableLayoutPanel);
     }
 
     @Override

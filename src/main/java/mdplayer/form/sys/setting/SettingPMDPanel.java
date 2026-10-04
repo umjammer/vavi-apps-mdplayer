@@ -13,9 +13,10 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -34,9 +35,9 @@ public class SettingPMDPanel extends SettingTab {
     private final JButton btnPMDResetDriverArguments;
     private final JLabel label54;
     private final JButton btnPMDResetCompilerArhguments;
-    private final JTextArea tbPMDDriverArguments;
+    private final JTextField tbPMDDriverArguments;
     private final JLabel label55;
-    private final JTextArea tbPMDCompilerArguments;
+    private final JTextField tbPMDCompilerArguments;
     private final JPanel gbPMDManual;
     private final JCheckBox cbPMDSetManualVolume;
     private final JCheckBox cbPMDUsePPZ8;
@@ -52,21 +53,21 @@ public class SettingPMDPanel extends SettingTab {
     private final JCheckBox rbPMDUsePPSDRVFreqDefault;
     private final JButton btnPMDPPSDRVManualWait;
     private final JLabel label57;
-    private final JTextArea tbPMDPPSDRVFreq;
+    private final JTextField tbPMDPPSDRVFreq;
     private final JLabel label58;
-    private final JTextArea tbPMDPPSDRVManualWait;
+    private final JTextField tbPMDPPSDRVManualWait;
     private final JPanel gbPMDSetManualVolume;
     private final JLabel label59;
     private final JLabel label60;
-    private final JTextArea tbPMDVolumeAdpcm;
+    private final JTextField tbPMDVolumeAdpcm;
     private final JLabel label61;
-    private final JTextArea tbPMDVolumeRhythm;
+    private final JTextField tbPMDVolumeRhythm;
     private final JLabel label62;
-    private final JTextArea tbPMDVolumeSSG;
+    private final JTextField tbPMDVolumeSSG;
     private final JLabel label63;
-    private final JTextArea tbPMDVolumeGIMICSSG;
+    private final JTextField tbPMDVolumeGIMICSSG;
     private final JLabel label64;
-    private final JTextArea tbPMDVolumeFM;
+    private final JTextField tbPMDVolumeFM;
 
     public SettingPMDPanel() {
         this.rbPMDManual = new JCheckBox();
@@ -74,9 +75,9 @@ public class SettingPMDPanel extends SettingTab {
         this.btnPMDResetDriverArguments = new JButton();
         this.label54 = new JLabel();
         this.btnPMDResetCompilerArhguments = new JButton();
-        this.tbPMDDriverArguments = new JTextArea();
+        this.tbPMDDriverArguments = new JTextField();
         this.label55 = new JLabel();
-        this.tbPMDCompilerArguments = new JTextArea();
+        this.tbPMDCompilerArguments = new JTextField();
         this.gbPMDManual = new JPanel();
         this.cbPMDSetManualVolume = new JCheckBox();
         this.cbPMDUsePPZ8 = new JCheckBox();
@@ -92,21 +93,21 @@ public class SettingPMDPanel extends SettingTab {
         this.rbPMDUsePPSDRVFreqDefault = new JCheckBox();
         this.btnPMDPPSDRVManualWait = new JButton();
         this.label57 = new JLabel();
-        this.tbPMDPPSDRVFreq = new JTextArea();
+        this.tbPMDPPSDRVFreq = new JTextField();
         this.label58 = new JLabel();
-        this.tbPMDPPSDRVManualWait = new JTextArea();
+        this.tbPMDPPSDRVManualWait = new JTextField();
         this.gbPMDSetManualVolume = new JPanel();
         this.label59 = new JLabel();
         this.label60 = new JLabel();
-        this.tbPMDVolumeAdpcm = new JTextArea();
+        this.tbPMDVolumeAdpcm = new JTextField();
         this.label61 = new JLabel();
-        this.tbPMDVolumeRhythm = new JTextArea();
+        this.tbPMDVolumeRhythm = new JTextField();
         this.label62 = new JLabel();
-        this.tbPMDVolumeSSG = new JTextArea();
+        this.tbPMDVolumeSSG = new JTextField();
         this.label63 = new JLabel();
-        this.tbPMDVolumeGIMICSSG = new JTextArea();
+        this.tbPMDVolumeGIMICSSG = new JTextField();
         this.label64 = new JLabel();
-        this.tbPMDVolumeFM = new JTextArea();
+        this.tbPMDVolumeFM = new JTextField();
 
         //
         // btnPMDPPSDRVManualWait
@@ -140,51 +141,22 @@ public class SettingPMDPanel extends SettingTab {
         //
         // gbPMDManual
         //
-        this.gbPMDManual.add(this.cbPMDSetManualVolume);
-        this.gbPMDManual.add(this.cbPMDUsePPZ8);
-        this.gbPMDManual.add(this.groupBox32);
-        this.gbPMDManual.add(this.cbPMDUsePPSDRV);
-        this.gbPMDManual.add(this.gbPPSDRV);
-        this.gbPMDManual.add(this.gbPMDSetManualVolume);
         this.gbPMDManual.setName("gbPMDManual");
         //
         // gbPMDSetManualVolume
         //
-        this.gbPMDSetManualVolume.add(this.label59);
-        this.gbPMDSetManualVolume.add(this.label60);
-        this.gbPMDSetManualVolume.add(this.tbPMDVolumeAdpcm);
-        this.gbPMDSetManualVolume.add(this.label61);
-        this.gbPMDSetManualVolume.add(this.tbPMDVolumeRhythm);
-        this.gbPMDSetManualVolume.add(this.label62);
-        this.gbPMDSetManualVolume.add(this.tbPMDVolumeSSG);
-        this.gbPMDSetManualVolume.add(this.label63);
-        this.gbPMDSetManualVolume.add(this.tbPMDVolumeGIMICSSG);
-        this.gbPMDSetManualVolume.add(this.label64);
-        this.gbPMDSetManualVolume.add(this.tbPMDVolumeFM);
         this.gbPMDSetManualVolume.setName("gbPMDSetManualVolume");
         //
         // gbPPSDRV
         //
-        this.gbPPSDRV.add(this.groupBox33);
         this.gbPPSDRV.setName("gbPPSDRV");
         //
         // groupBox32
         //
-        this.groupBox32.add(this.rbPMD86B);
-        this.groupBox32.add(this.rbPMDSpbB);
-        this.groupBox32.add(this.rbPMDNrmB);
         this.groupBox32.setName("groupBox32");
         //
         // groupBox33
         //
-        this.groupBox33.add(this.rbPMDUsePPSDRVManualFreq);
-        this.groupBox33.add(this.label56);
-        this.groupBox33.add(this.rbPMDUsePPSDRVFreqDefault);
-        this.groupBox33.add(this.btnPMDPPSDRVManualWait);
-        this.groupBox33.add(this.label57);
-        this.groupBox33.add(this.tbPMDPPSDRVFreq);
-        this.groupBox33.add(this.label58);
-        this.groupBox33.add(this.tbPMDPPSDRVManualWait);
         this.groupBox33.setName("groupBox33");
         //
         // label54
@@ -301,16 +273,39 @@ public class SettingPMDPanel extends SettingTab {
         //
         // tpPMDDotNET
         //
-        this.add(this.rbPMDManual);
-        this.add(this.rbPMDAuto);
-        this.add(this.btnPMDResetDriverArguments);
-        this.add(this.label54);
-        this.add(this.btnPMDResetCompilerArhguments);
-        this.add(this.tbPMDDriverArguments);
-        this.add(this.label55);
-        this.add(this.tbPMDCompilerArguments);
-        this.add(this.gbPMDManual);
         this.setName("tpPMDDotNET");
+        // layout
+        new Grid(Grid.group(this.groupBox32))
+                .add(this.rbPMDNrmB).add(this.rbPMDSpbB).add(this.rbPMD86B).end();
+        for (JTextField field : new JTextField[] {this.tbPMDVolumeFM, this.tbPMDVolumeSSG, this.tbPMDVolumeRhythm, this.tbPMDVolumeAdpcm, this.tbPMDVolumeGIMICSSG, this.tbPMDPPSDRVManualWait}) {
+            field.setColumns(4);
+        }
+        new Grid(Grid.group(this.gbPMDSetManualVolume))
+                .add(this.cbPMDSetManualVolume).next()
+                .add(this.label59).next()
+                .add(Grid.row(this.label61, this.tbPMDVolumeFM, this.label62, this.tbPMDVolumeSSG,
+                        this.label63, this.tbPMDVolumeRhythm, this.label64, this.tbPMDVolumeAdpcm)).next()
+                .add(Grid.row(this.label60, this.tbPMDVolumeGIMICSSG)).end();
+        this.tbPMDPPSDRVFreq.setColumns(6);
+        new Grid(Grid.group(this.groupBox33))
+                .add(this.label56).add(this.rbPMDUsePPSDRVFreqDefault).next()
+                .skip().add(Grid.row(this.rbPMDUsePPSDRVManualFreq, this.tbPMDPPSDRVFreq, this.label57)).next()
+                .add(this.label58).add(Grid.row(this.tbPMDPPSDRVManualWait, this.btnPMDPPSDRVManualWait)).end();
+        new Grid(Grid.group(this.gbPPSDRV))
+                .add(this.cbPMDUsePPSDRV).next()
+                .span(this.groupBox33).end();
+        new Grid(Grid.group(this.gbPMDManual))
+                .add(this.groupBox32).next()
+                .span(this.gbPMDSetManualVolume).next()
+                .span(this.gbPPSDRV).next()
+                .add(this.cbPMDUsePPZ8).end();
+        new Grid(this)
+                .add(this.label55).fill(this.tbPMDCompilerArguments).add(this.btnPMDResetCompilerArhguments).next()
+                .add(this.rbPMDAuto).next()
+                .add(this.rbPMDManual).next()
+                .span(this.gbPMDManual)
+                .spring()
+                .add(this.label54).fill(this.tbPMDDriverArguments).add(this.btnPMDResetDriverArguments).end();
     }
 
     @Override

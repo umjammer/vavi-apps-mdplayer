@@ -12,10 +12,11 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import mdplayer.Common.EnmInstFormat;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 
@@ -31,21 +32,21 @@ public class SettingOtherPanel extends SettingTab {
 
     private static final Logger logger = getLogger(SettingOtherPanel.class.getName());
 
-    /** the designer's geometry and captions, converted from frmSetting.resx */
+    /** the designer's captions, converted from frmSetting.resx */
     private static final ResourceBundle resources = ResourceBundle.getBundle("mdplayer/form/sys/frmSetting", Locale.getDefault());
 
     private final JCheckBox cbUseLoopTimes;
     private final JLabel lblLoopTimes;
-    private final JTextArea tbLoopTimes;
+    private final JTextField tbLoopTimes;
     private final JButton btnOpenSettingFolder;
     private final JCheckBox cbUseGetInst;
     private final JButton btnDataPath;
-    private final JTextArea tbDataPath;
+    private final JTextField tbDataPath;
     private final JLabel label19;
     private final JComboBox<String> cmbInstFormat;
     private final JLabel lblInstFormat;
     private final JLabel label30;
-    private final JTextArea tbScreenFrameRate;
+    private final JTextField tbScreenFrameRate;
     private final JLabel label29;
     private final JCheckBox cbAutoOpen;
     private final JPanel groupBox4;
@@ -53,25 +54,25 @@ public class SettingOtherPanel extends SettingTab {
     private final JPanel gbDump;
     private final JButton btnDumpPath;
     private final JLabel label6;
-    private final JTextArea tbDumpPath;
+    private final JTextField tbDumpPath;
     private final JButton btnResetPosition;
     private final JCheckBox cbWavSwitch;
     private final JPanel gbWav;
     private final JButton btnWavPath;
     private final JLabel label7;
-    private final JTextArea tbWavPath;
+    private final JTextField tbWavPath;
     private final JCheckBox cbInitAlways;
     private final JCheckBox cbExALL;
     private final JCheckBox cbNonRenderingForPause;
     private final JButton btnSearchPath;
-    private final JTextArea tbSearchPath;
+    private final JTextField tbSearchPath;
     private final JLabel label68;
 
     public SettingOtherPanel() {
         DefaultComboBoxModel<String> m;
 
         this.btnSearchPath = new JButton();
-        this.tbSearchPath = new JTextArea();
+        this.tbSearchPath = new JTextField();
         this.label68 = new JLabel();
         this.cbNonRenderingForPause = new JCheckBox();
         this.cbWavSwitch = new JCheckBox();
@@ -83,18 +84,18 @@ public class SettingOtherPanel extends SettingTab {
         this.gbWav = new JPanel();
         this.btnWavPath = new JButton();
         this.label7 = new JLabel();
-        this.tbWavPath = new JTextArea();
+        this.tbWavPath = new JTextField();
         this.gbDump = new JPanel();
         this.btnDumpPath = new JButton();
         this.label6 = new JLabel();
-        this.tbDumpPath = new JTextArea();
+        this.tbDumpPath = new JTextField();
         this.label30 = new JLabel();
-        this.tbScreenFrameRate = new JTextArea();
+        this.tbScreenFrameRate = new JTextField();
         this.label29 = new JLabel();
         this.lblLoopTimes = new JLabel();
         this.btnDataPath = new JButton();
-        this.tbLoopTimes = new JTextArea();
-        this.tbDataPath = new JTextArea();
+        this.tbLoopTimes = new JTextField();
+        this.tbDataPath = new JTextField();
         this.label19 = new JLabel();
         this.btnResetPosition = new JButton();
         this.btnOpenSettingFolder = new JButton();
@@ -197,22 +198,14 @@ public class SettingOtherPanel extends SettingTab {
         //
         // gbDump
         //
-        this.gbDump.add(this.btnDumpPath);
-        this.gbDump.add(this.label6);
-        this.gbDump.add(this.tbDumpPath);
         this.gbDump.setName("gbDump");
         //
         // gbWav
         //
-        this.gbWav.add(this.btnWavPath);
-        this.gbWav.add(this.label7);
-        this.gbWav.add(this.tbWavPath);
         this.gbWav.setName("gbWav");
         //
         // groupBox4
         //
-        this.groupBox4.add(this.cmbInstFormat);
-        this.groupBox4.add(this.lblInstFormat);
         this.groupBox4.setName("groupBox4");
         //
         // label19
@@ -273,31 +266,32 @@ public class SettingOtherPanel extends SettingTab {
         //
         // tpOther
         //
-        this.add(this.btnSearchPath);
-        this.add(this.tbSearchPath);
-        this.add(this.label68);
-        this.add(this.cbNonRenderingForPause);
-        this.add(this.cbWavSwitch);
-        this.add(this.cbUseGetInst);
-        this.add(this.groupBox4);
-        this.add(this.cbDumpSwitch);
-        this.add(this.gbWav);
-        this.add(this.gbDump);
-        this.add(this.label30);
-        this.add(this.tbScreenFrameRate);
-        this.add(this.label29);
-        this.add(this.lblLoopTimes);
-        this.add(this.btnDataPath);
-        this.add(this.tbLoopTimes);
-        this.add(this.tbDataPath);
-        this.add(this.label19);
-        this.add(this.btnResetPosition);
-        this.add(this.btnOpenSettingFolder);
-        this.add(this.cbExALL);
-        this.add(this.cbInitAlways);
-        this.add(this.cbAutoOpen);
-        this.add(this.cbUseLoopTimes);
         this.setName("tpOther");
+        // layout
+        new Grid(Grid.group(this.groupBox4))
+                .add(this.cbUseGetInst).next()
+                .add(Grid.row(this.lblInstFormat, this.cmbInstFormat)).end();
+        new Grid(Grid.group(this.gbDump))
+                .add(this.cbDumpSwitch, 3).next()
+                .add(this.label6).fill(this.tbDumpPath).add(this.btnDumpPath).end();
+        new Grid(Grid.group(this.gbWav))
+                .add(this.cbWavSwitch, 3).next()
+                .add(this.label7).fill(this.tbWavPath).add(this.btnWavPath).end();
+        this.tbLoopTimes.setColumns(4);
+        this.tbScreenFrameRate.setColumns(4);
+        new Grid(this)
+                .span(Grid.row(this.cbUseLoopTimes, this.tbLoopTimes, this.lblLoopTimes)).next()
+                .span(this.groupBox4).next()
+                .span(this.cbAutoOpen).next()
+                .add(this.label19).fill(this.tbDataPath).add(this.btnDataPath).next()
+                .add(this.label68).fill(this.tbSearchPath).add(this.btnSearchPath).next()
+                .add(this.label29).span(Grid.row(this.tbScreenFrameRate, this.label30, this.cbNonRenderingForPause)).next()
+                .span(this.gbDump).next()
+                .span(this.gbWav).next()
+                .span(this.cbInitAlways).next()
+                .span(this.cbExALL)
+                .spring()
+                .span(Grid.trailing(this.btnResetPosition, this.btnOpenSettingFolder)).end();
     }
 
     @Override
