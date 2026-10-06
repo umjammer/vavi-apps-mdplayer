@@ -766,9 +766,14 @@ public class FormPlayList extends JFrame {
      * and a folder's files stay together.
      */
     private static String fullPath(PlayList.Music m) {
+        String path = path(m);
+        return path == null ? null : path.replace(File.separatorChar, '\0').replace('/', '\0');
+    }
+
+    /** The song's file with its folders, an archive member after the archive it is in. */
+    private static String path(PlayList.Music m) {
         if (m.fileName == null) return null;
-        String path = m.arcFileName == null || m.arcFileName.isEmpty() ? m.fileName : m.arcFileName + '/' + m.fileName;
-        return path.replace(File.separatorChar, '\0').replace('/', '\0');
+        return m.arcFileName == null || m.arcFileName.isEmpty() ? m.fileName : m.arcFileName + '/' + m.fileName;
     }
 
     /**
@@ -1415,13 +1420,15 @@ public class FormPlayList extends JFrame {
     private static final Color foreground = new Color(192, 192, 255);
     private static final Color playingForeground = Color.green.brighter();
 
-    /** Shows the song being played in green. */
+    /** Shows the song being played in green, and the full path over the file name. */
     private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, false, row, column);
             List<PlayList.Music> musics = playList.getMusics();
             boolean isPlaying = row < musics.size() && musics.get(row) == playingMusic;
+            boolean isFileName = table.convertColumnIndexToModel(column) == cols.clmDispFileName.ordinal();
+            setToolTipText(isFileName && row < musics.size() ? path(musics.get(row)) : null);
             setForeground(isPlaying ? playingForeground : isSelected ? table.getSelectionForeground() : foreground);
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             return this;
