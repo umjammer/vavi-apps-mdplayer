@@ -917,7 +917,7 @@ public class FormPlayList extends JFrame {
 
     private void tsbAddMusic_Click(ActionEvent ev) {
         JFileChooser ofd = new JFileChooser();
-        Common.toFileFilters(rb.getString("cntSupportFile")).forEach(ofd::addChoosableFileFilter);
+        supportFileFilters().forEach(ofd::addChoosableFileFilter);
         ofd.setDialogTitle(text("dlgAddMusic", "Select a file"));
         int filterIndex = setting.getOther().getFilterIndex();
         FileFilter[] filters = ofd.getChoosableFileFilters();
@@ -937,6 +937,35 @@ public class FormPlayList extends JFrame {
         setting.getOther().setFilterIndex(Common.getFilterIndex(ofd));
 
         addFiles(Arrays.stream(ofd.getSelectedFiles()).map(File::getAbsolutePath).toList(), -1);
+    }
+
+    /**
+     * The filters of the add music dialog. The resource names the formats it knew of in their own
+     * words, but it is written by hand and fell behind the drivers (".mmf" could not be chosen at
+     * all), so a registered {@link FileFormat} it does not name gets a filter of its own, and "all
+     * supported files" is {@link #sext}, what a drop or a folder takes.
+     */
+    static List<FileFilter> supportFileFilters() {
+        List<FileFilter> filters = new ArrayList<>(Common.toFileFilters(rb.getString("cntSupportFile")));
+        // the resource ends with "all supported files" then "all files"
+        FileFilter allFiles = filters.removeLast();
+        String allSupported = filters.removeLast().getDescription().replaceFirst("\\s*\\(.*$", "");
+
+        File probe = new File("_");
+        ServiceLoader.load(FileFormat.class).stream()
+                .map(ServiceLoader.Provider::get)
+                .filter(f -> f.getExtensions() != null && f.getExtensions().length > 0)
+                .filter(f -> Arrays.stream(f.getExtensions()).noneMatch(ex -> filters.stream().anyMatch(ff -> ff.accept(new File(probe + ex)))))
+                .forEach(f -> {
+                    String name = f.getType() != null ? f.getType().toString() : f.getClass().getSimpleName().replaceFirst("(File)?Format$", "");
+                    String exts = Arrays.stream(f.getExtensions()).map(ex -> "*" + ex.toLowerCase(Locale.ROOT)).collect(Collectors.joining(";"));
+                    filters.add(Common.toFileFilters(name + " (" + exts + ")|" + exts).getFirst());
+                });
+
+        String all = sext.stream().sorted().map(ex -> "*" + ex).collect(Collectors.joining(";"));
+        filters.add(Common.toFileFilters(allSupported + "|" + all).getFirst());
+        filters.add(allFiles);
+        return filters;
     }
 
     private void tsbAddFolder_Click(ActionEvent ev) {
