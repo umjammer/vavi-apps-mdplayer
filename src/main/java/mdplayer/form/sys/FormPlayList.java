@@ -1367,10 +1367,18 @@ public class FormPlayList extends JFrame {
         int old = this.zoom;
         this.zoom = zoom;
 
-        Font font = baseFont.deriveFont(baseFont.getSize2D() * zoom);
         for (Component c : toolStrip1.getComponents()) {
             // the search box is text to read, as the list is, so it stays at x1 with it
-            c.setFont(c == tstSearch ? baseFont : font);
+            if (c != tstSearch && c instanceof JComponent jc) {
+                Font base = (Font) jc.getClientProperty(BASE_FONT);
+                if (base == null) {
+                    base = c.getFont();
+                    jc.putClientProperty(BASE_FONT, base);
+                }
+                // a UIResource font is the look and feel's to replace, and aqua puts its own tool bar
+                // font back over it: a zoomed one has to be a plain font to stay
+                c.setFont(zoom == 1 ? base : new Font(base.getAttributes()).deriveFont(base.getSize2D() * zoom));
+            }
             if (c instanceof AbstractButton b && b.getClientProperty(BASE_ICON) instanceof BufferedImage image) {
                 b.setIcon(scaled(image, zoom));
             }
@@ -1399,6 +1407,8 @@ public class FormPlayList extends JFrame {
     }
 
     private static final String BASE_ICON = "mdplayer.baseIcon";
+    /** a tool bar component's own font, at x1 */
+    private static final String BASE_FONT = "mdplayer.baseFont";
 
     private static void icon(AbstractButton b, String name) {
         BufferedImage image = Common.getImage(name);
@@ -1886,7 +1896,6 @@ public class FormPlayList extends JFrame {
             }
         });
 
-        baseFont = dgvList.getFont();
         setZoom(setting.getOther().getZoom());
         updateHeaders();
     }
@@ -1941,8 +1950,6 @@ public class FormPlayList extends JFrame {
         dgvList.setRowSelectionInterval(row, row);
         dgvList.scrollRectToVisible(dgvList.getCellRect(row, 0, true));
     }
-
-    private Font baseFont;
 
     private JTable dgvList;
     private JPopupMenu cmsPlayList;

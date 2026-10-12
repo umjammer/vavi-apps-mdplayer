@@ -329,6 +329,7 @@ class FormPlayListTest {
         assertFalse(form.isPlaying());
     }
 
+    /** only the tool bar zooms; the list stays at x1, and the window only grows to fit the bar */
     @Test
     void zoom() throws Exception {
         Field f = FormPlayList.class.getDeclaredField("tsbAddMusic");
@@ -337,16 +338,21 @@ class FormPlayListTest {
         SwingUtilities.invokeAndWait(() -> form.setZoom(1));
         Font f1 = table.getFont();
         int h1 = table.getRowHeight();
+        float bf1 = b.getFont().getSize2D();
         int i1 = b.getIcon().getIconWidth();
         int w1 = form.getWidth();
         SwingUtilities.invokeAndWait(() -> form.setZoom(2));
-        assertEquals(f1.getSize2D() * 2, table.getFont().getSize2D());
-        assertEquals(h1 * 2, table.getRowHeight());
+        assertEquals(f1.getSize2D(), table.getFont().getSize2D(), "the list stays at x1");
+        assertEquals(h1, table.getRowHeight());
+        assertEquals(bf1 * 2, b.getFont().getSize2D());
         assertEquals(i1 * 2, b.getIcon().getIconWidth());
-        assertEquals(w1 * 2, form.getWidth());
+        int w2 = form.getWidth();
+        assertTrue(w2 >= w1, "the window does not shrink");
+        assertTrue(w2 >= form.getMinimumSize().width, "the zoomed tool bar fits");
         assertNotNull(b.getToolTipText());
         SwingUtilities.invokeAndWait(() -> form.setZoom(1));
-        assertEquals(w1, form.getWidth());
+        assertEquals(i1, b.getIcon().getIconWidth());
+        assertEquals(w2, form.getWidth(), "the window keeps its size");
     }
 
     @Test
