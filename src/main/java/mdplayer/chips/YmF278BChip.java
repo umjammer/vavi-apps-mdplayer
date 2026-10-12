@@ -51,15 +51,6 @@ public class YmF278BChip extends BaseChip {
             0, 0
     };
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false}
-    };
-
     static final byte[] channel = {
             0, 3, 1, 4, 2, 5, 6, 7, 8, 9, 12, 10, 13, 11, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
             32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46
@@ -121,7 +112,7 @@ public class YmF278BChip extends BaseChip {
                     registerFm[chipId] |= (1 << ch);
                 }
                 registerFm[chipId] &= 0x3_ffff;
-                if (mask[chipId][ch])
+                if (isMuted(chipId, ch))
                     data &= 0x1f;
             }
 
@@ -138,15 +129,15 @@ public class YmF278BChip extends BaseChip {
                     registerRhythm[chipId] |= 0x01;
                 registerRhythmB[chipId] = data;
 
-                if (mask[chipId][18])
+                if (isMuted(chipId, 18))
                     data &= 0xef;
-                if (mask[chipId][19])
+                if (isMuted(chipId, 19))
                     data &= 0xf7;
-                if (mask[chipId][20])
+                if (isMuted(chipId, 20))
                     data &= 0xfb;
-                if (mask[chipId][21])
+                if (isMuted(chipId, 21))
                     data &= 0xfd;
-                if (mask[chipId][22])
+                if (isMuted(chipId, 22))
                     data &= 0xfe;
             }
 
@@ -157,7 +148,7 @@ public class YmF278BChip extends BaseChip {
                 } else {
                     registerPcm[chipId][addr - 0x68] = 1;
                 }
-                if (mask[chipId][addr - 0x68 + 23])
+                if (isMuted(chipId, addr - 0x68 + 23))
                     data &= 0x7f;
             }
         }
@@ -173,9 +164,9 @@ public class YmF278BChip extends BaseChip {
         }
     }
 
+    /** {@link #write} keeps the key ons of a muted channel from the chip */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][channel[ch]] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     public void writePcm(int chipId, int romSize, int offset, int length, byte[] buf, int srcOffset, EnmModel model) {
@@ -232,16 +223,10 @@ public class YmF278BChip extends BaseChip {
             int mod = 0x20 + fmSlot[ch], car = mod + 3;
             info.put("channels." + ch + ".lfoPitch", ((regs[mod] | regs[car]) & 0x40) != 0);
             info.put("channels." + ch + ".lfoVolume", ((regs[mod] | regs[car]) & 0x80) != 0);
-            info.put("channels." + ch + ".mute", false);
         }
         return info;
     }
 
     /** the modulator's register offset of each FM channel; its carrier sits three further on */
     private static final int[] fmSlot = {0, 1, 2, 8, 9, 10, 16, 17, 18};
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
-    }
 }

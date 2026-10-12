@@ -77,9 +77,4 @@ public class Cs4231Reader extends PcmSlotReader {
         // is no note here to wait for, and a row that says so is not a row that looks broken
         out.info = TrackInfo.STREAM;
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return false;
-    }
 }

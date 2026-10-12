@@ -156,6 +156,8 @@ logger.log(Level.DEBUG, "line: " + e.getType());
             plugin.stopped = true;
             return false;
         }
+        // the chips keep their mutes from song to song, the instruments are new every time
+        plugin.chipRegister.restoreMutes();
 //logger.log(Level.TRACE, "play: " + audio.stopped + ", " + audio.hashCode());
         listeners.forEach(l -> plugin.getDriver().addViewListener(l)); // TODO consider more
 

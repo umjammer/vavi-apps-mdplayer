@@ -29,8 +29,6 @@ public class Saa1099Chip extends BaseChip {
 
     private static final int CHANNELS = 6;
 
-    private final int[] mask = {0, 0};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -55,22 +53,5 @@ public class Saa1099Chip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         Saa1099Inst inst = context.mds.inst(Saa1099Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "channels");
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        Saa1099Inst inst = context.mds.inst(Saa1099Inst.class);
-        if (mask) {
-            this.mask[chipId] |= 1 << ch;
-            if (inst != null) inst.setMask(chipId, 1 << ch);
-        } else {
-            this.mask[chipId] &= ~(1 << ch);
-            if (inst != null) inst.resetMask(chipId, 1 << ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < CHANNELS && (mask[chipId] & (1 << ch)) != 0;
     }
 }

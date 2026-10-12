@@ -14,6 +14,8 @@ import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
 import vavi.sound.visualizer.fmdsp.TrackInfo;
 
+import mdplayer.chips.BaseChip;
+
 
 /**
  * The OPN family's shared shape: FM channels with the ch3 extended slots on the three extra
@@ -67,13 +69,14 @@ public abstract class OpnFmReader extends ChipReader {
         return 7987200.0 / 144;
     }
 
-    /** FM channel mute in the chip's own numbering, {@code ch} 0-8 with the ch3 slots at 6-8 */
-    boolean fmMasked(int ch) {
-        return false;
+    /** the chip channel of FM channel {@code ch}, 0-8 with the ch3 slots at 6-8; null when it cannot be muted */
+    BaseChip.Channel fmMute(int ch) {
+        return null;
     }
 
-    boolean ssgMasked(int s) {
-        return false;
+    /** the chip channel of SSG channel {@code s}; null when it cannot be muted */
+    BaseChip.Channel ssgMute(int s) {
+        return null;
     }
 
     @Override
@@ -177,10 +180,15 @@ public abstract class OpnFmReader extends ChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
-        if (group != Group.FM) return ssgMasked(ch);
-        int channel = fmChannel(ch);
-        return channel >= 0 && fmMasked(channel);
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return switch (group) {
+            case FM -> {
+                int channel = fmChannel(ch);
+                yield channel >= 0 ? fmMute(channel) : null;
+            }
+            case SSG -> ssgMute(ch);
+            default -> null;
+        };
     }
 
     // ----- the TRACK_INFO panel -----

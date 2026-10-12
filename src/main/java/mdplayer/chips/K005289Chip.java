@@ -24,9 +24,6 @@ public class K005289Chip extends BaseChip {
 
     public static final int CHANNELS = 2;
 
-    /** bit n: channel n muted */
-    private final int[] mask = {0, 0};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -56,29 +53,12 @@ public class K005289Chip extends BaseChip {
 
     /**
      * {@code clock} and {@code voices}, a list of two maps with {@code freq} (the period less one
-     * of each of the wave's 32 steps, in clocks), {@code volume} (0..15), {@code waveform} (0..7),
-     * {@code wave} (the 32 steps of it, -8..7) and {@code mute}.
+     * of each of the wave's 32 steps, in clocks), {@code volume} (0..15), {@code waveform} (0..7) and
+     * {@code wave} (the 32 steps of it, -8..7).
      */
     @Override
     public Map<String, Object> getInfo(int chipId) {
         K005289Inst inst = context.mds.inst(K005289Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        K005289Inst inst = context.mds.inst(K005289Inst.class);
-        if (mask) {
-            this.mask[chipId] |= 1 << ch;
-            if (inst != null) inst.setMask(chipId, ch);
-        } else {
-            this.mask[chipId] &= ~(1 << ch);
-            if (inst != null) inst.resetMask(chipId, ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < CHANNELS && (mask[chipId] & (1 << ch)) != 0;
     }
 }

@@ -59,6 +59,15 @@ public interface LevelDataSource {
     }
 
     /**
+     * Whether the channel the meter column shows is muted, which greys its pan out. A column with
+     * a {@linkplain #track row} asks {@link TrackStatusSource#masked} instead; this is for the
+     * ones without, the drum meter.
+     */
+    default boolean masked(int channel) {
+        return false;
+    }
+
+    /**
      * The track row whose key, pan and tone number the meter column displays underneath itself,
      * or null when the column has none (the drum meter). Defaults to the fixed PC-98 assignment;
      * a source that hands its meter columns out dynamically overrides this so the readout follows

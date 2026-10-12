@@ -146,9 +146,4 @@ public abstract class AmigaTrackerReader implements FmDspChipReader {
         // a tracker names a note rather than a frequency, so show it as it is written
         out.note = sounding ? lowestNote + note - 1 : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int voice) {
-        return false;
-    }
 }

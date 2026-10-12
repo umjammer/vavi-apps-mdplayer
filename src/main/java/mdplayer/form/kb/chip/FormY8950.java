@@ -89,9 +89,9 @@ public class FormY8950 extends FormChipBase<FormY8950.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 9 + 5 + 1; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Y8950Chip.class, chipId, ch);
+                            parent.setMuted(Y8950Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Y8950Chip.class, chipId, ch);
+                            parent.toggleMute(Y8950Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -113,12 +113,12 @@ public class FormY8950 extends FormChipBase<FormY8950.Params> {
 
             if (ev.getButton() == MouseEvent.BUTTON1) {
                 // Mask.
-                parent.setChannelMask(Y8950Chip.class, chipId, ch);
+                parent.toggleMute(Y8950Chip.class, chipId, ch);
                 return;
             }
 
             // Unmask.
-            for (ch = 0; ch < 9 + 5 + 1; ch++) parent.resetChannelMask(Y8950Chip.class, chipId, ch);
+            for (ch = 0; ch < 9 + 5 + 1; ch++) parent.setMuted(Y8950Chip.class, chipId, ch, false);
         }
     };
 
@@ -270,7 +270,7 @@ public class FormY8950 extends FormChipBase<FormY8950.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Y8950Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Y8950Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -442,26 +442,6 @@ public class FormY8950 extends FormChipBase<FormY8950.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return Y8950Chip.class; }
         @Override public String title(int chipId) { return "Y8950Inst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormY8950(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 15) {
-                Y8950Chip c = audio.plugin.chipRegister.chip(Y8950Chip.class);
-                if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(Y8950Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (ch >= 0 && ch < 15) {
-                if (mask)
-                    audio.plugin.chipRegister.chip(Y8950Chip.class).setMask(chipId, ch);
-                else
-                    audio.plugin.chipRegister.chip(Y8950Chip.class).resetMask(chipId, ch);
-            }
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(18, MDSound.Chip.MAIN_TAG, Y8950Chip.class, "y8950", 200));

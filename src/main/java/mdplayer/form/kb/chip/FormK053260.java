@@ -90,9 +90,9 @@ public class FormK053260 extends FormChipBase<FormK053260.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 4; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(K053260Chip.class, chipId, ch);
+                            parent.setMuted(K053260Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(K053260Chip.class, chipId, ch);
+                            parent.toggleMute(K053260Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -103,11 +103,11 @@ public class FormK053260 extends FormChipBase<FormK053260.Params> {
 
             if (ch < 4) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(K053260Chip.class, chipId, ch);
+                    parent.toggleMute(K053260Chip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 4; ch++) parent.resetChannelMask(K053260Chip.class, chipId, ch);
+                for (ch = 0; ch < 4; ch++) parent.setMuted(K053260Chip.class, chipId, ch, false);
             }
         }
     };

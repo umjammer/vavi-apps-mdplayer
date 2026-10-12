@@ -90,11 +90,11 @@ public class FormPPZ8 extends FormChipBase<FormPPZ8.Params> {
 
             if (ch < 8) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(Ppz8Chip.class, chipId, ch);
+                    parent.toggleMute(Ppz8Chip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 8; ch++) parent.resetChannelMask(Ppz8Chip.class, chipId, ch);
+                for (ch = 0; ch < 8; ch++) parent.setMuted(Ppz8Chip.class, chipId, ch, false);
             }
         }
     };
@@ -182,7 +182,7 @@ public class FormPPZ8 extends FormChipBase<FormPPZ8.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ppz8Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ppz8Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -373,17 +373,6 @@ public class FormPPZ8 extends FormChipBase<FormPPZ8.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return Ppz8Chip.class; }
         @Override public String title(int chipId) { return "Ppz8Inst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormPPZ8(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            Ppz8Chip c = audio.plugin.chipRegister.chip(Ppz8Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 8) {
-                audio.plugin.chipRegister.chip(Ppz8Chip.class).resetMask(chipId, ch);
-            }
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(61, MDSound.Chip.MAIN_TAG, Ppz8Chip.class, "ppz8", 200));

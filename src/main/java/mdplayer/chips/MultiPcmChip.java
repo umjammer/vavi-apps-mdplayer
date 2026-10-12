@@ -22,8 +22,6 @@ import mdsound.instrument.MultiPcmInst;
  */
 public class MultiPcmChip extends BaseChip {
 
-    private final int[] mask = {0, 0};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -47,28 +45,6 @@ public class MultiPcmChip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         MultiPcmInst inst = context.mds.inst(MultiPcmInst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            this.mask[chipId] |= 1 << ch;
-        } else {
-            this.mask[chipId] &= ~(1 << ch);
-        }
-
-        Instrument instrument = context.mds.inst(inst(chipId), 0);
-        if (instrument == null) return; // the song being played does not use this chip
-
-        if (mask)
-            instrument.setMask(chipId, 1 << ch);
-        else
-            instrument.resetMask(chipId, 1 << ch);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < MultiPcmInst.CHANNELS && (mask[chipId] & (1 << ch)) != 0;
     }
 
     public void setBank(int chipId, int ch, int addr, EnmModel model) {

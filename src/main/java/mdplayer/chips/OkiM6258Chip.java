@@ -22,18 +22,16 @@ import mdsound.instrument.OkiM6258Inst;
  */
 public class OkiM6258Chip extends BaseChip {
 
-    private final boolean[] mask = {false, false};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {OkiM6258Inst.class};
     }
 
+    /** {@link #write} keeps a muted chip from starting; on a change it stops the one playing */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId] = mask;
-
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
         write(chipId, 0, 1, EnmModel.VirtualModel);
         write(chipId, 0, 1, EnmModel.RealModel);
     }
@@ -42,13 +40,13 @@ public class OkiM6258Chip extends BaseChip {
         fireEventHappened("led.on", chipId);
 
         if (port == 0x00) {
-            if (mask[chipId]) {
+            if (isMuted(chipId, 0)) {
                 if ((data & 0x2) != 0)
                     return;
             }
         }
         if (port == 0x1) {
-            if (mask[chipId])
+            if (isMuted(chipId, 0))
                 return;
         }
 
@@ -61,10 +59,5 @@ public class OkiM6258Chip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         OkiM6258Inst inst = context.mds.inst(OkiM6258Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return mask[chipId];
     }
 }

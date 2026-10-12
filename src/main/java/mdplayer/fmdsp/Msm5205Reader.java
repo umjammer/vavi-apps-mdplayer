@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Msm5205Chip;
 
 
@@ -133,8 +134,9 @@ public class Msm5205Reader extends ChipReader {
         out.note = sounding ? Notes.noteOfRatio(rate / referenceRate) : -1;
     }
 
+    /** the chip is the one channel, whichever row shows it */
     @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, 0);
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return super.muteChannel(group, 0);
     }
 }

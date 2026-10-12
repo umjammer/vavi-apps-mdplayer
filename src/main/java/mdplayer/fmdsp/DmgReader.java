@@ -135,9 +135,4 @@ public class DmgReader extends ChipReader {
         out.note = ch == 3 || !sounding || freq >= 2048 ? -1
                 : Notes.noteOf(squareBase / (2048 - freq) / (ch == 2 ? 2 : 1));
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

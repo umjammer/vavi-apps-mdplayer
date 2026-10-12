@@ -91,9 +91,9 @@ public class FormMultiPCM extends FormChipBase<FormMultiPCM.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 28; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(MultiPcmChip.class, chipId, ch);
+                            parent.setMuted(MultiPcmChip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(MultiPcmChip.class, chipId, ch);
+                            parent.toggleMute(MultiPcmChip.class, chipId, ch);
                     }
                 }
                 return;
@@ -104,11 +104,11 @@ public class FormMultiPCM extends FormChipBase<FormMultiPCM.Params> {
 
             if (ch < 28) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(MultiPcmChip.class, chipId, ch);
+                    parent.toggleMute(MultiPcmChip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 28; ch++) parent.resetChannelMask(MultiPcmChip.class, chipId, ch);
+                for (ch = 0; ch < 28; ch++) parent.setMuted(MultiPcmChip.class, chipId, ch, false);
 
             }
         }

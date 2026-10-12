@@ -153,9 +153,4 @@ public class Ppz8Reader extends ChipReader {
             default -> Pan.RIGHT;
         };
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

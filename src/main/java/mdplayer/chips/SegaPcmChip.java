@@ -39,20 +39,15 @@ public class SegaPcmChip extends BaseChip {
 
     private final RSoundChip[] realChips = {null, null};
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {SegaPcmInst.class};
     }
 
+    /** {@link #write} keeps a muted channel switched off */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     public void write(int chipId, int offset, int data, EnmModel model) {
@@ -62,7 +57,7 @@ public class SegaPcmChip extends BaseChip {
                 (model == EnmModel.RealModel && (realChips != null && realChips[chipId] != null))) {
             if ((offset & 0x87) == 0x86) {
                 int ch = (offset >> 3) & 0xf;
-                data = mask[chipId][ch] ? data | 0x01 : data;
+                data = isMuted(chipId, ch) ? data | 0x01 : data;
             }
         }
 
@@ -213,10 +208,5 @@ public class SegaPcmChip extends BaseChip {
             }
         }
         return n;
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

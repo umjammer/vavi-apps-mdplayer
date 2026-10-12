@@ -122,9 +122,4 @@ public class Vrc7Reader extends ChipReader {
         out.amplitude = on ? Math.pow(10, -vol * 3.0 / 20) : 0;
         out.toneNum = (regs[0x30 + ch] >> 4) & 0x0f;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.OkiM6258Chip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 
@@ -130,8 +131,9 @@ public class OkiM6258Reader extends ChipReader {
         return Pan.CENTER; // nothing set at all is the chip's default, which is both
     }
 
+    /** the chip is the one channel, whichever row shows it */
     @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, 0);
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return super.muteChannel(group, 0);
     }
 }

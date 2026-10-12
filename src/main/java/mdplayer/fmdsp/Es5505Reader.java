@@ -94,9 +94,4 @@ public class Es5505Reader extends PcmSlotReader {
         out.pan = panOf(left, right);
         out.pitchOfRatio(freq > 0 ? freq / unity : 0);
     }
-
-    @Override
-    protected boolean muted(int v) {
-        return boolOf(v, "mute");
-    }
 }

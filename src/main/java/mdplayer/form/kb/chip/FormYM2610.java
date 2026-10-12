@@ -103,9 +103,9 @@ public class FormYM2610 extends FormChipBase<FormYM2610.Params> {
                         if (ch == 13) c = 12;
 
                         if (newParam.channels[c].mask)
-                            parent.resetChannelMask(Ym2610Chip.class, chipId, ch);
+                            parent.setMuted(Ym2610Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Ym2610Chip.class, chipId, ch);
+                            parent.setMuted(Ym2610Chip.class, chipId, ch, true);
                     }
                 }
                 return;
@@ -122,13 +122,13 @@ public class FormYM2610 extends FormChipBase<FormYM2610.Params> {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
                     if (newParam.channels[c].mask)
-                        parent.resetChannelMask(Ym2610Chip.class, chipId, ch);
+                        parent.setMuted(Ym2610Chip.class, chipId, ch, false);
                     else
-                        parent.setChannelMask(Ym2610Chip.class, chipId, ch);
+                        parent.setMuted(Ym2610Chip.class, chipId, ch, true);
                     return;
                 }
 
-                for (ch = 0; ch < 14; ch++) parent.resetChannelMask(Ym2610Chip.class, chipId, ch);
+                for (ch = 0; ch < 14; ch++) parent.setMuted(Ym2610Chip.class, chipId, ch, false);
                 return;
             }
 
@@ -417,7 +417,7 @@ public class FormYM2610 extends FormChipBase<FormYM2610.Params> {
     
         // the chip itself is the source of truth for channel muting; display rows 12/13 are swapped
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ym2610Chip.class).getMask(chipId, mch == 12 ? 13 : (mch == 13 ? 12 : mch));
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ym2610Chip.class).isMuted(chipId, mch == 12 ? 13 : (mch == 13 ? 12 : mch));
     }
 
     @Override
@@ -669,33 +669,6 @@ public class FormYM2610 extends FormChipBase<FormYM2610.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return Ym2610Chip.class; }
         @Override public boolean hasRegisterDump() { return true; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormYM2610(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 14) {
-                audio.plugin.chipRegister.chip(Ym2610Chip.class).setMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 14) {
-                audio.plugin.chipRegister.chip(Ym2610Chip.class).resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (ch >= 0 && ch < 14) {
-                if (mask)
-                    audio.plugin.chipRegister.chip(Ym2610Chip.class).setMask(chipId, ch);
-                else
-                    audio.plugin.chipRegister.chip(Ym2610Chip.class).resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 14; ch++)
-                forceChannelMask(audio, Ym2610Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(Ym2610Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(11, MDSound.Chip.MAIN_TAG, Ym2610Chip.class, "ym2610", 200),

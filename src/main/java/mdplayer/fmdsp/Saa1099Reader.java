@@ -151,9 +151,4 @@ public class Saa1099Reader extends ChipReader {
         if (balance <= 0.75) return Pan.MID_RIGHT;
         return Pan.RIGHT;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

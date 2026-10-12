@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.EnumSet;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.YmF278BChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 
@@ -114,8 +115,6 @@ public class YmF278BReader extends OplReader {
         return Pan.NONE;
     }
 
-    @Override protected boolean chipMask(int ch) { return chip().getMask(chipId, ch); }
-
     @Override public String chipName() { return "OPL4"; }
 
     @Override public int priority() { return 65; }
@@ -209,10 +208,10 @@ public class YmF278BReader extends OplReader {
     }
 
     @Override
-    public boolean masked(Group group, int slot) {
-        if (group != Group.PCM) return super.masked(group, slot);
+    public BaseChip.Channel muteChannel(Group group, int slot) {
+        if (group != Group.PCM) return super.muteChannel(group, slot);
         int ch = slotChannels[slot];
-        // the chip counts its wave channels after the 18 FM ones
-        return ch >= 0 && chip().getMask(chipId, 18 + ch);
+        // the chip counts its wave channels after the 18 FM ones and the 5 drums
+        return ch >= 0 ? chip().channel(chipId, 23 + ch) : null;
     }
 }

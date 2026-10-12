@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.PwmChip;
 
 
@@ -112,8 +113,9 @@ public class PwmReader extends ChipReader {
         out.note = -1; // a DAC has no pitch to report
     }
 
+    /** the chip cannot mute a channel */
     @Override
-    public boolean masked(Group group, int ch) {
-        return false; // the chip has no channel mask of its own
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return null;
     }
 }

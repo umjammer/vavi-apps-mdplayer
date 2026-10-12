@@ -151,9 +151,4 @@ public class SidReader implements FmDspChipReader {
         out.note = gate && freq > 0 && out.ssgTone
                 ? Notes.noteOf(freq * clock / (1 << 24)) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int v) {
-        return false;
-    }
 }

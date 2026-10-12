@@ -88,27 +88,11 @@ public interface ViewProvider {
     }
 
     /**
-     * The chips this provider answers channel-mask calls for — usually just {@link #chip()}, but
-     * a panel may drive more than one (the NES panel also mutes the DMC).
+     * The chips this provider answers for — usually just {@link #chip()}, but a panel may drive
+     * more than one (the NES panel also shows the DMC).
      */
-    default List<Class<? extends Chip>> maskChips() {
+    default List<Class<? extends Chip>> chips() {
         return chip() == null ? List.of() : List.of(chip());
-    }
-
-    /** Mutes one channel (or toggles the mute — each chip kept its historical semantics). */
-    default void setChannelMask(Audio audio, Class<? extends Chip> chip, int chipId, int ch) {
-    }
-
-    /** Unmutes one channel. */
-    default void resetChannelMask(Audio audio, Class<? extends Chip> chip, int chipId, int ch) {
-    }
-
-    /** Applies one channel's mute to the given state, regardless of what it was. */
-    default void forceChannelMask(Audio audio, Class<? extends Chip> chip, int chipId, int ch, boolean mask) {
-    }
-
-    /** Reapplies the saved channel mutes to the (freshly initialized) chip when a new song starts. */
-    default void reapplyChannelMasks(Audio audio, int chipId) {
     }
 
     /**

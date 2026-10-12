@@ -31,13 +31,6 @@ public class QSoundChip extends BaseChip {
 
     private final Setting.ChipType2[] chipTypes = setting.getQSoundType();
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false,},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false,}
-    };
-
     @SuppressWarnings("unchecked")
     private Class<? extends PcmEnabledInstrument> _inst(int chipId) {
         return (Class<? extends PcmEnabledInstrument>) inst(chipId);
@@ -83,19 +76,6 @@ public class QSoundChip extends BaseChip {
         return info;
     }
 
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-
-        PcmEnabledInstrument instrument = context.mds.inst(_inst(chipId));
-        if (instrument == null) return; // the song being played does not use this chip
-
-        if (mask)
-            instrument.setMask(chipId, ch);
-        else
-            instrument.resetMask(chipId, ch);
-    }
-
     public void writePcm(int chipId,
                          int romSize,
                          int dataStart,
@@ -111,10 +91,5 @@ public class QSoundChip extends BaseChip {
         }
 
         dumpData(model, "PCMData", srcStartAdr, romData, dataLength);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

@@ -126,9 +126,4 @@ public class WSwanReader extends ChipReader {
         out.note = sounding && divider > 0 && divider < 2048
                 ? Notes.noteOf(clock / 128.0 / (2048 - divider)) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return Boolean.TRUE.equals(info.get("channels." + ch + ".mute"));
-    }
 }

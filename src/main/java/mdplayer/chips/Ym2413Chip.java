@@ -6,6 +6,7 @@
 
 package mdplayer.chips;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,10 +47,12 @@ public class Ym2413Chip extends BaseChip {
     @Deprecated
     private final boolean[] rm = {false, false};
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false}
-    };
+    /**
+     * The key registers - {@code $0e} and {@code $20-$28} - as the song wrote them, before
+     * {@link #write} took the muted channels' keys out: the emulator holds them filtered, and an
+     * un-muted note is keyed on again from here.
+     */
+    private final int[][] keyRegisters = new int[2][0x29];
 
     @Override
     @SuppressWarnings("unchecked")
@@ -74,6 +77,7 @@ public class Ym2413Chip extends BaseChip {
 
             fadeout[chipId] = 0;
             rm[chipId] = false; // same as register[0x0e], the rhythm mode of the previous song must not be left
+            Arrays.fill(keyRegisters[chipId], 0); // nor its keys
         }
     }
 
@@ -85,6 +89,10 @@ public class Ym2413Chip extends BaseChip {
             if (addr == 0x0e) {
                 rm[chipId] = (data & 0x20) != 0;
             }
+
+        if (addr == 0x0e || (addr >= 0x20 && addr <= 0x28)) {
+            keyRegisters[chipId][addr] = data;
+        }
 
         if (addr >= 0x20 && addr <= 0x28) {
             int ch = addr - 0x20;
@@ -98,7 +106,7 @@ public class Ym2413Chip extends BaseChip {
             }
 
             // Apply mask
-            if (mask[chipId][ch])
+            if (isMuted(chipId, ch))
                 data &= 0xef;
         }
 
@@ -128,9 +136,9 @@ public class Ym2413Chip extends BaseChip {
                 }
             }
 
-            data = (data & 0x20) | (mask[chipId][9] ? 0 : (data & 0x10)) |
-                    (mask[chipId][10] ? 0 : (data & 0x08)) | (mask[chipId][11] ? 0 : (data & 0x04)) |
-                    (mask[chipId][12] ? 0 : (data & 0x02)) | (mask[chipId][13] ? 0 : (data & 0x01));
+            data = (data & 0x20) | (isMuted(chipId, 9) ? 0 : (data & 0x10)) |
+                    (isMuted(chipId, 10) ? 0 : (data & 0x08)) | (isMuted(chipId, 11) ? 0 : (data & 0x04)) |
+                    (isMuted(chipId, 12) ? 0 : (data & 0x02)) | (isMuted(chipId, 13) ? 0 : (data & 0x01));
         }
 
         if (model == EnmModel.VirtualModel) {
@@ -170,18 +178,15 @@ public class Ym2413Chip extends BaseChip {
         write(chipId, 0x38, 0xff, model);
     }
 
+    /** the key ons are filtered on their way in, see {@link #write} */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-
-        // re-send what the chip already has, so the mute takes effect on the running note
-        Map<String, Object> info = getInfo(chipId);
-        int[] regs = info.get("register") instanceof int[] r ? r : null;
-        if (regs == null) return;
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
+        // re-send the keys as the song has them, so the mute takes effect on the running note
         if (ch < 9) {
-            write(chipId, 0x20 + ch, regs[0x20 + ch], EnmModel.VirtualModel);
+            write(chipId, 0x20 + ch, keyRegisters[chipId][0x20 + ch], EnmModel.VirtualModel);
         } else if (ch < 14) {
-            write(chipId, 0x0e, regs[0x0e], EnmModel.VirtualModel);
+            write(chipId, 0x0e, keyRegisters[chipId][0x0e], EnmModel.VirtualModel);
         }
     }
 
@@ -211,10 +216,5 @@ public class Ym2413Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

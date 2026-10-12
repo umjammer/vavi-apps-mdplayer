@@ -129,9 +129,4 @@ public class Mmc5Reader extends ChipReader {
         out.toneNum = (regs[ch * 4] >> 6) & 0x03; // the duty, as an instrument would be
         out.note = sounding ? Notes.noteOf(cpuClock / (16.0 * (timer + 1))) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

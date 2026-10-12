@@ -8,8 +8,10 @@ package mdplayer.chips;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import mdplayer.ChipRegister;
 import mdplayer.Common.EnmModel;
 import mdsound.Instrument;
 import mdsound.instrument.NesInst;
@@ -27,7 +29,6 @@ public class NesChip extends BaseChip {
 
     // vgm
     public static class DmcChip extends NesChip {
-        private int dmcMask = 0;
 
         @Override
         @SuppressWarnings("unchecked")
@@ -44,24 +45,10 @@ public class NesChip extends BaseChip {
 //            }
         }
 
-        @Override
-        protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-            if (mask) {
-                super.setMask(chipId, ch + 2, true);
-            } else {
-                super.setMask(chipId, ch + 2, false);
-            }
-        }
-
-        @Override
-        public boolean getMask(int chipId, int ch) {
-            return (dmcMask & (1 << ch)) != 0;
-        }
     }
 
     // vgm
     public static class FdsChip extends NesChip {
-        private int fdsMask = 0;
 
         @Override
         @SuppressWarnings("unchecked")
@@ -78,26 +65,29 @@ public class NesChip extends BaseChip {
 //            }
         }
 
-        @Override
-        protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-            if (mask) {
-                FdsInst instrument = context.mds.inst(FdsInst.class);
-                if (instrument == null) return; // the song being played does not use this chip
-                instrument.setFDSMask(chipId);
-            } else  {
-                FdsInst instrument = context.mds.inst(FdsInst.class);
-                if (instrument == null) return; // the song being played does not use this chip
-                instrument.resetFDSMask(chipId);
-            }
-        }
     }
-
-    private int apuMask = 0;
 
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {NesInst.class};
+    }
+
+    /**
+     * The one emulator plays all three: the pulses are channels 0-1 of the APU, the triangle, the
+     * noise and the delta PCM 0-2 of the DMC and the FDS 0 of its own, and the emulator counts
+     * them on as 0-1, 2-4 and 5. Each instrument of the family gets the lot.
+     */
+    @Override
+    protected void applyMute(int chipId, int ch) {
+        ChipRegister chips = context.chipRegister;
+        long mask = (chips.chip(NesChip.class).muteMask(chipId) & 0x03)
+                | (chips.chip(DmcChip.class).muteMask(chipId) & 0x07) << 2
+                | (chips.chip(FdsChip.class).muteMask(chipId) & 0x01) << 5;
+        for (Class<? extends NesInst> c : List.of(NesInst.class, DmcInst.class, FdsInst.class)) {
+            NesInst inst = context.mds.inst(c);
+            if (inst != null) inst.setMuteMask(chipId, mask);
+        }
     }
 
     // vgm
@@ -131,49 +121,6 @@ public class NesChip extends BaseChip {
     }
 
     // vgm
-    @Override
-    void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            if (chipId == 0) {
-                switch (ch) {
-                    case 0:
-                    case 1:
-                        apuMask |= 1 << ch;
-                        break;
-                    case 2:
-                    case 3:
-                    case 4:
-                        context.chipRegister.chip(NesChip.DmcChip.class).dmcMask |= 1 << (ch - 2);
-                        break;
-                }
-            }
-            Instrument instrument = context.mds.inst(NesInst.class);
-            if (instrument == null) return; // the song being played does not use this chip
-            instrument.setMask(chipId, ch);
-        } else {
-            if (chipId == 0) {
-                switch (ch) {
-                    case 0:
-                    case 1:
-                        apuMask &= ~(1 << ch);
-                        break;
-                    case 2:
-                    case 3:
-                    case 4:
-                        context.chipRegister.chip(NesChip.DmcChip.class).dmcMask &= ~(1 << (ch - 2));
-                        break;
-                }
-            }
-            Instrument instrument = context.mds.inst(NesInst.class);
-            if (instrument == null) return; // the song being played does not use this chip
-            instrument.resetMask(chipId, ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return (apuMask & (1 << ch)) != 0;
-    }
 
     // vgm
     public void writePcm(int chipId, int stAdr, int dataSize, byte[] vgmBuf, int vgmAdr, EnmModel model) {

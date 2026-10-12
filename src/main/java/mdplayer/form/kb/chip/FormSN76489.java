@@ -163,7 +163,7 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
 
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Sn76489Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Sn76489Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -238,9 +238,9 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 4; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Sn76489Chip.class, chipId, ch);
+                            parent.setMuted(Sn76489Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Sn76489Chip.class, chipId, ch);
+                            parent.toggleMute(Sn76489Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -255,15 +255,15 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
-                    parent.setChannelMask(Sn76489Chip.class, chipId, ch);
-                    if (ngpFlag && chipId == 0) parent.setChannelMask(Sn76489Chip.class, 1, ch);
+                    parent.toggleMute(Sn76489Chip.class, chipId, ch);
+                    if (ngpFlag && chipId == 0) parent.toggleMute(Sn76489Chip.class, 1, ch);
                     return;
                 }
 
                 // Unmask.
                 for (ch = 0; ch < 4; ch++) {
-                    parent.resetChannelMask(Sn76489Chip.class, chipId, ch);
-                    if (ngpFlag && chipId == 0) parent.resetChannelMask(Sn76489Chip.class, 1, ch);
+                    parent.setMuted(Sn76489Chip.class, chipId, ch, false);
+                    if (ngpFlag && chipId == 0) parent.setMuted(Sn76489Chip.class, 1, ch, false);
                 }
             }
         }
@@ -381,28 +381,6 @@ public class FormSN76489 extends FormChipBase<FormSN76489.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return Sn76489Chip.class; }
         @Override public boolean hasRegisterDump() { return true; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormSN76489(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            Sn76489Chip c = audio.plugin.chipRegister.chip(Sn76489Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(Sn76489Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(Sn76489Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(Sn76489Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 4; ch++)
-                forceChannelMask(audio, Sn76489Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(Sn76489Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(26, MDSound.Chip.MAIN_TAG, Sn76489Chip.class, "sn76489", 120));

@@ -19,6 +19,7 @@ import java.util.ServiceLoader;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.driver.BaseDriver;
 import mdsound.MDSound;
 import mdplayer.fmdsp.FmDspChannel;
@@ -167,6 +168,9 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
 
     /** the row feeding each meter column, so its key/pan readout follows the same chip */
     private final TrackId[] levelTracks = new TrackId[LevelDataSource.COUNT];
+
+    /** the reader feeding each drum meter column, which has no row; see {@link #muteChannel(int)} */
+    private final FmDspChipReader[] levelRhythms = new FmDspChipReader[LevelDataSource.COUNT];
 
     /** first meter column of each claimed reader, parallel to {@link #claims} */
     private final Map<Group, List<Integer>> meterBases = new EnumMap<>(Group.class);
@@ -389,6 +393,7 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
         Arrays.fill(rowNums, 0);
         Arrays.fill(levelLabels, null);
         Arrays.fill(levelTracks, null);
+        Arrays.fill(levelRhythms, null);
         dispTracks = null;
         Arrays.fill(envelopes, 0);
         Arrays.fill(keyOnTicks, -1);
@@ -526,6 +531,7 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
             if (owned[c]) continue;
             levelLabels[c] = null;
             levelTracks[c] = null;
+            levelRhythms[c] = null;
             envelopes[c] = 0;
         }
     }
@@ -699,6 +705,7 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
 
             channel.clear();
             claimed.get(r).read(Group.RHYTHM, 0, channel);
+            levelRhythms[meter] = claimed.get(r);
             levelLabels[meter] = channel.name != null ? channel.name : "RHY";
             if (channel.keyOn) {
                 envelopes[meter] = channel.amplitude > 0 ? channel.amplitude : rhythmLevel;
@@ -1194,6 +1201,34 @@ public class ChipFmDspSource implements FmDspDataSource, FftDataSource, LevelDat
     @Override
     public TrackId track(int channel) {
         return levelTracks[channel];
+    }
+
+    @Override
+    public boolean masked(int channel) {
+        BaseChip.Channel muted = muteChannel(channel);
+        return muted != null && muted.muted();
+    }
+
+    /**
+     * Mutes the chip channel meter column {@code column} shows, or lets it sound again. A column
+     * that shows no channel, or one that cannot be muted, is left as it is.
+     */
+    public void toggleMute(int column) {
+        BaseChip.Channel channel = muteChannel(column);
+        if (channel != null) channel.toggle();
+    }
+
+    /** the chip channel behind meter column {@code column}, null when there is none to mute */
+    private BaseChip.Channel muteChannel(int column) {
+        if (column < 0 || column >= LevelDataSource.COUNT) return null;
+        TrackId track = levelTracks[column];
+        if (track != null) {
+            int row = track.ordinal();
+            FmDspChipReader reader = rowReaders[row];
+            return reader != null ? reader.muteChannel(rowGroups[row], rowChannels[row]) : null;
+        }
+        FmDspChipReader rhythm = levelRhythms[column];
+        return rhythm != null ? rhythm.muteChannel(Group.RHYTHM, 0) : null;
     }
 
     // ----- WorkStateSource -----

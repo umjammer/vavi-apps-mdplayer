@@ -6,6 +6,7 @@
 
 package mdplayer.fmdsp;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.NpNesChip;
 
 
@@ -50,9 +51,8 @@ public class NpNesReader extends NesApuReader {
     }
 
     @Override
-    protected boolean muted(int ch) {
+    protected BaseChip.Channel mute(int ch) {
         // the pulses are the APU's own; the rest are counted from zero by the delta PCM chip
-        return ch < 2 ? chip().getMask(0, ch)
-                : chipRegister.chip(NpNesChip.DmcChip.class).getMask(0, ch - 2);
+        return ch < 2 ? chip().channel(0, ch) : chipRegister.chip(NpNesChip.DmcChip.class).channel(0, ch - 2);
     }
 }

@@ -76,9 +76,4 @@ public class K053260Reader extends PcmSlotReader {
         double rate = rateReg < 0x1000 ? clock / (double) (0x1000 - rateReg) : 0;
         out.note = rate > 0 ? Notes.noteOfRatio(rate / referenceRate) : -1;
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return false; // the chip has no channel mask of its own
-    }
 }

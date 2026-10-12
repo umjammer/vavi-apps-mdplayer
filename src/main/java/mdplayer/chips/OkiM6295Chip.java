@@ -22,28 +22,10 @@ import mdsound.instrument.OkiM6295Inst;
  */
 public class OkiM6295Chip extends BaseChip {
 
-    private final boolean[][] mask = {
-            {false, false, false, false},
-            {false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {OkiM6295Inst.class};
-    }
-
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-
-        Instrument instrument = context.mds.inst(inst(chipId), 0);
-        if (instrument == null) return; // the song being played does not use this chip
-
-        if (mask)
-            instrument.setMask(chipId, 1 << ch);
-        else
-            instrument.resetMask(chipId, 1 << ch);
     }
 
     @Override
@@ -68,10 +50,5 @@ public class OkiM6295Chip extends BaseChip {
             context.mds.write(inst(chipId), chipId, 0, port, data);
 //logger.log(Level.TRACE, "chipId=%d Port=%x data=%x".formatted(chipId, port, data));
         }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

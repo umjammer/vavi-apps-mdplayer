@@ -8,6 +8,7 @@ package mdplayer.fmdsp;
 
 import java.util.Map;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Ym2612Chip;
 
 
@@ -72,7 +73,8 @@ public class Ym2612Reader extends OpnFmReader {
     @Override public int priority() { return 20; }
 
     @Override
-    protected boolean fmMasked(int ch) {
-        return chip().getMask(chipId, ch < 6 ? ch : 9 + ch - 6);
+    protected BaseChip.Channel fmMute(int ch) {
+        // the chip counts the ch3 slots as 6-8, as this does
+        return chip().channel(chipId, ch);
     }
 }

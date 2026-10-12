@@ -53,10 +53,6 @@ public class Ym2612Chip extends BaseChip {
     @Deprecated
     public final int[][] ch3SlotVolume = {new int[4], new int[4]};
     private final int[] fadeout = {0, 0};
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false},
-            {false, false, false, false, false, false}
-    };
 
     @Override
     @SuppressWarnings("unchecked")
@@ -177,7 +173,7 @@ public class Ym2612Chip extends BaseChip {
             if (ch != 3) {
                 if ((algM[al] & (1 << slot)) != 0) {
                     data = Math.min(data + fadeout[chipId], 127);
-                    data = mask[chipId][port * 3 + ch] ? 127 : data;
+                    data = isMuted(chipId, port * 3 + ch) ? 127 : data;
                 }
             }
         }
@@ -186,7 +182,7 @@ public class Ym2612Chip extends BaseChip {
             int ch = (addr & 0x3);
             int al = data & 0x07; // AL
 
-            if (ch != 3 && mask[chipId][port * 3 + ch]) {
+            if (ch != 3 && isMuted(chipId, port * 3 + ch)) {
                 // Reconfigure the carrier's TL
                 for (int slot = 0; slot < 4; slot++) {
                     if ((algM[al] & (1 << slot)) != 0) {
@@ -200,7 +196,7 @@ public class Ym2612Chip extends BaseChip {
 
         if (addr == 0x2a) {
             // Masking PCM data
-            if (mask[chipId][5]) data = 0x00;
+            if (isMuted(chipId, 5)) data = 0x00;
 //logger.log(Level.TRACE, "%02x".formatted(data));
         }
 
@@ -271,13 +267,25 @@ public class Ym2612Chip extends BaseChip {
         }
     }
 
+    /** channels 6-8 are FM3's extended slots, which mute with it */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        // channels 6-8 are FM3's extended slots; they share ch2's mask slot (the array is 6 wide)
-        this.mask[chipId][ch < 6 ? ch : 2] = mask;
+    protected long linked(int ch) {
+        return ch == 2 || (ch >= 6 && ch < 9) ? 0b1_1100_0100 : super.linked(ch);
+    }
 
-        int c = (ch < 3) ? ch : (ch - 3);
-        int p = (ch < 3) ? 0 : 1;
+    /**
+     * The levels are filtered on their way in, see {@link #write}; this re-sends what the chip
+     * holds, and has the instrument mute the six channels too.
+     */
+    @Override
+    protected void applyMute(int chipId, int ch) {
+        // the instrument knows the six channels only: bit 6 is the DAC to a MAME core
+        muteInstrument(chipId, muteMask(chipId) & 0x3f);
+        if (ch < 0) return;
+
+        int c = ch >= 6 ? 2 : ch; // an extended slot is ch3's
+        int p = (c < 3) ? 0 : 1;
+        c = (c < 3) ? c : (c - 3);
 
         write(chipId, p, 0x40 + c, register[chipId][p][0x40 + c], EnmModel.VirtualModel, -1);
         write(chipId, p, 0x44 + c, register[chipId][p][0x44 + c], EnmModel.VirtualModel, -1);
@@ -288,14 +296,6 @@ public class Ym2612Chip extends BaseChip {
         write(chipId, p, 0x44 + c, register[chipId][p][0x44 + c], EnmModel.RealModel, -1);
         write(chipId, p, 0x48 + c, register[chipId][p][0x48 + c], EnmModel.RealModel, -1);
         write(chipId, p, 0x4c + c, register[chipId][p][0x4c + c], EnmModel.RealModel, -1);
-
-        Instrument instrument = context.mds.inst(inst(chipId));
-        if (instrument == null) return; // the song being played does not use this chip
-
-        if (mask)
-            instrument.setMask(chipId, ch);
-        else
-            instrument.resetMask(chipId, ch);
     }
 
     public void setSyncWait(int chipId, int wait) {
@@ -327,11 +327,5 @@ public class Ym2612Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        // channels 6-8 are FM3's extended slots; they mask together with ch2
-        return mask[chipId][ch < 6 ? ch : 2];
     }
 }

@@ -126,9 +126,4 @@ public class PokeyReader extends ChipReader {
         out.ssgTone = true;
         out.note = sounding && divisor > 0 ? Notes.noteOf(clock / (2.0 * (divisor + 1))) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return info != null && Boolean.TRUE.equals(info.get("channels." + ch + ".mute"));
-    }
 }

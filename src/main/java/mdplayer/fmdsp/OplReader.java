@@ -42,8 +42,6 @@ public abstract class OplReader extends ChipReader {
     /** the chip's channel state, read back once a frame */
     Map<String, Object> info;
 
-    protected abstract boolean chipMask(int ch);
-
     Pan pan(int ch) {
         return Pan.CENTER;
     }
@@ -125,11 +123,6 @@ public abstract class OplReader extends ChipReader {
         out.volume = 63 - tl;
         out.amplitude = Math.pow(10, -tl * 0.75 / 20);
         out.pan = pan(ch);
-    }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chipMask(ch);
     }
 
     /**

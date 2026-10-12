@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Ym2608Chip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
@@ -149,22 +150,22 @@ public class Ym2608Reader extends OpnFmReader {
     }
 
     @Override
-    protected boolean fmMasked(int ch) {
+    protected BaseChip.Channel fmMute(int ch) {
         // the chip counts FM 1-6 as 0-5 and the ch3 slots as 9-11
-        return chip().getMask(chipId, ch < 6 ? ch : 9 + ch - 6);
+        return chip().channel(chipId, ch < 6 ? ch : 9 + ch - 6);
     }
 
     @Override
-    protected boolean ssgMasked(int s) {
-        return chip().getMask(chipId, 6 + s);
+    protected BaseChip.Channel ssgMute(int s) {
+        return chip().channel(chipId, 6 + s);
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
+    public BaseChip.Channel muteChannel(Group group, int ch) {
         return switch (group) {
-            case PCM -> chip().getMask(chipId, 12);
-            case RHYTHM -> chip().getMask(chipId, 13);
-            default -> super.masked(group, ch);
+            case PCM -> chip().channel(chipId, 12);
+            case RHYTHM -> chip().channel(chipId, 13);
+            default -> super.muteChannel(group, ch);
         };
     }
 

@@ -118,7 +118,7 @@ public class FormRf5c68 extends FormChipBase<FormRf5c68.Params> {
 
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Rf5C68Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Rf5C68Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -148,9 +148,9 @@ public class FormRf5c68 extends FormChipBase<FormRf5c68.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 8; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Rf5C68Chip.class, chipId, ch);
+                            parent.setMuted(Rf5C68Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Rf5C68Chip.class, chipId, ch);
+                            parent.toggleMute(Rf5C68Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -160,11 +160,11 @@ public class FormRf5c68 extends FormChipBase<FormRf5c68.Params> {
             if (ch < 0) return;
 
             if (ev.getButton() == MouseEvent.BUTTON1) {
-                parent.setChannelMask(Rf5C68Chip.class, chipId, ch);
+                parent.toggleMute(Rf5C68Chip.class, chipId, ch);
                 return;
             }
 
-            for (ch = 0; ch < 8; ch++) parent.resetChannelMask(Rf5C68Chip.class, chipId, ch);
+            for (ch = 0; ch < 8; ch++) parent.setMuted(Rf5C68Chip.class, chipId, ch, false);
         }
     };
 
@@ -269,28 +269,6 @@ public class FormRf5c68 extends FormChipBase<FormRf5c68.Params> {
         @Override public String category() { return "pcm"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return Rf5C68Chip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormRf5c68(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            Rf5C68Chip c = audio.plugin.chipRegister.chip(Rf5C68Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(Rf5C68Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(Rf5C68Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(Rf5C68Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 8; ch++)
-                forceChannelMask(audio, Rf5C68Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(Rf5C68Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(35, MDSound.Chip.MAIN_TAG, Rf5C68Chip.class, "rf5c68", 200));

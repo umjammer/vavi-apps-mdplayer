@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import mdplayer.ChipRegister;
+import mdplayer.chips.BaseChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackInfo;
 
@@ -78,7 +79,7 @@ public abstract class NesApuReader implements FmDspChipReader {
     protected abstract int[] dmcRegisters();
 
     /** @param ch 0 - 3 for the APU channels, 4 for the delta PCM */
-    protected abstract boolean muted(int ch);
+    protected abstract BaseChip.Channel mute(int ch);
 
     /**
      * What the four APU channels and the delta PCM put out now, in that order, when the source
@@ -242,8 +243,8 @@ public abstract class NesApuReader implements FmDspChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
+    public BaseChip.Channel muteChannel(Group group, int ch) {
         // the delta PCM comes after the four the APU has
-        return muted(group == Group.PCM ? 4 : ch);
+        return mute(group == Group.PCM ? 4 : ch);
     }
 }

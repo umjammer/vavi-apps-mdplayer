@@ -124,9 +124,4 @@ public class Ay8910Reader extends ChipReader {
         out.amplitude = Math.pow(10, (Math.min(level, 15) - 15) * 3.0 / 20);
         out.pan = Pan.CENTER;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

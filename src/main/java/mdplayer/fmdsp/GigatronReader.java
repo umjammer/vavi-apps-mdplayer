@@ -145,9 +145,4 @@ public class GigatronReader extends ChipReader {
         out.volume = level >> 2; // 0..15
         out.amplitude = sounding ? level / levelMax : 0;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

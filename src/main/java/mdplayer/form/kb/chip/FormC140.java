@@ -90,9 +90,9 @@ public class FormC140 extends FormChipBase<FormC140.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 24; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(C140Chip.class, chipId, ch);
+                            parent.setMuted(C140Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(C140Chip.class, chipId, ch);
+                            parent.toggleMute(C140Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -103,11 +103,11 @@ public class FormC140 extends FormChipBase<FormC140.Params> {
 
             if (ch < 24) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(C140Chip.class, chipId, ch);
+                    parent.toggleMute(C140Chip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 24; ch++) parent.resetChannelMask(C140Chip.class, chipId, ch);
+                for (ch = 0; ch < 24; ch++) parent.setMuted(C140Chip.class, chipId, ch, false);
             }
         }
     };
@@ -207,7 +207,7 @@ public class FormC140 extends FormChipBase<FormC140.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(C140Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(C140Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -360,30 +360,6 @@ public class FormC140 extends FormChipBase<FormC140.Params> {
         @Override public boolean hasRegisterDump() { return true; }
         @Override public String title(int chipId) { return "C140Inst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormC140(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            C140Chip c = audio.plugin.chipRegister.chip(C140Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 24) {
-                audio.plugin.chipRegister.chip(C140Chip.class).resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void forceChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(C140Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(C140Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(mdplayer.Audio audio, int chipId) {
-            for (int ch = 0; ch < 24; ch++)
-                forceChannelMask(audio, C140Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(C140Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(39, mdsound.MDSound.Chip.MAIN_TAG, C140Chip.class, "c140", 200));

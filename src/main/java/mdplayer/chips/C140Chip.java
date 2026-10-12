@@ -35,13 +35,6 @@ public class C140Chip extends BaseChip {
 
     private final RSoundChip[] realChips = {null, null};
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false}
-    };
-
     @SuppressWarnings("unchecked")
     private Class<? extends PcmEnabledInstrument> _inst(int chipId) {
         return (Class<? extends PcmEnabledInstrument>) inst(chipId);
@@ -58,9 +51,9 @@ public class C140Chip extends BaseChip {
         return new Class[] {C140Inst.class, C219Inst.class};
     }
 
+    /** {@link #write} keeps the key ons of a muted channel from the chip */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     public void write(int chipId, int adr, int data, EnmModel model) {
@@ -70,7 +63,7 @@ public class C140Chip extends BaseChip {
                 (model == EnmModel.RealModel && (realChips != null && realChips[chipId] != null))) {
             int ch = adr >> 4;
             // a muted channel never gets its key on through
-            if ((adr & 0xf) == 0x05 && (data & 0x80) != 0 && mask[chipId][ch]) {
+            if ((adr & 0xf) == 0x05 && (data & 0x80) != 0 && isMuted(chipId, ch)) {
                 data &= 0x7f;
             }
         }
@@ -136,10 +129,5 @@ public class C140Chip extends BaseChip {
         Instrument inst = context.mds.inst(_inst(chipId));
         if (inst == null) return Collections.emptyMap();
         return inst.getView(chipId, "info");
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

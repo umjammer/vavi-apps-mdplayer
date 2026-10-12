@@ -81,6 +81,7 @@ import mdplayer.Request.enmRequest;
 import mdplayer.Setting;
 import mdplayer.TonePallet;
 import mdplayer.YM2612MIDI;
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.RealChipPlugin;
 import mdplayer.chips.VstPlugin;
 import mdplayer.driver.BaseDriver;
@@ -1882,12 +1883,6 @@ public class FormMain extends JFrame {
 
             startAudio();
 
-            for (int chipId = 0; chipId < 2; chipId++) {
-                for (ViewProvider p : views.keySet()) {
-                    p.reapplyChannelMasks(audio, chipId);
-                }
-            }
-
 //logger.log(Level.TRACE, "stopped: " + audio.stopped + ", " + audio.hashCode());
 
             if (frmInfo != null) {
@@ -2168,40 +2163,28 @@ logger.log(Level.INFO, "filename: " + fn);
         return true;
     }
 
-    /** which provider answers for which chip — channel masks, tone copies */
+    /** which provider answers for which chip — tone copies */
     private final Map<Class<? extends Chip>, ViewProvider> chipProviders = new LinkedHashMap<>();
 
     {
         for (ViewProvider p : views.keySet()) {
-            for (Class<? extends Chip> c : p.maskChips()) {
+            for (Class<? extends Chip> c : p.chips()) {
                 chipProviders.put(c, p);
             }
         }
     }
 
     /**
-     * Toggles the mute of one channel (the OPN family only ever masks here; unmasking goes through
-     * {@link #resetChannelMask}). The chip's own mask state is the single source of truth, and the
-     * chip's provider knows how to flip it.
+     * Mutes channel {@code ch} of chip instance {@code chipId} if it sounds, and lets it sound if
+     * it is muted. The chip is where the mute is kept, see {@link BaseChip#isMuted}.
      */
-    public void setChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
-        // the mask lives on the chip: with no song loaded there is none, and nothing to mute
-        if (audio.plugin == null) return;
-        ViewProvider p = chipProviders.get(chip);
-        if (p != null) p.setChannelMask(audio, chip, chipId, ch);
+    public void toggleMute(Class<? extends Chip> chip, int chipId, int ch) {
+        if (audio.plugin != null && audio.plugin.chipRegister.chip(chip) instanceof BaseChip c) c.toggleMute(chipId, ch);
     }
 
-    public void resetChannelMask(Class<? extends Chip> chip, int chipId, int ch) {
-        if (audio.plugin == null) return;
-        ViewProvider p = chipProviders.get(chip);
-        if (p != null) p.resetChannelMask(audio, chip, chipId, ch);
-    }
-
-    /** Reapplies a channel's mute to the (freshly initialized) chip, e.g. when a new song starts. */
-    public void forceChannelMask(Class<? extends Chip> chip, int chipId, int ch, boolean mask) {
-        if (audio.plugin == null) return;
-        ViewProvider p = chipProviders.get(chip);
-        if (p != null) p.forceChannelMask(audio, chip, chipId, ch, mask);
+    /** mutes or un-mutes channel {@code ch} of chip instance {@code chipId} */
+    public void setMuted(Class<? extends Chip> chip, int chipId, int ch, boolean muted) {
+        if (audio.plugin != null && audio.plugin.chipRegister.chip(chip) instanceof BaseChip c) c.setMuted(chipId, ch, muted);
     }
 
 //#region midi

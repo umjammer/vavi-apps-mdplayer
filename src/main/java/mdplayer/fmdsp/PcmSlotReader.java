@@ -61,8 +61,6 @@ public abstract class PcmSlotReader extends ChipReader {
      */
     protected abstract int rateOf(int ch);
 
-    protected abstract boolean muted(int ch);
-
     @Override
     public void bind(ChipRegister chipRegister) {
         super.bind(chipRegister);
@@ -154,9 +152,8 @@ public abstract class PcmSlotReader extends ChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int slot) {
-        int ch = slotChannels[slot];
-        return ch >= 0 && muted(ch);
+    public BaseChip.Channel muteChannel(Group group, int slot) {
+        return super.muteChannel(group, slotChannels[slot]);
     }
 
     // helpers for reading the chip's map

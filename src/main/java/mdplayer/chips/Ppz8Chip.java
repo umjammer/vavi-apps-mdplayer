@@ -22,11 +22,6 @@ import mdsound.instrument.Ppz8Inst;
  */
 public class Ppz8Chip extends BaseChip {
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -57,15 +52,5 @@ public class Ppz8Chip extends BaseChip {
         if (dPort == -1 && dAddr == -1 && dData == -1)
             return;
         context.mds.inst(inst(chipId)).write(chipId, dPort, dAddr, dData);
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

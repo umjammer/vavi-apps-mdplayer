@@ -292,7 +292,7 @@ you can select a chip implementation variant by number.
    * chip class should handle one chip
    * real chip is one of instrument?
    * \[ym] move ym2149ex to instruments
-   * chip refactoring about masking
+   * ~~chip refactoring about masking~~
    * settings ...  demolish each driver and chips
    * abstract m3u, zip
  * vgm spi kill switch

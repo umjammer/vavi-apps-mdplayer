@@ -48,11 +48,6 @@ public class Ym2203Chip extends BaseChip {
     @Deprecated
     public final int[][] fmVolume = {new int[9], new int[9]};
 
-    private final boolean[][] maskFM = {
-            {false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -150,7 +145,7 @@ public class Ym2203Chip extends BaseChip {
             if (ch != 3) {
                 if ((algM[al] & (1 << slot)) != 0) {
                     data = Math.min(data + nowFadeoutVol[chipId], 127);
-                    data = maskFM[chipId][ch] ? 127 : data;
+                    data = isMuted(chipId, ch) ? 127 : data;
                 }
             }
         }
@@ -159,7 +154,7 @@ public class Ym2203Chip extends BaseChip {
             int ch = (addr & 0x3);
             int al = data & 0x07; // AL
 
-            if (ch != 3 && maskFM[chipId][ch]) {
+            if (ch != 3 && isMuted(chipId, ch)) {
                 for (int slot = 0; slot < 4; slot++) {
                     if ((algM[al] & (1 << slot)) != 0) {
                         int tslot = (slot == 1 ? 2 : (slot == 2 ? 1 : slot)) * 4;
@@ -172,11 +167,11 @@ public class Ym2203Chip extends BaseChip {
         // ssg mixer
         if (addr == 0x07) {
             int maskData = 0;
-            if (maskFM[chipId][3])
+            if (isMuted(chipId, 3))
                 maskData |= 0x9 << 0;
-            if (maskFM[chipId][4])
+            if (isMuted(chipId, 4))
                 maskData |= 0x9 << 1;
-            if (maskFM[chipId][5])
+            if (isMuted(chipId, 5))
                 maskData |= 0x9 << 2;
             data |= maskData;
         }
@@ -185,7 +180,7 @@ public class Ym2203Chip extends BaseChip {
         if ((addr == 0x08 || addr == 0x09 || addr == 0x0a)) {
             int d = nowFadeoutVol[chipId] >> 3;
             data = Math.max(data - d, 0);
-            data = maskFM[chipId][addr - 0x08 + 3] ? 0 : data;
+            data = isMuted(chipId, addr - 0x08 + 3) ? 0 : data;
         }
 
         if (model == EnmModel.VirtualModel) {
@@ -265,20 +260,21 @@ public class Ym2203Chip extends BaseChip {
         }
     }
 
-    private void setMask(int chipId, int ch, boolean mask, boolean noSend) {
-        maskFM[chipId][ch] = mask;
-        // FM ch3 and its extended slots mask as one
-        if (ch == 2 || (ch >= 6 && ch < 9)) {
-            maskFM[chipId][2] = mask;
-            maskFM[chipId][6] = mask;
-            maskFM[chipId][7] = mask;
-            maskFM[chipId][8] = mask;
-        }
+    /** FM ch3 and its extended slots mask as one */
+    @Override
+    protected long linked(int ch) {
+        return ch == 2 || (ch >= 6 && ch < 9) ? 0b1_1100_0100 : super.linked(ch);
+    }
 
-        if (noSend) return;
+    /** the levels are filtered on their way in, see {@link #write}; this re-sends what the chip holds */
+    @Override
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
+        // a stopped song is left as it is when it is un-muted
+        if (!isMuted(chipId, ch) && context.stopped) return;
 
-        int c = ch;
-        if (ch < 3) {
+        int c = ch >= 6 ? 2 : ch; // an extended slot is ch3's
+        if (c < 3) {
             write(chipId, 0x40 + c, fmRegister[chipId][0x40 + c], EnmModel.VirtualModel);
             write(chipId, 0x44 + c, fmRegister[chipId][0x44 + c], EnmModel.VirtualModel);
             write(chipId, 0x48 + c, fmRegister[chipId][0x48 + c], EnmModel.VirtualModel);
@@ -288,7 +284,7 @@ public class Ym2203Chip extends BaseChip {
             write(chipId, 0x44 + c, fmRegister[chipId][0x44 + c], EnmModel.RealModel);
             write(chipId, 0x48 + c, fmRegister[chipId][0x48 + c], EnmModel.RealModel);
             write(chipId, 0x4c + c, fmRegister[chipId][0x4c + c], EnmModel.RealModel);
-        } else if (ch < 6) {
+        } else if (c < 6) {
             write(chipId, 0x08 + c - 3, fmRegister[chipId][0x08 + c - 3], EnmModel.VirtualModel);
             write(chipId, 0x08 + c - 3, fmRegister[chipId][0x08 + c - 3], EnmModel.RealModel);
         }
@@ -358,16 +354,6 @@ public class Ym2203Chip extends BaseChip {
     }
 
     @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            setMask(chipId, ch, true, false);
-        } else {
-            boolean stopped = (boolean) args[0];
-            setMask(chipId, ch, false, stopped);
-        }
-    }
-
-    @Override
     public void softReset(EnmModel model) {
         softReset(0, model);
         softReset(1, model);
@@ -377,10 +363,5 @@ public class Ym2203Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < maskFM[chipId].length && maskFM[chipId][ch];
     }
 }

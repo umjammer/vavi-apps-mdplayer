@@ -22,8 +22,6 @@ public class Y8950Reader extends OplReader {
         return chipRegister.chip(Y8950Chip.class);
     }
 
-    @Override protected boolean chipMask(int ch) { return false; }
-
     @Override public String chipName() { return "Y895"; }
 
     @Override public int priority() { return 76; }

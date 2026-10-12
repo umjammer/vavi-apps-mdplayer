@@ -94,9 +94,9 @@ public class FormC352 extends FormChipBase<FormC352.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 32; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(C352Chip.class, chipId, ch);
+                            parent.setMuted(C352Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(C352Chip.class, chipId, ch);
+                            parent.toggleMute(C352Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -107,11 +107,11 @@ public class FormC352 extends FormChipBase<FormC352.Params> {
 
             if (ch < 32) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(C352Chip.class, chipId, ch);
+                    parent.toggleMute(C352Chip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 32; ch++) parent.resetChannelMask(C352Chip.class, chipId, ch);
+                for (ch = 0; ch < 32; ch++) parent.setMuted(C352Chip.class, chipId, ch, false);
             }
         }
     };
@@ -222,7 +222,7 @@ public class FormC352 extends FormChipBase<FormC352.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(C352Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(C352Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -365,30 +365,6 @@ public class FormC352 extends FormChipBase<FormC352.Params> {
         @Override public boolean hasRegisterDump() { return true; }
         @Override public String title(int chipId) { return "C352Inst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormC352(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            C352Chip c = audio.plugin.chipRegister.chip(C352Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 32) {
-                audio.plugin.chipRegister.chip(C352Chip.class).resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void forceChannelMask(mdplayer.Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(C352Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(C352Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 32; ch++)
-                forceChannelMask(audio, C352Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(C352Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(40, MDSound.Chip.MAIN_TAG, C352Chip.class, "c352", 200));

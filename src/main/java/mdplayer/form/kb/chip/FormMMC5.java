@@ -110,9 +110,9 @@ public class FormMMC5 extends FormChipBase<FormMMC5.Params> {
             newParam.pcmChannel.volume = Math.min(newParam.pcmChannel.volume, 19);
         }
     
-        newParam.sqrChannels[0].mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).getMask(chipId, 0);
-        newParam.sqrChannels[1].mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).getMask(chipId, 1);
-        newParam.pcmChannel.mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).getMask(chipId, 2);
+        newParam.sqrChannels[0].mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).isMuted(chipId, 0);
+        newParam.sqrChannels[1].mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).isMuted(chipId, 1);
+        newParam.pcmChannel.mask = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).isMuted(chipId, 2);
     }
 
     @Override
@@ -162,15 +162,15 @@ public class FormMMC5 extends FormChipBase<FormMMC5.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 2; ch++) {
                         if (newParam.sqrChannels[ch].mask)
-                            parent.resetChannelMask(Mmc5Chip.class, chipId, ch);
+                            parent.setMuted(Mmc5Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Mmc5Chip.class, chipId, ch);
+                            parent.toggleMute(Mmc5Chip.class, chipId, ch);
                     }
 
                     if (newParam.pcmChannel.mask)
-                        parent.resetChannelMask(Mmc5Chip.class, chipId, 0);
+                        parent.setMuted(Mmc5Chip.class, chipId, 0, false);
                     else
-                        parent.setChannelMask(Mmc5Chip.class, chipId, 0);
+                        parent.toggleMute(Mmc5Chip.class, chipId, 0);
 
                 }
                 return;
@@ -181,7 +181,7 @@ public class FormMMC5 extends FormChipBase<FormMMC5.Params> {
                 if (ev.getButton() == MouseEvent.BUTTON2) {
                     for (int i = 0; i < 3; i++) {
                         // unmask
-                        if (i < 3) parent.resetChannelMask(Mmc5Chip.class, chipId, i);
+                        if (i < 3) parent.setMuted(Mmc5Chip.class, chipId, i, false);
                     }
 
                     return;
@@ -204,7 +204,7 @@ public class FormMMC5 extends FormChipBase<FormMMC5.Params> {
                             return;
                     }
                     // mask
-                    parent.setChannelMask(Mmc5Chip.class, chipId, ch);
+                    parent.toggleMute(Mmc5Chip.class, chipId, ch);
 
                 }
             }
@@ -342,22 +342,6 @@ public class FormMMC5 extends FormChipBase<FormMMC5.Params> {
         @Override public String category() { return "nes"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return NpNesChip.Mmc5Chip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormMMC5(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 3) {
-                NpNesChip.Mmc5Chip c = audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class);
-                if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(NpNesChip.Mmc5Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 3; ch++)
-                resetChannelMask(audio, NpNesChip.Mmc5Chip.class, chipId, ch);
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(51, MDSound.Chip.MAIN_TAG, NpNesChip.Mmc5Chip.class, "MMC5", 50));

@@ -22,11 +22,6 @@ import mdsound.instrument.DmgInst;
  */
 public class DmgChip extends BaseChip {
 
-    private final boolean[][] mask = {
-            {false, false, false, false},
-            {false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -51,28 +46,6 @@ public class DmgChip extends BaseChip {
         if (chipId == 1) return 0;
 
         return context.mds.inst(DmgInst.class).read(chipId, addr);
-    }
-
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            this.mask[chipId][ch] = true;
-
-            Instrument instrument = context.mds.inst(inst(chipId));
-            if (instrument == null) return; // the song being played does not use this chip
-            instrument.setMask(chipId, ch);
-        } else {
-            this.mask[chipId][ch] = false;
-
-            Instrument instrument = context.mds.inst(inst(chipId));
-            if (instrument == null) return; // the song being played does not use this chip
-            instrument.resetMask(chipId, ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 
     @Override
