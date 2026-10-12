@@ -1558,6 +1558,7 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList = new JPopupMenu();
         this.typeSettingsToolStripMenuItem = new JMenu();
         this.tsmiPlayThis = new JMenuItem();
+        this.tsmiJumpToPlaying = new JMenuItem();
         this.tsmiDelThis = new JMenuItem();
         this.tsmiDelAllMusic = new JMenuItem();
         this.tsmiDelDuplicated = new JMenuItem();
@@ -1670,6 +1671,7 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList.add(this.typeSettingsToolStripMenuItem);
         this.cmsPlayList.addSeparator();
         this.cmsPlayList.add(this.tsmiPlayThis);
+        this.cmsPlayList.add(this.tsmiJumpToPlaying);
         this.cmsPlayList.add(this.tsmiDelThis);
         this.cmsPlayList.addSeparator();
         this.cmsPlayList.add(this.tsmiDelDuplicated);
@@ -1693,6 +1695,11 @@ public class FormPlayList extends JFrame {
         this.tsmiPlayThis.addActionListener(e -> {
             if (dgvList.getSelectedRowCount() > 0) playRow(dgvList.getSelectedRow());
         });
+        //
+        // tsmiJumpToPlaying
+        //
+        menuItem(this.tsmiJumpToPlaying, "tsmiJumpToPlaying", "Jump to the playing song");
+        this.tsmiJumpToPlaying.addActionListener(e -> jumpToPlaying());
         //
         // tsmiDelThis
         //
@@ -1866,6 +1873,7 @@ public class FormPlayList extends JFrame {
 
         typeSettingsToolStripMenuItem.setEnabled(onRow);
         tsmiPlayThis.setEnabled(onRow);
+        tsmiJumpToPlaying.setEnabled(indexOf(playingMusic) >= 0);
         tsmiDelThis.setEnabled(onRow);
         tsmiOpenFolder.setEnabled(onRow);
         tsmiDelAllMusic.setEnabled(!playList.getMusics().isEmpty());
@@ -1877,11 +1885,20 @@ public class FormPlayList extends JFrame {
         cmsPlayList.show(dgvList, e.getX(), e.getY());
     }
 
+    /** Selects the song being played and scrolls the list to it. */
+    private void jumpToPlaying() {
+        int row = indexOf(playingMusic);
+        if (row < 0 || row >= dgvList.getRowCount()) return;
+        dgvList.setRowSelectionInterval(row, row);
+        dgvList.scrollRectToVisible(dgvList.getCellRect(row, 0, true));
+    }
+
     private Font baseFont;
 
     private JTable dgvList;
     private JPopupMenu cmsPlayList;
     private JMenuItem tsmiPlayThis;
+    private JMenuItem tsmiJumpToPlaying;
     private JMenuItem tsmiDelThis;
     private JPanel toolStripContainer1;
     private JToolBar toolStrip1;
