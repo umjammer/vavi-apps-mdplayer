@@ -148,6 +148,11 @@ public class FormPlayList extends JFrame {
     private final Random rand = new Random();
     /** the songs a random play went through, most recent last, for "previous" to walk back */
     private final Deque<PlayList.Music> randomStack = new ArrayDeque<>();
+    /**
+     * songs in a row that could not be played while going on to the next one, so that a list of
+     * nothing but those stops rather than goes round forever
+     */
+    private int failures;
     private boolean isInitialOpenFolder = true;
 
     /**
@@ -332,9 +337,18 @@ public class FormPlayList extends JFrame {
 
     /** Loads and starts a song and marks it as the one being played. */
     private boolean load(PlayList.Music music) {
+        return load(music, true);
+    }
+
+    /**
+     * Loads and starts a song and marks it as the one being played.
+     *
+     * @param report whether a song that cannot be loaded is told about in a dialog
+     */
+    private boolean load(PlayList.Music music, boolean report) {
         playing = false;
         try {
-            if (!frmMain.loadAndPlay(typeOf(music), music.songNo, music.fileName, music.arcFileName)) {
+            if (!frmMain.loadAndPlay(typeOf(music), music.songNo, music.fileName, music.arcFileName, report)) {
                 return false;
             }
         } catch (Exception e) {
@@ -369,30 +383,65 @@ public class FormPlayList extends JFrame {
         playing = false;
         if (size == 0) return;
 
-        switch (mode) {
-        case 0: // normal
-            pi++;
-            if (pi >= size) return;
-            break;
-        case 1: // random
-            if (playingMusic != null && indexOf(playingMusic) >= 0) {
-                randomStack.addLast(playingMusic);
-                while (randomStack.size() > 1000) randomStack.removeFirst();
-            }
-            pi = rand.nextInt(size);
-            break;
-        case 2: // all songs loop
-            pi++;
-            if (pi >= size) pi = 0;
-            break;
-        case 3: // one song loop
-            if (pi < 0) pi = 0;
-            break;
-        default:
-            return;
+        if (mode == 1 && playingMusic != null && indexOf(playingMusic) >= 0) {
+            randomStack.addLast(playingMusic);
+            while (randomStack.size() > 1000) randomStack.removeFirst();
         }
 
-        load(musics.get(pi));
+        // a song that cannot be loaded is passed over, as one that cannot be set up is (skipFailed);
+        // a dialog here would hold the screen loop that asked for the song until it was answered
+        while (true) {
+            pi = nextIndex(mode, pi, size);
+            if (pi < 0) return;
+            if (load(musics.get(pi), mode == 3)) return;
+            if (!skips(mode, size)) return;
+        }
+    }
+
+    /**
+     * @param pi the song played last
+     * @return the song to play after it, or -1 for none
+     */
+    private int nextIndex(int mode, int pi, int size) {
+        return switch (mode) {
+            case 0 -> pi + 1 < size ? pi + 1 : -1; // normal
+            case 1 -> rand.nextInt(size); // random
+            case 2 -> pi + 1 < size ? pi + 1 : 0; // all songs loop
+            case 3 -> Math.max(pi, 0); // one song loop
+            default -> -1;
+        };
+    }
+
+    /**
+     * Counts a song that could not be played, and tells whether to go on to another one.
+     * Playing the same song again would fail the same way, and once as many songs as the list
+     * holds have failed in a row, the rest most likely would too.
+     */
+    private boolean skips(int mode, int size) {
+        if (mode != 3 && ++failures < size) return true;
+        failures = 0;
+        return false;
+    }
+
+    /**
+     * Tells that the song being played has really started coming out.
+     */
+    public void songStarted() {
+        failures = 0;
+    }
+
+    /**
+     * A song that was loaded could not be set up to play. Goes on to the next one as the play mode
+     * says, rather than stopping the list on it.
+     *
+     * @param mode as {@link #nextPlayMode}
+     * @return false when nothing else could be started, and the list has stopped
+     */
+    public boolean skipFailed(int mode) {
+        playing = false;
+        if (!skips(mode, playList.getMusics().size())) return false;
+        nextPlayMode(mode);
+        return playing;
     }
 
     /**

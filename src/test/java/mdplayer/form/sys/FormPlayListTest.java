@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -43,7 +44,7 @@ class FormPlayListTest {
     void setUp() throws Exception {
         FormMain main = mock(FormMain.class);
         main.setting = Setting.getInstance();
-        when(main.loadAndPlay(anyInt(), anyInt(), any(), any())).thenReturn(true);
+        when(main.loadAndPlay(anyInt(), anyInt(), any(), any(), anyBoolean())).thenAnswer(i -> !i.<String>getArgument(2).contains("broken"));
         SwingUtilities.invokeAndWait(() -> {
             form = new FormPlayList(main);
             playList = form.getPlayList();
@@ -144,6 +145,34 @@ class FormPlayListTest {
         assertNotNull(last);
         SwingUtilities.invokeAndWait(() -> form.prevPlay(1));
         assertTrue(form.isPlaying());
+    }
+
+    @Test
+    void failedSongsAreSkipped() throws Exception {
+        add("a", "broken1", "broken2", "d");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); });
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(2));
+        assertEquals("d", form.getPlayingSongInfo().title, "songs that cannot be loaded are passed over");
+        assertTrue(form.isPlaying());
+
+        // one that loaded but could not be set up (Audio.play() returned false)
+        SwingUtilities.invokeAndWait(() -> assertTrue(form.skipFailed(2)));
+        assertEquals("a", form.getPlayingSongInfo().title, "all loop goes round past the broken ones");
+
+        SwingUtilities.invokeAndWait(() -> assertFalse(form.skipFailed(3)));
+        assertFalse(form.isPlaying(), "one song loop does not retry a song that failed");
+    }
+
+    @Test
+    void allFailedStops() throws Exception {
+        add("ok", "broken1", "broken2");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); });
+        // "ok" fails to set up every time, as the broken ones fail to load
+        SwingUtilities.invokeAndWait(() -> assertFalse(form.skipFailed(2)));
+        assertFalse(form.isPlaying(), "a list with nothing playable stops rather than spins");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); playList.getMusics().removeFirst(); });
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(1));
+        assertFalse(form.isPlaying(), "random too");
     }
 
     @Test

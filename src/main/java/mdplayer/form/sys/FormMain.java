@@ -1434,6 +1434,7 @@ public class FormMain extends JFrame {
             // begun", not "this song has ended". This is about the audio, not about the play list.
             if (songStarting && audio.isRendering()) {
                 songStarting = false;
+                if (frmPlayList != null) frmPlayList.songStarted();
 
                 // Only now is it known which chips the song is made of: the instruments behind them
                 // are not built until play() has prepared the plugin, which happens on that thread,
@@ -1828,14 +1829,18 @@ public class FormMain extends JFrame {
         songStarting = true;
         audioThread = new Thread(() -> {
             try {
-                // a song that could not start stops the list; one that played has ended or was
+                // a song that could not start is passed over as the play mode says, and stops the
+                // list only when nothing else can be played; one that played has ended or was
                 // stopped, and what follows it is the screen loop's or the caller's to decide.
-                // A newer song may have started meanwhile: then this one is none of the list's business
+                // A newer song may have started meanwhile: then this one is none of the list's business.
+                // Loading the next one takes a while, so it is done here rather than on the EDT
                 if (!audio.play() && audioThread == Thread.currentThread()) {
-                    SwingUtilities.invokeLater(() -> {
-                        frmPlayList.stop();
-                        OpeManager.requestToAudio(new Request(enmRequest.Stop, null, null));
-                    });
+                    if (!frmPlayList.isPlaying() || !frmPlayList.skipFailed(newButtonMode[9])) {
+                        SwingUtilities.invokeLater(() -> {
+                            frmPlayList.stop();
+                            OpeManager.requestToAudio(new Request(enmRequest.Stop, null, null));
+                        });
+                    }
                 }
             } catch (Exception e) {
                 logger.log(Level.ERROR, e.getMessage(), e);
@@ -2057,6 +2062,14 @@ public class FormMain extends JFrame {
     }
 
     public boolean loadAndPlay(int m, int songNo, String fn, String zfn /* = null */) {
+        return loadAndPlay(m, songNo, fn, zfn, true);
+    }
+
+    /**
+     * @param report whether a song that cannot be loaded is told about in a dialog; the play list
+     *               going on to the next song by itself has nobody to answer one
+     */
+    public boolean loadAndPlay(int m, int songNo, String fn, String zfn, boolean report) {
         try {
             // the plugin of the song played so far; there is none before the first one
             if (audio.plugin != null && audio.plugin.flgReinit) flgReinit = true;
@@ -2101,9 +2114,11 @@ logger.log(Level.INFO, "filename: " + fn);
 
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
-            JOptionPane.showMessageDialog(this,
-                    "Failed to load file.\nMessage=%s".formatted(ex.getMessage()),
-                    "MDPlayer", JOptionPane.ERROR_MESSAGE);
+            if (report) {
+                JOptionPane.showMessageDialog(this,
+                        "Failed to load file.\nMessage=%s".formatted(ex.getMessage()),
+                        "MDPlayer", JOptionPane.ERROR_MESSAGE);
+            }
             return false;
         }
 
