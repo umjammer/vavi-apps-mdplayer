@@ -2,7 +2,7 @@ package mdplayer.form.sys;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
+import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
@@ -87,6 +87,7 @@ class FormConsole extends FormBase {
         this.tbLog = new JTextArea();
         this.tbLog.setEditable(false);
         this.tbLog.setName("tbLog");
+        this.tbLog.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 
         JMenuBar menuBar = new JMenuBar();
         JMenu levels = new JMenu("Level");
@@ -101,7 +102,7 @@ class FormConsole extends FormBase {
         menuBar.add(levels);
 
         JMenuItem clear = new JMenuItem("Clear");
-        clear.addActionListener(this::tsmiClear_Click);
+        clear.addActionListener(_ -> tbLog.setText(""));
         menuBar.add(clear);
         this.setJMenuBar(menuBar);
 
@@ -111,10 +112,6 @@ class FormConsole extends FormBase {
         this.setTitle("Console");
         this.setSize(new Dimension(600, 400));
         this.addWindowListener(this.windowListener);
-    }
-
-    private void tsmiClear_Click(ActionEvent ev) {
-        tbLog.setText("");
     }
 
     private final WindowListener windowListener = new WindowAdapter() {
