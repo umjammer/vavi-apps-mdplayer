@@ -93,9 +93,9 @@ public class FormGA20 extends FormChipBase<FormGA20.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 4; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Ga20Chip.class, chipId, ch);
+                            parent.setMuted(Ga20Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Ga20Chip.class, chipId, ch);
+                            parent.toggleMute(Ga20Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -106,11 +106,11 @@ public class FormGA20 extends FormChipBase<FormGA20.Params> {
 
             if (ch < 4) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(Ga20Chip.class, chipId, ch);
+                    parent.toggleMute(Ga20Chip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 4; ch++) parent.resetChannelMask(Ga20Chip.class, chipId, ch);
+                for (ch = 0; ch < 4; ch++) parent.setMuted(Ga20Chip.class, chipId, ch, false);
             }
         }
     };

@@ -45,11 +45,6 @@ public class Ym3526Chip extends BaseChip {
     @Deprecated
     private final int[][] register = {new int[0x100], new int[0x100]};
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -94,7 +89,7 @@ public class Ym3526Chip extends BaseChip {
 
             if (cr) {
                 data = Math.min(tl + fadeout[chipId], 0x3f);
-                data = ksl + (mask[chipId][twoOpChannel] ? 0x3f : data);
+                data = ksl + (isMuted(chipId, twoOpChannel) ? 0x3f : data);
             }
         }
 
@@ -109,7 +104,7 @@ public class Ym3526Chip extends BaseChip {
                 } else {
                     keyInfo[chipId].on[ch] = true;
                 }
-                if (mask[chipId][ch])
+                if (isMuted(chipId, ch))
                     data &= 0x1f;
             }
 
@@ -125,15 +120,15 @@ public class Ym3526Chip extends BaseChip {
                     }
                 }
 
-                if (mask[chipId][9])
+                if (isMuted(chipId, 9))
                     data &= 0xef;
-                if (mask[chipId][10])
+                if (isMuted(chipId, 10))
                     data &= 0xf7;
-                if (mask[chipId][11])
+                if (isMuted(chipId, 11))
                     data &= 0xfb;
-                if (mask[chipId][12])
+                if (isMuted(chipId, 12))
                     data &= 0xfd;
-                if (mask[chipId][13])
+                if (isMuted(chipId, 13))
                     data &= 0xfe;
             }
         }
@@ -181,9 +176,9 @@ public class Ym3526Chip extends BaseChip {
         }
     }
 
+    /** {@link #write} keeps the key ons of a muted channel from the chip */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     @Override
@@ -232,11 +227,6 @@ public class Ym3526Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 
     /** whether the operator is a carrier, as the chip has its connection set */

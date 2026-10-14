@@ -180,7 +180,7 @@ public class FormDMG extends FormChipBase<FormDMG.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(DmgChip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(DmgChip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -279,9 +279,9 @@ public class FormDMG extends FormChipBase<FormDMG.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 4; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(DmgChip.class, chipId, ch);
+                            parent.setMuted(DmgChip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(DmgChip.class, chipId, ch);
+                            parent.toggleMute(DmgChip.class, chipId, ch);
                     }
                 }
                 return;
@@ -294,12 +294,12 @@ public class FormDMG extends FormChipBase<FormDMG.Params> {
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // mask
-                    parent.setChannelMask(DmgChip.class, chipId, ch);
+                    parent.toggleMute(DmgChip.class, chipId, ch);
                     return;
                 }
 
                 // Unmask
-                for (ch = 0; ch < 4; ch++) parent.resetChannelMask(DmgChip.class, chipId, ch);
+                for (ch = 0; ch < 4; ch++) parent.setMuted(DmgChip.class, chipId, ch, false);
             }
         }
     };
@@ -451,30 +451,6 @@ public class FormDMG extends FormChipBase<FormDMG.Params> {
         @Override public String category() { return "nes"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return DmgChip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormDMG(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 4) {
-                DmgChip c = audio.plugin.chipRegister.chip(DmgChip.class);
-                if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(DmgChip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(DmgChip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(DmgChip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 4; ch++)
-                forceChannelMask(audio, DmgChip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(DmgChip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(56, MDSound.Chip.MAIN_TAG, DmgChip.class, "DMG", 50));

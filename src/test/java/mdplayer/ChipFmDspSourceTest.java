@@ -983,6 +983,63 @@ class ChipFmDspSourceTest {
         }
     }
 
+    @Test
+    @DisplayName("a meter column mutes the chip channel behind it, and lets it sound again")
+    void testMuteByColumn() {
+        opnaKeyOnFm1();
+        source.snapshot();
+        assertEquals(TrackId.FM_1, source.track(0));
+        try {
+            source.toggleMute(0);
+            assertTrue(opna.isMuted(0, 0));
+            assertTrue(source.masked(TrackId.FM_1));
+            assertTrue(source.masked(0));
+
+            source.toggleMute(0);
+            assertFalse(opna.isMuted(0, 0));
+            assertFalse(source.masked(TrackId.FM_1));
+        } finally {
+            opna.setMuted(0, 0, false); // the chips outlive the test
+        }
+    }
+
+    @Test
+    @DisplayName("the drum meter has no row, and mutes the rhythm section")
+    void testMuteRhythmColumn() {
+        opna.write(0, 0, 0x10, 0x01, EnmModel.VirtualModel); // bass drum
+        source.snapshot();
+        assertNull(source.track(9));
+        try {
+            source.toggleMute(9);
+            assertTrue(opna.isMuted(0, 13));
+            assertTrue(source.masked(9));
+        } finally {
+            opna.setMuted(0, 13, false);
+        }
+    }
+
+    @Test
+    @DisplayName("a column nothing feeds mutes nothing")
+    void testMuteEmptyColumn() {
+        source.snapshot();
+        assertDoesNotThrow(() -> source.toggleMute(0));
+        assertFalse(source.masked(0));
+        assertEquals(0, opna.muteMask(0));
+    }
+
+    @Test
+    @DisplayName("fm3 and its extension slots are one channel of the chip")
+    void testMuteLinked() {
+        try {
+            opna.setMuted(0, 10, true);
+            assertEquals(1L << 2 | 1L << 9 | 1L << 10 | 1L << 11, opna.muteMask(0));
+            opna.setMuted(0, 2, false);
+            assertEquals(0, opna.muteMask(0));
+        } finally {
+            opna.setMuted(0, 2, false);
+        }
+    }
+
     TrackStatus sourceStatus(TrackId t) {
         source.readStatus(t, status);
         return status;

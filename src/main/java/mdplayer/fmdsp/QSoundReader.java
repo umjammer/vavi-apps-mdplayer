@@ -85,9 +85,4 @@ public class QSoundReader extends PcmSlotReader {
         int index = Math.clamp(intOf(ch, "pan", 0x110 + 16) - 0x110, 0, 97);
         return Math.min(index >= 0x30 ? index - 0x30 : index, 32);
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return chipRegister.chip(QSoundChip.class).getMask(chipId, ch);
-    }
 }

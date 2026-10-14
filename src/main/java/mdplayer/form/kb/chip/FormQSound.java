@@ -91,9 +91,9 @@ public class FormQSound extends FormChipBase<FormQSound.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 19; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(QSoundChip.class, chipId, ch);
+                            parent.setMuted(QSoundChip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(QSoundChip.class, chipId, ch);
+                            parent.toggleMute(QSoundChip.class, chipId, ch);
                     }
                 }
                 return;
@@ -104,11 +104,11 @@ public class FormQSound extends FormChipBase<FormQSound.Params> {
 
             if (ch < 19) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(QSoundChip.class, chipId, ch);
+                    parent.toggleMute(QSoundChip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 19; ch++) parent.resetChannelMask(QSoundChip.class, chipId, ch);
+                for (ch = 0; ch < 19; ch++) parent.setMuted(QSoundChip.class, chipId, ch, false);
             }
         }
     };
@@ -185,7 +185,7 @@ public class FormQSound extends FormChipBase<FormQSound.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(QSoundChip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(QSoundChip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -366,30 +366,6 @@ public class FormQSound extends FormChipBase<FormQSound.Params> {
         @Override public boolean hasRegisterDump() { return true; }
         @Override public String title(int chipId) { return "QSoundInst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormQSound(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            QSoundChip c = audio.plugin.chipRegister.chip(QSoundChip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 19) {
-                audio.plugin.chipRegister.chip(QSoundChip.class).resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(QSoundChip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(QSoundChip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 19; ch++)
-                forceChannelMask(audio, QSoundChip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(QSoundChip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(46, MDSound.Chip.MAIN_TAG, QSoundChip.class, "qSound", 200));

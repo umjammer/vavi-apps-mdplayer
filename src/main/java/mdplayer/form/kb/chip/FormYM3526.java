@@ -202,7 +202,7 @@ public class FormYM3526 extends FormChipBase<FormYM3526.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ym3526Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(Ym3526Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -270,9 +270,9 @@ public class FormYM3526 extends FormChipBase<FormYM3526.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 9 + 5; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Ym3526Chip.class, chipId, ch);
+                            parent.setMuted(Ym3526Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Ym3526Chip.class, chipId, ch);
+                            parent.toggleMute(Ym3526Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -292,12 +292,12 @@ public class FormYM3526 extends FormChipBase<FormYM3526.Params> {
 
             if (ev.getButton() == MouseEvent.BUTTON1) {
                 // Mask.
-                parent.setChannelMask(Ym3526Chip.class, chipId, ch);
+                parent.toggleMute(Ym3526Chip.class, chipId, ch);
                 return;
             }
 
             // Unmask.
-            for (ch = 0; ch < 9 + 5; ch++) parent.resetChannelMask(Ym3526Chip.class, chipId, ch);
+            for (ch = 0; ch < 9 + 5; ch++) parent.setMuted(Ym3526Chip.class, chipId, ch, false);
         }
     };
 
@@ -413,26 +413,6 @@ public class FormYM3526 extends FormChipBase<FormYM3526.Params> {
         @Override public String category() { return "opl"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return Ym3526Chip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormYM3526(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 14) {
-                Ym3526Chip c = audio.plugin.chipRegister.chip(Ym3526Chip.class);
-                if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(Ym3526Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (ch >= 0 && ch < 14) {
-                if (mask)
-                    audio.plugin.chipRegister.chip(Ym3526Chip.class).setMask(chipId, ch);
-                else
-                    audio.plugin.chipRegister.chip(Ym3526Chip.class).resetMask(chipId, ch);
-            }
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(17, MDSound.Chip.MAIN_TAG, Ym3526Chip.class, "ym3526", 200));

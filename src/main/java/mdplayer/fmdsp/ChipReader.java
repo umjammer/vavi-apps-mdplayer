@@ -57,6 +57,13 @@ public abstract class ChipReader implements FmDspChipReader {
         return true;
     }
 
+    /** channel {@code ch} of the chip, the rows of a group being its channels in order */
+    @Override
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        BaseChip chip = chipRegister != null ? chip() : null;
+        return chip != null && ch >= 0 ? chip.channel(chipId, ch) : null;
+    }
+
     /**
      * The chip is there and the song declared as many of it as this reader's {@link #chipId} - the
      * caches are sized for two whatever the song does, so a second reader has to ask.

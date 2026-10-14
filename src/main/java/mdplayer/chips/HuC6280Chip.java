@@ -25,11 +25,6 @@ public class HuC6280Chip extends BaseChip {
 
     private final Setting.ChipType2[] chipTypes = setting.getHuC6280Type();
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false},
-            {false, false, false, false, false, false}
-    };
-
     @Deprecated
     private final int[] currentCh = {
             0, 0
@@ -50,7 +45,7 @@ public class HuC6280Chip extends BaseChip {
                     currentCh[chipId] = data & 7;
                 }
                 if (addr == 4) {
-                    data = mask[chipId][currentCh[chipId]] ? 0 : data;
+                    data = isMuted(chipId, currentCh[chipId]) ? 0 : data;
                 }
 //logger.log(Level.TRACE, "chipId:%d adr:%d Dat:%d".formatted(chipId, addr, data));
                 context.mds.write(inst(chipId), chipId, 0, addr, data);
@@ -70,19 +65,14 @@ public class HuC6280Chip extends BaseChip {
         return 0;
     }
 
+    /** {@link #write} keeps the level of a muted channel from the chip */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     @Override
     public Map<String, Object> getInfo(int chipId) {
         HuC6280Inst inst = context.mds.inst(HuC6280Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

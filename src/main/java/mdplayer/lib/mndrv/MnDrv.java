@@ -303,7 +303,7 @@ public class MnDrv {
      * Oldest MND data version we play. mndrv.x 1.37 itself stops at 2 -- it turns version 1 away
      * with {@code cmpi.b #1,d2 / beq _play_music_ver_err} -- but the v1 container and track table
      * are identical to v2 and the MML grammar differs in only a few opcodes, which
-     * {@link ComAnalyze#V1_CMD_MAP} maps back. See {@code MndV1AnalyzerTest} for the evidence.
+     * {@code ComAnalyze#V1_CMD_MAP} maps back. See {@code MndV1AnalyzerTest} for the evidence.
      */
     private static final int MNDVERMIN = 1;
     private static final String DRVVER = "1.37";

@@ -12,6 +12,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.MultiPcmChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 
@@ -164,8 +165,7 @@ public class MultiPcmReader extends ChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int slot) {
-        int ch = slotChannels[slot];
-        return ch >= 0 && chip().getMask(chipId, ch);
+    public BaseChip.Channel muteChannel(Group group, int slot) {
+        return super.muteChannel(group, slotChannels[slot]);
     }
 }

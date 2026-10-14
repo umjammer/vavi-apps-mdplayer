@@ -22,28 +22,10 @@ import mdsound.instrument.ScdPcmInst;
  */
 public class Rf5C164Chip extends BaseChip {
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {ScdPcmInst.class};
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-
-        Instrument instrument = context.mds.inst(inst(chipId));
-        if (instrument == null) return; // the song being played does not use this chip
-
-        if (mask)
-            instrument.setMask(chipId, ch);
-        else
-            instrument.resetMask(chipId, ch);
     }
 
     public void writePcm(int chipId, int offset, int length, byte[] buf, int srcOffset, EnmModel model) {
@@ -74,10 +56,5 @@ public class Rf5C164Chip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         ScdPcmInst inst = context.mds.inst(ScdPcmInst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

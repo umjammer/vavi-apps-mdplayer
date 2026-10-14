@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Ym2413Chip;
 
 
@@ -140,7 +141,8 @@ public class Ym2413Reader extends ChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
-        return group == Group.FM && chip().getMask(chipId, ch);
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        // the drums share the one meter, and have a channel each
+        return group == Group.FM ? super.muteChannel(group, ch) : null;
     }
 }

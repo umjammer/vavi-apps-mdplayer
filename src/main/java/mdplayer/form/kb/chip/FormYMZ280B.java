@@ -88,9 +88,9 @@ public class FormYMZ280B extends FormChipBase<FormYMZ280B.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 8; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(YmZ280BChip.class, chipId, ch);
+                            parent.setMuted(YmZ280BChip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(YmZ280BChip.class, chipId, ch);
+                            parent.toggleMute(YmZ280BChip.class, chipId, ch);
                     }
                 }
                 return;
@@ -101,11 +101,11 @@ public class FormYMZ280B extends FormChipBase<FormYMZ280B.Params> {
 
             if (ch < 8) {
                 if (ev.getButton() == MouseEvent.BUTTON1) {
-                    parent.setChannelMask(YmZ280BChip.class, chipId, ch);
+                    parent.toggleMute(YmZ280BChip.class, chipId, ch);
                     return;
                 }
 
-                for (ch = 0; ch < 8; ch++) parent.resetChannelMask(YmZ280BChip.class, chipId, ch);
+                for (ch = 0; ch < 8; ch++) parent.setMuted(YmZ280BChip.class, chipId, ch, false);
             }
         }
     };

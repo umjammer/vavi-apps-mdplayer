@@ -35,11 +35,6 @@ public class MPcmChip extends BaseChip {
     /** MPCMPP, the Mercury-Unit MPCM */
     public static final int MPCMPP = 1;
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -53,6 +48,7 @@ public class MPcmChip extends BaseChip {
     }
 
     /** the voices, as the playing back end reports them; see {@code mdsound.chips.MPcmPP#getInfo} */
+    @Override
     public Map<String, Object> getInfo(int chipId) {
         Instrument inst = context.mds.inst(inst(chipId));
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
@@ -76,16 +72,6 @@ public class MPcmChip extends BaseChip {
         if (port == -1 && addr == -1 && data == -1)
             return;
         context.mds.inst(inst(chipId)).write(chipId, port, addr, data);
-    }
-
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < this.mask[chipId].length && this.mask[chipId][ch];
     }
 
     public void keyOn(int chipId, int ch) {

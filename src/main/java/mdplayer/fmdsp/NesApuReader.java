@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import mdplayer.ChipRegister;
+import mdplayer.chips.BaseChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackInfo;
 
@@ -62,6 +63,9 @@ public abstract class NesApuReader implements FmDspChipReader {
     /** the triangle, noise and delta PCM, {@code 0x4008} relative */
     private int[] dmc;
 
+    /** what each channel puts out now, from the emulator itself, or null to guess from registers */
+    private int[] levels;
+
     private final boolean[] prevSoundings = new boolean[CHANNELS];
     private final int[] prevTimers = new int[CHANNELS];
     private boolean prevDmcOn;
@@ -75,7 +79,18 @@ public abstract class NesApuReader implements FmDspChipReader {
     protected abstract int[] dmcRegisters();
 
     /** @param ch 0 - 3 for the APU channels, 4 for the delta PCM */
-    protected abstract boolean muted(int ch);
+    protected abstract BaseChip.Channel mute(int ch);
+
+    /**
+     * What the four APU channels and the delta PCM put out now, in that order, when the source
+     * can tell. Without it the volume is read off the registers, which is wrong for a channel on
+     * its envelope: there the low nibble is the envelope period, and a decay never shows.
+     *
+     * @return null when only the registers are known
+     */
+    protected int[] levels() {
+        return null;
+    }
 
     @Override
     public void bind(ChipRegister chipRegister) {
@@ -91,6 +106,7 @@ public abstract class NesApuReader implements FmDspChipReader {
         dmcActive = false;
         regs = null;
         dmc = null;
+        levels = null;
     }
 
     @Override
@@ -107,6 +123,7 @@ public abstract class NesApuReader implements FmDspChipReader {
     public void poll() {
         regs = apuRegisters();
         dmc = dmcRegisters();
+        levels = levels();
     }
 
     @Override
@@ -133,6 +150,8 @@ public abstract class NesApuReader implements FmDspChipReader {
     }
 
     private boolean dmcOn() {
+        // a sample still left to play, when the emulator says; the enable bit stays up after it ends
+        if (levels != null) return enabled(4) && levels[4] > 0;
         return enabled(4);
     }
 
@@ -157,6 +176,7 @@ public abstract class NesApuReader implements FmDspChipReader {
     private int volumeOf(int ch) {
         int[] bank = bankOf(ch);
         if (bank == null) return 0;
+        if (levels != null) return levels[ch];
         // the triangle has no volume register, it is either running or not
         if (ch == 2) return enabled(2) ? 15 : 0;
         return bank[baseOf(ch)] & 0x0f;
@@ -223,8 +243,8 @@ public abstract class NesApuReader implements FmDspChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
+    public BaseChip.Channel muteChannel(Group group, int ch) {
         // the delta PCM comes after the four the APU has
-        return muted(group == Group.PCM ? 4 : ch);
+        return mute(group == Group.PCM ? 4 : ch);
     }
 }

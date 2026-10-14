@@ -50,10 +50,6 @@ public class Ym2151Chip extends BaseChip {
     };
 
     private final int[] fadeout = {0, 0};
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false}
-    };
 
     @Deprecated
     public final int[] amd = {-1, -1};
@@ -169,7 +165,7 @@ public class Ym2151Chip extends BaseChip {
             for (int i = 0; i < 4; i++) {
                 int slot = (i == 0) ? 0 : ((i == 1) ? 2 : ((i == 2) ? 1 : 3));
                 if ((algM[al] & (1 << slot)) > 0) {
-                    if (mask[chipId][ch]) {
+                    if (isMuted(chipId, ch)) {
                         if (model == EnmModel.VirtualModel) {
                             if (!chipTypes[chipId].getUseReal()[0]) {
                                 context.mds.write(inst(chipId), chipId, 0, 0x60 + i * 8 + ch, 127);
@@ -188,7 +184,7 @@ public class Ym2151Chip extends BaseChip {
             data &= 0x7f;
 
             data = Math.min(data + fadeout[chipId], 127);
-            data = mask[chipId][ch] ? 127 : data;
+            data = isMuted(chipId, ch) ? 127 : data;
         }
 
         if (model == EnmModel.VirtualModel) {
@@ -290,10 +286,12 @@ public class Ym2151Chip extends BaseChip {
         }
     }
 
-    private void setMask(int chipId, int ch, boolean mask, boolean noSend /* = false */) {
-        this.mask[chipId][ch] = mask;
-
-        if (noSend) return;
+    /** the levels are filtered on their way in, see {@link #write}; this re-sends what the chip holds */
+    @Override
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
+        // a stopped song is left as it is when it is un-muted
+        if (!isMuted(chipId, ch) && context.stopped) return;
 
         write(chipId, 0, 0x60 + ch, register[chipId][0x60 + ch], EnmModel.VirtualModel, 0, -1);
         write(chipId, 0, 0x68 + ch, register[chipId][0x68 + ch], EnmModel.VirtualModel, 0, -1);
@@ -416,16 +414,6 @@ public class Ym2151Chip extends BaseChip {
     }
 
     @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            setMask(chipId, ch, true, false);
-        } else {
-            boolean stopped = (boolean) args[0];
-            setMask(chipId, ch, false, stopped);
-        }
-    }
-
-    @Override
     public void softReset(EnmModel model) {
         softReset(0, model);
         softReset(1, model);
@@ -465,10 +453,5 @@ public class Ym2151Chip extends BaseChip {
         ret -= 12;
 
         return ret;
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

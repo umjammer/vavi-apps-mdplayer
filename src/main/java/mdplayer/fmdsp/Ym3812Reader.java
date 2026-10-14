@@ -22,8 +22,6 @@ public class Ym3812Reader extends OplReader {
         return chipRegister.chip(Ym3812Chip.class);
     }
 
-    @Override protected boolean chipMask(int ch) { return chip().getMask(chipId, ch); }
-
     @Override public String chipName() { return "OPL2"; }
 
     @Override public int priority() { return 70; }

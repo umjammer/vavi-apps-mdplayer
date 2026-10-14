@@ -34,6 +34,8 @@ class FmDspRowProbe {
         @SuppressWarnings("unchecked")
         var plugin = (BasePlugin<? extends BaseDriver>) format.getPlugin();
         plugin.setParams(format, Map.of("fileName", file));
+        Integer songNo = Integer.getInteger("probe.songNo");
+        if (songNo != null && plugin instanceof BasePlugin.HasSongNo hasSongNo) hasSongNo.setSongNo(songNo);
         plugin.prepare();
         plugin.stopped = false;
         plugin.paused = false;

@@ -1,5 +1,6 @@
 package mdplayer.form.sys.setting;
 
+import java.awt.Dimension;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.util.Arrays;
@@ -10,12 +11,14 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import mdplayer.Audio;
 import mdplayer.RealChip.EnmRealChipType;
 import mdplayer.Setting;
 import mdplayer.Setting.ChipType2;
 import mdplayer.chips.RealChipPlugin;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 
@@ -35,8 +38,8 @@ public class SettingModulePanel extends SettingTab {
     private final JLabel label13;
     private final JLabel label12;
     private final JLabel label11;
-    private final JTextArea tbLatencyEmu;
-    private final JTextArea tbLatencySCCI;
+    private final JTextField tbLatencyEmu;
+    private final JTextField tbLatencySCCI;
     private final JLabel label10;
     private final JCheckBox cbHiyorimiMode;
     private final SettingInstrumentsPanel ucSI;
@@ -52,8 +55,8 @@ public class SettingModulePanel extends SettingTab {
         this.label13 = new JLabel();
         this.label12 = new JLabel();
         this.label11 = new JLabel();
-        this.tbLatencyEmu = new JTextArea();
-        this.tbLatencySCCI = new JTextArea();
+        this.tbLatencyEmu = new JTextField();
+        this.tbLatencySCCI = new JTextField();
         this.label10 = new JLabel();
 
         //
@@ -67,19 +70,10 @@ public class SettingModulePanel extends SettingTab {
         //
         // groupBox1
         //
-        this.groupBox1.add(this.cbUnuseRealChip);
-        this.groupBox1.add(this.ucSI);
         this.groupBox1.setName("groupBox1");
         //
         // groupBox3
         //
-        this.groupBox3.add(this.cbHiyorimiMode);
-        this.groupBox3.add(this.label13);
-        this.groupBox3.add(this.label12);
-        this.groupBox3.add(this.label11);
-        this.groupBox3.add(this.tbLatencyEmu);
-        this.groupBox3.add(this.tbLatencySCCI);
-        this.groupBox3.add(this.label10);
         this.groupBox3.setName("groupBox3");
         //
         // label10
@@ -108,9 +102,23 @@ public class SettingModulePanel extends SettingTab {
         //
         // tpModule
         //
-        this.add(this.groupBox1);
-        this.add(this.groupBox3);
         this.setName("tpModule");
+        // layout
+        JScrollPane chips = new JScrollPane(this.ucSI);
+        chips.getVerticalScrollBar().setUnitIncrement(16);
+        // as wide as a chip's box, a few of them high: the list scrolls rather than sizes the dialog
+        chips.setPreferredSize(new Dimension(chips.getPreferredSize().width, 280));
+        new Grid(Grid.group(this.groupBox1))
+                .span(this.cbUnuseRealChip).next()
+                .grow(chips);
+        this.tbLatencyEmu.setColumns(5);
+        this.tbLatencySCCI.setColumns(5);
+        new Grid(Grid.group(this.groupBox3))
+                .add(Grid.row(this.label13, this.tbLatencyEmu, this.label10, this.label12, this.tbLatencySCCI, this.label11)).next()
+                .add(this.cbHiyorimiMode).end();
+        new Grid(this)
+                .grow(this.groupBox1).next()
+                .span(this.groupBox3).end();
         //
         // ucSI
         //

@@ -9,8 +9,9 @@ import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -29,9 +30,9 @@ public class SettingSIDPanel extends SettingTab {
     private final JButton btnSIDCharacter;
     private final JButton btnSIDBasic;
     private final JButton btnSIDKernal;
-    private final JTextArea tbSIDCharacter;
-    private final JTextArea tbSIDBasic;
-    private final JTextArea tbSIDKernal;
+    private final JTextField tbSIDCharacter;
+    private final JTextField tbSIDBasic;
+    private final JTextField tbSIDKernal;
     private final JLabel label24;
     private final JLabel label23;
     private final JPanel groupBox14;
@@ -42,7 +43,7 @@ public class SettingSIDPanel extends SettingTab {
     private final JCheckBox rdSIDQ3;
     private final JCheckBox rdSIDQ2;
     private final JCheckBox rdSIDQ4;
-    private final JTextArea tbSIDOutputBufferSize;
+    private final JTextField tbSIDOutputBufferSize;
     private final JLabel label49;
     private final JLabel label51;
     private final JPanel groupBox28;
@@ -56,7 +57,7 @@ public class SettingSIDPanel extends SettingTab {
     private final JCheckBox cbSIDC64Model_Force;
     private final JCheckBox cbSIDModel_Force;
     private final JLabel lblSIDSongLength;
-    private final JTextArea tbSIDSongLength;
+    private final JTextField tbSIDSongLength;
     private final JButton btnSIDSongLength;
 
     public SettingSIDPanel() {
@@ -82,17 +83,17 @@ public class SettingSIDPanel extends SettingTab {
         this.btnSIDBasic = new JButton();
         this.btnSIDCharacter = new JButton();
         this.btnSIDKernal = new JButton();
-        this.tbSIDCharacter = new JTextArea();
-        this.tbSIDBasic = new JTextArea();
-        this.tbSIDKernal = new JTextArea();
+        this.tbSIDCharacter = new JTextField();
+        this.tbSIDBasic = new JTextField();
+        this.tbSIDKernal = new JTextField();
         this.label24 = new JLabel();
         this.label23 = new JLabel();
         this.label22 = new JLabel();
-        this.tbSIDOutputBufferSize = new JTextArea();
+        this.tbSIDOutputBufferSize = new JTextField();
         this.label51 = new JLabel();
         this.label49 = new JLabel();
         this.lblSIDSongLength = new JLabel();
-        this.tbSIDSongLength = new JTextArea();
+        this.tbSIDSongLength = new JTextField();
         this.btnSIDSongLength = new JButton();
 
         //
@@ -126,42 +127,18 @@ public class SettingSIDPanel extends SettingTab {
         //
         // groupBox13
         //
-        this.groupBox13.add(this.btnSIDBasic);
-        this.groupBox13.add(this.btnSIDCharacter);
-        this.groupBox13.add(this.btnSIDKernal);
-        this.groupBox13.add(this.tbSIDCharacter);
-        this.groupBox13.add(this.tbSIDBasic);
-        this.groupBox13.add(this.tbSIDKernal);
-        this.groupBox13.add(this.label24);
-        this.groupBox13.add(this.label23);
-        this.groupBox13.add(this.label22);
         this.groupBox13.setName("groupBox13");
         //
         // groupBox14
         //
-        this.groupBox14.add(this.label27);
-        this.groupBox14.add(this.label26);
-        this.groupBox14.add(this.label25);
-        this.groupBox14.add(this.rdSIDQ1);
-        this.groupBox14.add(this.rdSIDQ3);
-        this.groupBox14.add(this.rdSIDQ2);
-        this.groupBox14.add(this.rdSIDQ4);
         this.groupBox14.setName("groupBox14");
         //
         // groupBox27
         //
-        this.groupBox27.add(this.cbSIDC64Model_Force);
-        this.groupBox27.add(this.rbSIDC64Model_DREAN);
-        this.groupBox27.add(this.rbSIDC64Model_OLDNTSC);
-        this.groupBox27.add(this.rbSIDC64Model_NTSC);
-        this.groupBox27.add(this.rbSIDC64Model_PAL);
         this.groupBox27.setName("groupBox27");
         //
         // groupBox28
         //
-        this.groupBox28.add(this.cbSIDModel_Force);
-        this.groupBox28.add(this.rbSIDModel_8580);
-        this.groupBox28.add(this.rbSIDModel_6581);
         this.groupBox28.setName("groupBox28");
         //
         // label22
@@ -265,17 +242,32 @@ public class SettingSIDPanel extends SettingTab {
         //
         // tpSID
         //
-        this.add(this.groupBox28);
-        this.add(this.groupBox27);
-        this.add(this.groupBox14);
-        this.add(this.groupBox13);
-        this.add(this.tbSIDOutputBufferSize);
-        this.add(this.label51);
-        this.add(this.label49);
-        this.add(this.lblSIDSongLength);
-        this.add(this.tbSIDSongLength);
-        this.add(this.btnSIDSongLength);
         this.setName("tpSID");
+        // layout
+        new Grid(Grid.group(this.groupBox13))
+                .add(this.label22).fill(this.tbSIDKernal).add(this.btnSIDKernal).next()
+                .add(this.label23).fill(this.tbSIDBasic).add(this.btnSIDBasic).next()
+                .add(this.label24).fill(this.tbSIDCharacter).add(this.btnSIDCharacter).end();
+        new Grid(Grid.group(this.groupBox14))
+                .add(this.rdSIDQ4).add(this.label25).next()
+                .add(this.rdSIDQ3).next()
+                .add(this.rdSIDQ2).add(this.label26).next()
+                .add(this.rdSIDQ1).add(this.label27).end();
+        new Grid(Grid.group(this.groupBox27))
+                .add(this.rbSIDC64Model_PAL).add(this.rbSIDC64Model_NTSC).next()
+                .add(this.rbSIDC64Model_OLDNTSC).add(this.rbSIDC64Model_DREAN).next()
+                .skip().add(this.cbSIDC64Model_Force).end();
+        new Grid(Grid.group(this.groupBox28))
+                .add(this.rbSIDModel_6581).next()
+                .add(this.rbSIDModel_8580).next()
+                .add(this.cbSIDModel_Force).end();
+        this.tbSIDOutputBufferSize.setColumns(8);
+        new Grid(this)
+                .span(this.groupBox13).next()
+                .add(this.groupBox14, 3).next()
+                .add(this.label49).span(Grid.row(this.tbSIDOutputBufferSize, this.label51)).next()
+                .span(Grid.row(this.groupBox27, this.groupBox28)).next()
+                .add(this.lblSIDSongLength).fill(this.tbSIDSongLength).add(this.btnSIDSongLength).end();
     }
 
     @Override
@@ -362,7 +354,7 @@ public class SettingSIDPanel extends SettingTab {
      * The whole path goes in, not just the file name the browse buttons used to leave there: the
      * driver opens what the box says, and a bare name only ever resolves by accident.
      */
-    private void choose(JTextArea box, String title) {
+    private void choose(JTextField box, String title) {
         JFileChooser ofd = new JFileChooser();
         ofd.setFileFilter(ofd.getAcceptAllFileFilter());
         ofd.setDialogTitle(title);

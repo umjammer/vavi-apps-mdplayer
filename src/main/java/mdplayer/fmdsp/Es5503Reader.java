@@ -94,9 +94,4 @@ public class Es5503Reader extends PcmSlotReader {
                 : LevelDataSource.Pan.RIGHT;
         out.pitchOfRatio(freq > 0 ? freq / step(osc) : 0);
     }
-
-    @Override
-    protected boolean muted(int osc) {
-        return boolOf(osc, "mute");
-    }
 }

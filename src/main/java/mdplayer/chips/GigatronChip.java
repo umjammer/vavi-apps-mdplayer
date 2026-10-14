@@ -27,9 +27,6 @@ public class GigatronChip extends BaseChip {
 
     public static final int CHANNELS = 4;
 
-    /** bit n: channel n muted */
-    private final int[] mask = {0, 0};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -47,28 +44,11 @@ public class GigatronChip extends BaseChip {
 
     /**
      * {@code clock} (scanlines/s), {@code channelMask}, and {@code channels}, a list of four maps
-     * with {@code key}, {@code wavX}, {@code wavA}, {@code servings}, {@code level} and {@code mute}.
+     * with {@code key}, {@code wavX}, {@code wavA}, {@code servings} and {@code level}.
      */
     @Override
     public Map<String, Object> getInfo(int chipId) {
         GigatronInst inst = context.mds.inst(GigatronInst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        GigatronInst inst = context.mds.inst(GigatronInst.class);
-        if (mask) {
-            this.mask[chipId] |= 1 << ch;
-            if (inst != null) inst.setMask(chipId, ch);
-        } else {
-            this.mask[chipId] &= ~(1 << ch);
-            if (inst != null) inst.resetMask(chipId, ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < CHANNELS && (mask[chipId] & (1 << ch)) != 0;
     }
 }

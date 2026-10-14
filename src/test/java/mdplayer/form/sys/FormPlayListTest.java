@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -43,7 +44,7 @@ class FormPlayListTest {
     void setUp() throws Exception {
         FormMain main = mock(FormMain.class);
         main.setting = Setting.getInstance();
-        when(main.loadAndPlay(anyInt(), anyInt(), any(), any())).thenReturn(true);
+        when(main.loadAndPlay(anyInt(), anyInt(), any(), any(), anyBoolean())).thenAnswer(i -> !i.<String>getArgument(2).contains("broken"));
         SwingUtilities.invokeAndWait(() -> {
             form = new FormPlayList(main);
             playList = form.getPlayList();
@@ -147,6 +148,34 @@ class FormPlayListTest {
     }
 
     @Test
+    void failedSongsAreSkipped() throws Exception {
+        add("a", "broken1", "broken2", "d");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); });
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(2));
+        assertEquals("d", form.getPlayingSongInfo().title, "songs that cannot be loaded are passed over");
+        assertTrue(form.isPlaying());
+
+        // one that loaded but could not be set up (Audio.play() returned false)
+        SwingUtilities.invokeAndWait(() -> assertTrue(form.skipFailed(2)));
+        assertEquals("a", form.getPlayingSongInfo().title, "all loop goes round past the broken ones");
+
+        SwingUtilities.invokeAndWait(() -> assertFalse(form.skipFailed(3)));
+        assertFalse(form.isPlaying(), "one song loop does not retry a song that failed");
+    }
+
+    @Test
+    void allFailedStops() throws Exception {
+        add("ok", "broken1", "broken2");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); });
+        // "ok" fails to set up every time, as the broken ones fail to load
+        SwingUtilities.invokeAndWait(() -> assertFalse(form.skipFailed(2)));
+        assertFalse(form.isPlaying(), "a list with nothing playable stops rather than spins");
+        SwingUtilities.invokeAndWait(() -> { form.setStart(-2); form.play(); playList.getMusics().removeFirst(); });
+        SwingUtilities.invokeAndWait(() -> form.nextPlayMode(1));
+        assertFalse(form.isPlaying(), "random too");
+    }
+
+    @Test
     void moveKeepsPlaying() throws Exception {
         add("a", "b", "c", "d");
         SwingUtilities.invokeAndWait(() -> { form.setStart(1); form.play(); }); // b
@@ -233,6 +262,15 @@ class FormPlayListTest {
     }
 
     @Test
+    void sortNumbersNaturally() throws Exception {
+        add("Trk 10", "Trk 2", "Trk 1");
+        call("sortBy", new Class<?>[] {int.class}, FormPlayList.cols.clmTitle.ordinal());
+        assertEquals(List.of("Trk 1", "Trk 2", "Trk 10"), titles());
+        call("sortBy", new Class<?>[] {int.class}, FormPlayList.cols.clmDispFileName.ordinal());
+        assertEquals(List.of("Trk 1", "Trk 2", "Trk 10"), titles(), "file names too");
+    }
+
+    @Test
     void remove() throws Exception {
         add("a", "b", "c", "d");
         SwingUtilities.invokeAndWait(() -> { form.setStart(2); form.play(); }); // c
@@ -291,6 +329,7 @@ class FormPlayListTest {
         assertFalse(form.isPlaying());
     }
 
+    /** only the tool bar zooms; the list stays at x1, and the window only grows to fit the bar */
     @Test
     void zoom() throws Exception {
         Field f = FormPlayList.class.getDeclaredField("tsbAddMusic");
@@ -299,16 +338,21 @@ class FormPlayListTest {
         SwingUtilities.invokeAndWait(() -> form.setZoom(1));
         Font f1 = table.getFont();
         int h1 = table.getRowHeight();
+        float bf1 = b.getFont().getSize2D();
         int i1 = b.getIcon().getIconWidth();
         int w1 = form.getWidth();
         SwingUtilities.invokeAndWait(() -> form.setZoom(2));
-        assertEquals(f1.getSize2D() * 2, table.getFont().getSize2D());
-        assertEquals(h1 * 2, table.getRowHeight());
+        assertEquals(f1.getSize2D(), table.getFont().getSize2D(), "the list stays at x1");
+        assertEquals(h1, table.getRowHeight());
+        assertEquals(bf1 * 2, b.getFont().getSize2D());
         assertEquals(i1 * 2, b.getIcon().getIconWidth());
-        assertEquals(w1 * 2, form.getWidth());
+        int w2 = form.getWidth();
+        assertTrue(w2 >= w1, "the window does not shrink");
+        assertTrue(w2 >= form.getMinimumSize().width, "the zoomed tool bar fits");
         assertNotNull(b.getToolTipText());
         SwingUtilities.invokeAndWait(() -> form.setZoom(1));
-        assertEquals(w1, form.getWidth());
+        assertEquals(i1, b.getIcon().getIconWidth());
+        assertEquals(w2, form.getWidth(), "the window keeps its size");
     }
 
     @Test

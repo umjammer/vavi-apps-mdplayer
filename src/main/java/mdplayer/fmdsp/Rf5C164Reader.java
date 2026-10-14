@@ -72,9 +72,4 @@ public class Rf5C164Reader extends PcmSlotReader {
         out.pan = panOf(left, right);
         out.note = step > 0 ? Notes.noteOfRatio(step / unitStep) : -1;
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return chipRegister.chip(Rf5C164Chip.class).getMask(chipId, ch);
-    }
 }

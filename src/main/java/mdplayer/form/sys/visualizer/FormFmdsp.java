@@ -126,6 +126,12 @@ public class FormFmdsp extends JFrame {
         fmdspVisualizerComponent.setVersion(Common.version.equals("undefined") ? null : Common.version);
         fmdspVisualizerComponent.setDataSource(fmdspSource);
         fmdspVisualizerComponent.setFontRom(fontRom);
+        // a click on a pan circle mutes the channel under it; the source knows which chip that is
+        fmdspVisualizerComponent.addGenericListener(e -> {
+            if (FmDspVisualizer.EVENT_MUTE.equals(e.getName()) && fmdspSource != null) {
+                fmdspSource.toggleMute((Integer) e.getArguments()[0]);
+            }
+        });
 
         this.setTitle(title(audio));
         this.add(fmdspVisualizerComponent, BorderLayout.CENTER);

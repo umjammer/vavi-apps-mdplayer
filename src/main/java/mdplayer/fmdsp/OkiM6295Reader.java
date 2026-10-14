@@ -126,9 +126,4 @@ public class OkiM6295Reader extends ChipReader {
         int rate = (int) info.get("sampleRate");
         out.note = sounding && rate > 0 ? Notes.noteOfRatio(rate / referenceRate) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

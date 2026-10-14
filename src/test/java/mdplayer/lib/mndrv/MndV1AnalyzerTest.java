@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 /**
- * Evidence that the MND version 1 opcode map in {@link ComAnalyze#V1_CMD_MAP} is right.
+ * Evidence that the MND version 1 opcode map in {@code ComAnalyze#V1_CMD_MAP} is right.
  * <p>
  * mndrv.x 1.37 turns version 1 data away rather than carry a second dispatch table, so there is
  * no reference renderer to diff against and the map had to be recovered from the data. The

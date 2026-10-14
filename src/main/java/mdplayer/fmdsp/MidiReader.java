@@ -274,9 +274,4 @@ public class MidiReader implements FmDspChipReader, FftDataSource {
         if (pan <= 112) return Pan.MID_RIGHT;
         return Pan.RIGHT;
     }
-
-    @Override
-    public boolean masked(Group group, int slot) {
-        return false;
-    }
 }

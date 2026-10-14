@@ -38,9 +38,4 @@ public class Vrc6Reader extends NsfTrackInfoReader {
     protected BaseChip chip() {
         return chipRegister.chip(NpNesChip.Vrc6Chip.class);
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return chipRegister.chip(NpNesChip.Vrc6Chip.class).getMask(0, ch);
-    }
 }

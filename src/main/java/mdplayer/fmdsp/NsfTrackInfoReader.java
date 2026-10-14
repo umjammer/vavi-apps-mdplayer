@@ -42,8 +42,6 @@ public abstract class NsfTrackInfoReader extends ChipReader {
     @Override
     protected abstract BaseChip chip();
 
-    protected abstract boolean muted(int ch);
-
     @Override
     public void bind(ChipRegister chipRegister) {
         super.bind(chipRegister);
@@ -128,10 +126,5 @@ public abstract class NsfTrackInfoReader extends ChipReader {
         out.ssgTone = true;
         out.toneNum = t.tone;
         out.note = sounding ? key : -1;
-    }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return muted(ch);
     }
 }

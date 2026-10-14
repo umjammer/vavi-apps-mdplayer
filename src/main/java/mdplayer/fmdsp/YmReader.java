@@ -143,9 +143,4 @@ public class YmReader implements FmDspChipReader {
         // one step of the PSG's sixteen level table is 3 dB
         out.amplitude = sounding ? Math.pow(10, (Math.min(level, 15) - 15) * 3.0 / 20) : 0;
     }
-
-    @Override
-    public boolean masked(Group group, int s) {
-        return false;
-    }
 }

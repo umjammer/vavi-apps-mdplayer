@@ -46,7 +46,7 @@ this is a fork of [MDPlayer](https://github.com/kuma4649/MDPlayer)
 | AHX                             | Amiga            |      ✅️ ️      |    -     | built-in              | [ahxcs](https://github.com/jimshawx/ahxcs)                                                     |                                                                                   |
 | PSF/MINIPSF                     | PlayStation      |      ✅️ ️      |    -     | built-in              | [aosdk](https://github.com/nmlgc/aosdk)                                                        |                                                                                   |
 | PSF2/MINIPSF2                   | PlayStation 2    |      ✅️ ️      |    -     | built-in              | [aosdk](https://github.com/nmlgc/aosdk)                                                        |                                                                                   |
-| ZGM                             | mml2vgm          |      n/a       |    -     | built-in              |                                                                                                | currently support only YM2609                                                     |
+| ZGM                             | mml2vgm          |       🚧       |    -     | built-in              | [mml2vgm](https://github.com/kuma4649/mml2vgm)                                                 | currently support only YM2609                                                     |
 | MID                             | MIDI             |       ️→       |    -     | spi                   | built-in java                                                                                  |                                                                                   |
 | RCP                             | PC98 Recomposer  |       ✅️       |    -     | built-in              |                                                                                                |                                                                                   |
 | RCS                             | X68k RCSMP       |       ✅️       |    -     | built-in              |                                                                                                | RCP + PCM8                                                                        |
@@ -273,7 +273,7 @@ you can select a chip implementation variant by number.
     * ~~zms: wip signed byte related ... ???~~
     * ~~rcs: wip~~
     * ~~rcp: wip, how to treat midi plugin as chip?~~
-    * ~~nsf: sp library works. `render_()` is not work, `mul` related. (replace `render_()` to vavi-sound-mdplayer:NsfTestPlayer's one, it works)~~ ... not resolved
+    * ~~nsf: sp library works. `render_()` is not work, `mul` related. (replace `render_()` to vavi-sound-mdplayer:NsfTestPlayer's one, it works)~~ ... ~~not resolved~~ (resolved another way)
     * ~~fmp: test mochit final~~
     * ~~mxdrv: pcm8, when 68k opm is chosen as 1st opm, 2nd opm cannot sound pcm8. why???~~
     * ~~ndp: fmgen ym8910 is silence (meme's works)~~
@@ -292,7 +292,7 @@ you can select a chip implementation variant by number.
    * chip class should handle one chip
    * real chip is one of instrument?
    * \[ym] move ym2149ex to instruments
-   * chip refactoring about masking
+   * ~~chip refactoring about masking~~
    * settings ...  demolish each driver and chips
    * abstract m3u, zip
  * vgm spi kill switch

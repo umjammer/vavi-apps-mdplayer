@@ -4,8 +4,9 @@ import java.lang.System.Logger;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -20,9 +21,9 @@ public class SettingPlayListPanel extends SettingTab {
     private static final Logger logger = getLogger(SettingPlayListPanel.class.getName());
 
     private final JPanel groupBox17;
-    private final JTextArea tbImageExt;
-    private final JTextArea tbMMLExt;
-    private final JTextArea tbTextExt;
+    private final JTextField tbImageExt;
+    private final JTextField tbMMLExt;
+    private final JTextField tbTextExt;
     private final JLabel label1;
     private final JLabel label3;
     private final JLabel label2;
@@ -34,10 +35,10 @@ public class SettingPlayListPanel extends SettingTab {
     public SettingPlayListPanel() {
         this.groupBox17 = new JPanel();
         this.cbAutoOpenImg = new JCheckBox();
-        this.tbImageExt = new JTextArea();
+        this.tbImageExt = new JTextField();
         this.cbAutoOpenMML = new JCheckBox();
-        this.tbMMLExt = new JTextArea();
-        this.tbTextExt = new JTextArea();
+        this.tbMMLExt = new JTextField();
+        this.tbTextExt = new JTextField();
         this.cbAutoOpenText = new JCheckBox();
         this.label1 = new JLabel();
         this.label3 = new JLabel();
@@ -63,15 +64,6 @@ public class SettingPlayListPanel extends SettingTab {
         //
         // groupBox17
         //
-        this.groupBox17.add(this.cbAutoOpenImg);
-        this.groupBox17.add(this.tbImageExt);
-        this.groupBox17.add(this.cbAutoOpenMML);
-        this.groupBox17.add(this.tbMMLExt);
-        this.groupBox17.add(this.tbTextExt);
-        this.groupBox17.add(this.cbAutoOpenText);
-        this.groupBox17.add(this.label1);
-        this.groupBox17.add(this.label3);
-        this.groupBox17.add(this.label2);
         this.groupBox17.setName("groupBox17");
         //
         // label1
@@ -100,9 +92,15 @@ public class SettingPlayListPanel extends SettingTab {
         //
         // tpPlayList
         //
-        this.add(this.groupBox17);
-        this.add(this.cbEmptyPlayList);
         this.setName("tpPlayList");
+        // layout
+        new Grid(Grid.group(this.groupBox17))
+                .add(this.label1).fill(this.tbTextExt).add(this.cbAutoOpenText).next()
+                .add(this.label2).fill(this.tbMMLExt).add(this.cbAutoOpenMML).next()
+                .add(this.label3).fill(this.tbImageExt).add(this.cbAutoOpenImg).end();
+        new Grid(this)
+                .add(this.cbEmptyPlayList).next()
+                .span(this.groupBox17).end();
     }
 
     @Override

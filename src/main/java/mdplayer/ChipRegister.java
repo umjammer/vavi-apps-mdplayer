@@ -9,6 +9,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 import mdplayer.Common.EnmModel;
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.MidiPlugin;
 import mdplayer.chips.Plugin;
 import mdplayer.chips.RealChipPlugin;
@@ -94,6 +95,13 @@ logger.log(Level.TRACE, "sub plugins: " + plugins.size());
     /** for all chips */
     public void reset() {
         chips.values().forEach(Chip::reset);
+    }
+
+    /** for all chips: hands the channel mutes to the instruments the song about to play built */
+    public void restoreMutes() {
+        chips.values().forEach(c -> {
+            if (c instanceof BaseChip b) b.restoreMutes();
+        });
     }
 
     /** for all chips and plugins */

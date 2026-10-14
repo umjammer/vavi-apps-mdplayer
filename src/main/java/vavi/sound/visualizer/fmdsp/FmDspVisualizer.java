@@ -13,6 +13,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.lang.management.ManagementFactory;
@@ -24,6 +26,10 @@ import java.util.Map;
 
 import javax.swing.JComponent;
 import javax.swing.Timer;
+
+import vavi.util.event.GenericEvent;
+import vavi.util.event.GenericListener;
+import vavi.util.event.GenericSupport;
 
 import static vavi.sound.visualizer.fmdsp.FmDspSprites.*;
 
@@ -53,11 +59,23 @@ import static vavi.sound.visualizer.fmdsp.FmDspSprites.*;
  * of the original PC-98 FMDSP, section 9 of its FMDSP.DOC, which lives in {@code FMDSP.COM} alone.
  * See {@link #freqWave}.
  *
+ * <h2>Events</h2>
+ * A click on a level meter's pan circle is handed to the {@link GenericListener}s as
+ * {@link #EVENT_MUTE}: the renderer only shows what is muted, the source decides what muting a
+ * column means.
+ *
  * <h2>Threading</h2>
  * VRAM is rebuilt on the EDT each repaint; guard cross-thread data-source
  * mutation on your side.
  */
 public class FmDspVisualizer extends JComponent {
+
+    /**
+     * Fired with a click on a level meter's pan circle, which mutes the channel the meter shows or
+     * lets it sound again. Its arguments are the meter column as an {@code Integer} and the
+     * {@link TrackId} of the row behind it, null for the drum meter. Fired on the EDT.
+     */
+    public static final String EVENT_MUTE = "mute";
 
     // ---------- canvas ----------
     public static final int PC98_W = 640;
@@ -473,6 +491,8 @@ public class FmDspVisualizer extends JComponent {
 
     private final Timer timer;
 
+    private final GenericSupport genericSupport = new GenericSupport();
+
     /**
      * @param fps target frame rate, e.g. {@code 60}.
      */
@@ -490,6 +510,35 @@ public class FmDspVisualizer extends JComponent {
         setOpaque(true);
         timer = new Timer(1000 / fps, e -> repaint());
         timer.setRepeats(true);
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int c = panpotAt(e.getX() * CANVAS_W / Math.max(1, getWidth()), e.getY() * CANVAS_H / Math.max(1, getHeight()));
+                if (c >= 0) genericSupport.fireEventHappened(new GenericEvent(FmDspVisualizer.this, EVENT_MUTE, c, levelToTrack(c)));
+            }
+        });
+    }
+
+    /** @see #EVENT_MUTE */
+    public void addGenericListener(GenericListener l) {
+        genericSupport.addGenericListener(l);
+    }
+
+    public void removeGenericListener(GenericListener l) {
+        genericSupport.removeGenericListener(l);
+    }
+
+    /**
+     * The level meter column whose pan circle is at canvas point ({@code x}, {@code y}), or -1.
+     * The meters are only drawn in {@link RightMode#DEFAULT}.
+     */
+    private int panpotAt(int x, int y) {
+        if (rightMode != RightMode.DEFAULT) return -1;
+        if (y < PANPOT_Y || y >= PANPOT_Y + PANPOT_H) return -1;
+        int dx = x - (LEVEL_X - 1);
+        if (dx < 0) return -1;
+        int c = dx / LEVEL_W;
+        return c < FMDSP_LEVEL_COUNT && dx % LEVEL_W < PANPOT_W ? c : -1;
     }
 
     public FmDspVisualizer() {
@@ -551,7 +600,7 @@ public class FmDspVisualizer extends JComponent {
         this.rightMode = mode;
     }
 
-    /** Switch palette index (0..{@link Palette#COUNT}-1). */
+    /** Switch palette index (0..{@code Palette#COUNT}-1). */
     public void setPaletteIndex(int index) {
         palette.select(index);
     }
@@ -1885,7 +1934,7 @@ public class FmDspVisualizer extends JComponent {
      * song numbers leaves all three blank.
      */
     private void renderPgmNumber(WorkStateSource w) {
-        int n = Math.min(999, Math.max(0, w != null ? w.songNo() : 0));
+        int n = Math.clamp(w != null ? w.songNo() : 0, 0, 999);
         int digits = n == 0 ? 0 : n >= 100 ? 3 : n >= 10 ? 2 : 1;
         for (int i = 0, p = n; i < VOLDOWN_DIGITS; i++, p /= 10) {
             blitNum(VOLDOWN_NUM_X + NUM_W * (VOLDOWN_DIGITS - 1 - i), PGMNUM_Y, i < digits ? p % 10 : 10);
@@ -1987,6 +2036,8 @@ public class FmDspVisualizer extends JComponent {
                 if (scratch.info == TrackInfo.PDZF || scratch.info == TrackInfo.PPZ8) {
                     playing = false;
                 }
+            } else if (lvl != null) {
+                masked = lvl.masked(c);
             }
             if (!playing) pan = 5;
 

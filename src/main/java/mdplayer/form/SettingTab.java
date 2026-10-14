@@ -13,9 +13,9 @@ import mdplayer.Setting;
  * ones the {@link mdplayer.form.kb.ViewProvider}s contribute — so adding a chip never means
  * editing the dialog.
  * <p>
- * Geometry and captions still come from the designer's resource bundle: the dialog lays out its
- * whole tree by component name, so a tab keeps the {@code tp...} name its page had when all of
- * this was one class.
+ * A tab lays its controls out itself, with layout managers. The captions still come from the
+ * designer's resource bundle by component name, so a tab keeps the {@code tp...} name its page had
+ * when all of this was one class.
  */
 public abstract class SettingTab extends JPanel {
 

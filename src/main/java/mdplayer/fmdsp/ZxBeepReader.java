@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import mdplayer.Common;
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.ZxBeepChip;
 import mdplayer.driver.BaseDriver;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
@@ -139,8 +140,9 @@ public class ZxBeepReader extends ChipReader {
         return d != null ? d.counter : 0;
     }
 
+    /** the chip cannot mute a channel */
     @Override
-    public boolean masked(Group group, int ch) {
-        return false;
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return null;
     }
 }

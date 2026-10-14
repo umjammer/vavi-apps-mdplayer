@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import mdplayer.ChipRegister;
+import mdplayer.chips.BaseChip;
 import mdplayer.driver.BaseDriver;
 import vavi.sound.visualizer.fmdsp.FftDataSource;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
@@ -138,9 +139,18 @@ public interface FmDspChipReader {
     /** fills {@code out} with channel {@code ch}'s current state; called once per snapshot */
     void read(Group group, int ch, FmDspChannel out);
 
-    /** true if the channel is muted in the chip's own mask */
+    /**
+     * The chip channel a row shows, which is what muting the row mutes - see
+     * {@link BaseChip#isMuted}. Null - the default - for a row that cannot be muted.
+     */
+    default BaseChip.Channel muteChannel(Group group, int ch) {
+        return null;
+    }
+
+    /** true if the channel is muted */
     default boolean masked(Group group, int ch) {
-        return false;
+        BaseChip.Channel channel = muteChannel(group, ch);
+        return channel != null && channel.muted();
     }
 
     /**

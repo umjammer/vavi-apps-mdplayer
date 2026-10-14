@@ -12,6 +12,7 @@ import javax.swing.event.ChangeEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import mdplayer.Common;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormMain;
 
@@ -428,75 +429,6 @@ public class SettingKeyBoardPanel extends SettingTab {
         //
         // gbUseKeyBoardHook
         //
-        this.gbUseKeyBoardHook.add(this.lblKeyBoardHookNotice);
-        this.gbUseKeyBoardHook.add(this.btNextClr);
-        this.gbUseKeyBoardHook.add(this.btPrevClr);
-        this.gbUseKeyBoardHook.add(this.btPlayClr);
-        this.gbUseKeyBoardHook.add(this.btPauseClr);
-        this.gbUseKeyBoardHook.add(this.btFastClr);
-        this.gbUseKeyBoardHook.add(this.btFadeoutClr);
-        this.gbUseKeyBoardHook.add(this.btSlowClr);
-        this.gbUseKeyBoardHook.add(this.btStopClr);
-        this.gbUseKeyBoardHook.add(this.btNextSet);
-        this.gbUseKeyBoardHook.add(this.btPrevSet);
-        this.gbUseKeyBoardHook.add(this.btPlaySet);
-        this.gbUseKeyBoardHook.add(this.btPauseSet);
-        this.gbUseKeyBoardHook.add(this.btFastSet);
-        this.gbUseKeyBoardHook.add(this.btFadeoutSet);
-        this.gbUseKeyBoardHook.add(this.btSlowSet);
-        this.gbUseKeyBoardHook.add(this.btStopSet);
-        this.gbUseKeyBoardHook.add(this.label50);
-        this.gbUseKeyBoardHook.add(this.lblNextKey);
-        this.gbUseKeyBoardHook.add(this.lblFastKey);
-        this.gbUseKeyBoardHook.add(this.lblPlayKey);
-        this.gbUseKeyBoardHook.add(this.lblSlowKey);
-        this.gbUseKeyBoardHook.add(this.lblPrevKey);
-        this.gbUseKeyBoardHook.add(this.lblFadeoutKey);
-        this.gbUseKeyBoardHook.add(this.lblPauseKey);
-        this.gbUseKeyBoardHook.add(this.lblStopKey);
-        this.gbUseKeyBoardHook.add(this.pictureBox14);
-        this.gbUseKeyBoardHook.add(this.pictureBox17);
-        this.gbUseKeyBoardHook.add(this.cbNextAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox16);
-        this.gbUseKeyBoardHook.add(this.cbFastAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox15);
-        this.gbUseKeyBoardHook.add(this.cbPlayAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox13);
-        this.gbUseKeyBoardHook.add(this.cbSlowAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox12);
-        this.gbUseKeyBoardHook.add(this.cbPrevAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox11);
-        this.gbUseKeyBoardHook.add(this.cbFadeoutAlt);
-        this.gbUseKeyBoardHook.add(this.pictureBox10);
-        this.gbUseKeyBoardHook.add(this.cbPauseAlt);
-        this.gbUseKeyBoardHook.add(this.label37);
-        this.gbUseKeyBoardHook.add(this.cbStopAlt);
-        this.gbUseKeyBoardHook.add(this.label45);
-        this.gbUseKeyBoardHook.add(this.label46);
-        this.gbUseKeyBoardHook.add(this.label48);
-        this.gbUseKeyBoardHook.add(this.label38);
-        this.gbUseKeyBoardHook.add(this.label39);
-        this.gbUseKeyBoardHook.add(this.label40);
-        this.gbUseKeyBoardHook.add(this.label41);
-        this.gbUseKeyBoardHook.add(this.label42);
-        this.gbUseKeyBoardHook.add(this.cbNextCtrl);
-        this.gbUseKeyBoardHook.add(this.label43);
-        this.gbUseKeyBoardHook.add(this.cbFastCtrl);
-        this.gbUseKeyBoardHook.add(this.label44);
-        this.gbUseKeyBoardHook.add(this.cbPlayCtrl);
-        this.gbUseKeyBoardHook.add(this.cbStopShift);
-        this.gbUseKeyBoardHook.add(this.cbSlowCtrl);
-        this.gbUseKeyBoardHook.add(this.cbPauseShift);
-        this.gbUseKeyBoardHook.add(this.cbPrevCtrl);
-        this.gbUseKeyBoardHook.add(this.cbFadeoutShift);
-        this.gbUseKeyBoardHook.add(this.cbFadeoutCtrl);
-        this.gbUseKeyBoardHook.add(this.cbPrevShift);
-        this.gbUseKeyBoardHook.add(this.cbPauseCtrl);
-        this.gbUseKeyBoardHook.add(this.cbSlowShift);
-        this.gbUseKeyBoardHook.add(this.cbStopCtrl);
-        this.gbUseKeyBoardHook.add(this.cbPlayShift);
-        this.gbUseKeyBoardHook.add(this.cbNextShift);
-        this.gbUseKeyBoardHook.add(this.cbFastShift);
         this.gbUseKeyBoardHook.setName("gbUseKeyBoardHook");
         //
         // label37
@@ -630,18 +562,30 @@ public class SettingKeyBoardPanel extends SettingTab {
         //
         // tpKeyBoard
         //
-        this.add(this.cbUseKeyBoardHook);
-        this.add(this.gbUseKeyBoardHook);
-        this.add(this.label47);
-        this.add(this.cbStopWin);
-        this.add(this.cbPauseWin);
-        this.add(this.cbFadeoutWin);
-        this.add(this.cbPrevWin);
-        this.add(this.cbSlowWin);
-        this.add(this.cbPlayWin);
-        this.add(this.cbFastWin);
-        this.add(this.cbNextWin);
         this.setName("tpKeyBoard");
+        // layout
+        new Grid(Grid.group(this.gbUseKeyBoardHook))
+                .skip().skip().add(this.label45).add(this.label46).add(this.label48).add(this.label47).add(this.label50).next()
+                .add(this.pictureBox14).add(this.label37).add(this.cbStopShift).add(this.cbStopCtrl).add(this.cbStopAlt).add(this.cbStopWin)
+                .add(this.lblStopKey).add(this.btStopSet).add(this.btStopClr).next()
+                .add(this.pictureBox15).add(this.label38).add(this.cbPauseShift).add(this.cbPauseCtrl).add(this.cbPauseAlt).add(this.cbPauseWin)
+                .add(this.lblPauseKey).add(this.btPauseSet).add(this.btPauseClr).next()
+                .add(this.pictureBox17).add(this.label39).add(this.cbFadeoutShift).add(this.cbFadeoutCtrl).add(this.cbFadeoutAlt).add(this.cbFadeoutWin)
+                .add(this.lblFadeoutKey).add(this.btFadeoutSet).add(this.btFadeoutClr).next()
+                .add(this.pictureBox16).add(this.label40).add(this.cbPrevShift).add(this.cbPrevCtrl).add(this.cbPrevAlt).add(this.cbPrevWin)
+                .add(this.lblPrevKey).add(this.btPrevSet).add(this.btPrevClr).next()
+                .add(this.pictureBox13).add(this.label41).add(this.cbSlowShift).add(this.cbSlowCtrl).add(this.cbSlowAlt).add(this.cbSlowWin)
+                .add(this.lblSlowKey).add(this.btSlowSet).add(this.btSlowClr).next()
+                .add(this.pictureBox12).add(this.label42).add(this.cbPlayShift).add(this.cbPlayCtrl).add(this.cbPlayAlt).add(this.cbPlayWin)
+                .add(this.lblPlayKey).add(this.btPlaySet).add(this.btPlayClr).next()
+                .add(this.pictureBox11).add(this.label43).add(this.cbFastShift).add(this.cbFastCtrl).add(this.cbFastAlt).add(this.cbFastWin)
+                .add(this.lblFastKey).add(this.btFastSet).add(this.btFastClr).next()
+                .add(this.pictureBox10).add(this.label44).add(this.cbNextShift).add(this.cbNextCtrl).add(this.cbNextAlt).add(this.cbNextWin)
+                .add(this.lblNextKey).add(this.btNextSet).add(this.btNextClr).next()
+                .span(this.lblKeyBoardHookNotice).end();
+        new Grid(this)
+                .add(this.cbUseKeyBoardHook).next()
+                .grow(this.gbUseKeyBoardHook);
     }
 
     @Override

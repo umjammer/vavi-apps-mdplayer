@@ -145,9 +145,4 @@ public class MPcmReader extends ChipReader {
             default -> Pan.NONE;
         };
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

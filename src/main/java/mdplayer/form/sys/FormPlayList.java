@@ -26,10 +26,14 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -37,10 +41,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.Random;
@@ -51,6 +59,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -139,6 +148,11 @@ public class FormPlayList extends JFrame {
     private final Random rand = new Random();
     /** the songs a random play went through, most recent last, for "previous" to walk back */
     private final Deque<PlayList.Music> randomStack = new ArrayDeque<>();
+    /**
+     * songs in a row that could not be played while going on to the next one, so that a list of
+     * nothing but those stops rather than goes round forever
+     */
+    private int failures;
     private boolean isInitialOpenFolder = true;
 
     /**
@@ -323,9 +337,18 @@ public class FormPlayList extends JFrame {
 
     /** Loads and starts a song and marks it as the one being played. */
     private boolean load(PlayList.Music music) {
+        return load(music, true);
+    }
+
+    /**
+     * Loads and starts a song and marks it as the one being played.
+     *
+     * @param report whether a song that cannot be loaded is told about in a dialog
+     */
+    private boolean load(PlayList.Music music, boolean report) {
         playing = false;
         try {
-            if (!frmMain.loadAndPlay(typeOf(music), music.songNo, music.fileName, music.arcFileName)) {
+            if (!frmMain.loadAndPlay(typeOf(music), music.songNo, music.fileName, music.arcFileName, report)) {
                 return false;
             }
         } catch (Exception e) {
@@ -360,30 +383,65 @@ public class FormPlayList extends JFrame {
         playing = false;
         if (size == 0) return;
 
-        switch (mode) {
-        case 0: // normal
-            pi++;
-            if (pi >= size) return;
-            break;
-        case 1: // random
-            if (playingMusic != null && indexOf(playingMusic) >= 0) {
-                randomStack.addLast(playingMusic);
-                while (randomStack.size() > 1000) randomStack.removeFirst();
-            }
-            pi = rand.nextInt(size);
-            break;
-        case 2: // all songs loop
-            pi++;
-            if (pi >= size) pi = 0;
-            break;
-        case 3: // one song loop
-            if (pi < 0) pi = 0;
-            break;
-        default:
-            return;
+        if (mode == 1 && playingMusic != null && indexOf(playingMusic) >= 0) {
+            randomStack.addLast(playingMusic);
+            while (randomStack.size() > 1000) randomStack.removeFirst();
         }
 
-        load(musics.get(pi));
+        // a song that cannot be loaded is passed over, as one that cannot be set up is (skipFailed);
+        // a dialog here would hold the screen loop that asked for the song until it was answered
+        while (true) {
+            pi = nextIndex(mode, pi, size);
+            if (pi < 0) return;
+            if (load(musics.get(pi), mode == 3)) return;
+            if (!skips(mode, size)) return;
+        }
+    }
+
+    /**
+     * @param pi the song played last
+     * @return the song to play after it, or -1 for none
+     */
+    private int nextIndex(int mode, int pi, int size) {
+        return switch (mode) {
+            case 0 -> pi + 1 < size ? pi + 1 : -1; // normal
+            case 1 -> rand.nextInt(size); // random
+            case 2 -> pi + 1 < size ? pi + 1 : 0; // all songs loop
+            case 3 -> Math.max(pi, 0); // one song loop
+            default -> -1;
+        };
+    }
+
+    /**
+     * Counts a song that could not be played, and tells whether to go on to another one.
+     * Playing the same song again would fail the same way, and once as many songs as the list
+     * holds have failed in a row, the rest most likely would too.
+     */
+    private boolean skips(int mode, int size) {
+        if (mode != 3 && ++failures < size) return true;
+        failures = 0;
+        return false;
+    }
+
+    /**
+     * Tells that the song being played has really started coming out.
+     */
+    public void songStarted() {
+        failures = 0;
+    }
+
+    /**
+     * A song that was loaded could not be set up to play. Goes on to the next one as the play mode
+     * says, rather than stopping the list on it.
+     *
+     * @param mode as {@link #nextPlayMode}
+     * @return false when nothing else could be started, and the list has stopped
+     */
+    public boolean skipFailed(int mode) {
+        playing = false;
+        if (!skips(mode, playList.getMusics().size())) return false;
+        nextPlayMode(mode);
+        return playing;
     }
 
     /**
@@ -498,6 +556,114 @@ public class FormPlayList extends JFrame {
         lastPlayIndex = -1;
         clearSort();
         refresh();
+    }
+
+    /**
+     * The same song: the same file, the same entry in the same archive and the same song number.
+     * A file with several songs in it may be on the list once per song.
+     */
+    private static List<Object> identity(PlayList.Music music) {
+        return Arrays.asList(normalized(music.fileName), normalized(music.arcFileName), music.songNo);
+    }
+
+    private static String normalized(String path) {
+        if (path == null || path.isEmpty()) return null;
+        try {
+            return Path.of(path).toAbsolutePath().normalize().toString();
+        } catch (InvalidPathException e) {
+            return path;
+        }
+    }
+
+    /**
+     * Removes the songs that are on the list more than once, keeping the first of each. The song
+     * being played is kept in place of an earlier copy of it, so that it goes on being played.
+     */
+    private void tsmiDelDuplicated_Click(ActionEvent ev) {
+        removeDuplicates(FormPlayList::identity);
+    }
+
+    /**
+     * Removes the songs whose {@code identity} is that of an earlier one, keeping the song being
+     * played as {@link #tsmiDelDuplicated_Click} does. A song whose identity is null is kept.
+     */
+    private void removeDuplicates(Function<PlayList.Music, Object> identity) {
+        List<PlayList.Music> musics = playList.getMusics();
+        Object playingId = playingMusic != null && indexOf(playingMusic) >= 0 ? identity.apply(playingMusic) : null;
+        Set<Object> seen = new HashSet<>();
+        Set<PlayList.Music> removed = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (PlayList.Music music : musics) {
+            Object id = identity.apply(music);
+            if (id == null) continue;
+            if (id.equals(playingId) ? music != playingMusic : !seen.add(id)) removed.add(music);
+        }
+        if (removed.isEmpty()) return;
+
+        List<PlayList.Music> selected = selectedMusics();
+        musics.removeIf(removed::contains);
+        randomStack.removeIf(removed::contains);
+        clearSort();
+        refresh();
+        playIndex();
+        select(selected.stream().filter(m -> !removed.contains(m)).toList());
+        logger.log(Level.INFO, removed.size() + " duplicated songs were removed from the play list");
+    }
+
+    /**
+     * Removes the songs whose files have the same contents as an earlier one's, the same song of
+     * the same file under another name or in another folder. The files are hashed on
+     * {@link #reader}, which may take a while on a long list; songs added meanwhile are kept.
+     * A song in an archive is the archive's contents plus its entry, the entry is not unpacked.
+     */
+    private void tsmiDelDuplicatedByHash_Click(ActionEvent ev) {
+        PlayList target = playList;
+        List<PlayList.Music> snapshot = new ArrayList<>(playList.getMusics());
+        batches++;
+        progress("msgHashing", "hashing", 0, 0);
+        reading = reader.submit(() -> {
+            Map<PlayList.Music, Object> ids = new IdentityHashMap<>();
+            try {
+                Map<String, String> hashes = new HashMap<>(); // a file's path to its contents' hash
+                long last = System.nanoTime();
+                for (int i = 0; i < snapshot.size(); i++) {
+                    PlayList.Music music = snapshot.get(i);
+                    boolean inArchive = music.arcFileName != null && !music.arcFileName.isEmpty();
+                    String file = normalized(inArchive ? music.arcFileName : music.fileName);
+                    String hash = file == null ? null : hashes.computeIfAbsent(file, FormPlayList::hash);
+                    if (hash != null) {
+                        ids.put(music, Arrays.asList(hash, inArchive ? music.fileName : null, music.songNo));
+                    }
+                    long now = System.nanoTime();
+                    if (now - last >= chunkNanos) {
+                        last = now;
+                        int done = i + 1;
+                        SwingUtilities.invokeLater(() -> progress("msgHashing", "hashing", done, snapshot.size()));
+                    }
+                }
+            } catch (Exception ex) {
+                logger.log(Level.ERROR, ex.getMessage(), ex);
+                ids.clear();
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    batches--;
+                    progress(0, 0);
+                    if (target == playList && !ids.isEmpty()) removeDuplicates(ids::get);
+                });
+            }
+        });
+    }
+
+    /** The hash of a file's contents, or null when it cannot be read. */
+    private static String hash(String file) {
+        try (InputStream is = Files.newInputStream(Path.of(file))) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[64 * 1024];
+            for (int n; (n = is.read(buf)) > 0; ) md.update(buf, 0, n);
+            return HexFormat.of().formatHex(md.digest());
+        } catch (IOException | InvalidPathException | NoSuchAlgorithmException e) {
+            logger.log(Level.DEBUG, file + ": " + e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -626,7 +792,7 @@ public class FormPlayList extends JFrame {
             if (b == null) return -1;
             int r = a instanceof Integer ia && b instanceof Integer ib
                     ? Integer.compare(ia, ib)
-                    : String.CASE_INSENSITIVE_ORDER.compare(a.toString(), b.toString());
+                    : naturalCompare(a.toString(), b.toString());
             return sortAscending ? r : -r;
         });
         playList.getMusics().sort(c); // a stable sort, so sorting by one column then another works
@@ -637,9 +803,65 @@ public class FormPlayList extends JFrame {
     }
 
     private static Object sortKey(PlayList.Music m, int column) {
-        Object v = value(m, cols.values()[column]);
+        // the file name column shows the name only, but sorts by where the file is, so a folder stays together
+        Object v = column == cols.clmDispFileName.ordinal() ? fullPath(m) : value(m, cols.values()[column]);
         if (v instanceof String s && s.isBlank()) return null;
         return v;
+    }
+
+    /**
+     * The song's file with its folders, an archive member after the archive it is in.
+     * The separators become the lowest character, so {@code a/b/x} sorts before {@code a/b-c/x}
+     * and a folder's files stay together.
+     */
+    private static String fullPath(PlayList.Music m) {
+        String path = path(m);
+        return path == null ? null : path.replace(File.separatorChar, '\0').replace('/', '\0');
+    }
+
+    /** The song's file with its folders, an archive member after the archive it is in. */
+    private static String path(PlayList.Music m) {
+        if (m.fileName == null) return null;
+        return m.arcFileName == null || m.arcFileName.isEmpty() ? m.fileName : m.arcFileName + '/' + m.fileName;
+    }
+
+    /**
+     * Compares like {@link String#CASE_INSENSITIVE_ORDER}, but a run of digits counts as the number it is,
+     * so {@code Trk 2} goes before {@code Trk 10} and {@code 2.m} before {@code 10.m}.
+     * Numbers equal in value fall back to fewer leading zeros first.
+     */
+    static int naturalCompare(String a, String b) {
+        int i = 0, j = 0;
+        int zeros = 0; // the first difference in leading zeros, used only when all else is equal
+        while (i < a.length() && j < b.length()) {
+            char ca = a.charAt(i), cb = b.charAt(j);
+            if (isDigit(ca) && isDigit(cb)) {
+                int si = i, sj = j;
+                while (i < a.length() && a.charAt(i) == '0') i++;
+                while (j < b.length() && b.charAt(j) == '0') j++;
+                int ni = i, nj = j;
+                while (i < a.length() && isDigit(a.charAt(i))) i++;
+                while (j < b.length() && isDigit(b.charAt(j))) j++;
+                int r = Integer.compare(i - ni, j - nj); // a longer number is a bigger one
+                if (r == 0) r = a.substring(ni, i).compareTo(b.substring(nj, j));
+                if (r != 0) return r;
+                if (zeros == 0) zeros = Integer.compare(ni - si, nj - sj);
+            } else {
+                if (ca != cb) {
+                    ca = Character.toLowerCase(Character.toUpperCase(ca));
+                    cb = Character.toLowerCase(Character.toUpperCase(cb));
+                    if (ca != cb) return ca - cb;
+                }
+                i++;
+                j++;
+            }
+        }
+        int r = Integer.compare(a.length() - i, b.length() - j);
+        return r != 0 ? r : zeros;
+    }
+
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
     }
 
     /** The list order is no longer the sorted one. */
@@ -744,7 +966,7 @@ public class FormPlayList extends JFrame {
 
     private void tsbAddMusic_Click(ActionEvent ev) {
         JFileChooser ofd = new JFileChooser();
-        Common.toFileFilters(rb.getString("cntSupportFile")).forEach(ofd::addChoosableFileFilter);
+        supportFileFilters().forEach(ofd::addChoosableFileFilter);
         ofd.setDialogTitle(text("dlgAddMusic", "Select a file"));
         int filterIndex = setting.getOther().getFilterIndex();
         FileFilter[] filters = ofd.getChoosableFileFilters();
@@ -764,6 +986,35 @@ public class FormPlayList extends JFrame {
         setting.getOther().setFilterIndex(Common.getFilterIndex(ofd));
 
         addFiles(Arrays.stream(ofd.getSelectedFiles()).map(File::getAbsolutePath).toList(), -1);
+    }
+
+    /**
+     * The filters of the add music dialog. The resource names the formats it knew of in their own
+     * words, but it is written by hand and fell behind the drivers (".mmf" could not be chosen at
+     * all), so a registered {@link FileFormat} it does not name gets a filter of its own, and "all
+     * supported files" is {@link #sext}, what a drop or a folder takes.
+     */
+    static List<FileFilter> supportFileFilters() {
+        List<FileFilter> filters = new ArrayList<>(Common.toFileFilters(rb.getString("cntSupportFile")));
+        // the resource ends with "all supported files" then "all files"
+        FileFilter allFiles = filters.removeLast();
+        String allSupported = filters.removeLast().getDescription().replaceFirst("\\s*\\(.*$", "");
+
+        File probe = new File("_");
+        ServiceLoader.load(FileFormat.class).stream()
+                .map(ServiceLoader.Provider::get)
+                .filter(f -> f.getExtensions() != null && f.getExtensions().length > 0)
+                .filter(f -> Arrays.stream(f.getExtensions()).noneMatch(ex -> filters.stream().anyMatch(ff -> ff.accept(new File(probe + ex)))))
+                .forEach(f -> {
+                    String name = f.getType() != null ? f.getType().toString() : f.getClass().getSimpleName().replaceFirst("(File)?Format$", "");
+                    String exts = Arrays.stream(f.getExtensions()).map(ex -> "*" + ex.toLowerCase(Locale.ROOT)).collect(Collectors.joining(";"));
+                    filters.add(Common.toFileFilters(name + " (" + exts + ")|" + exts).getFirst());
+                });
+
+        String all = sext.stream().sorted().map(ex -> "*" + ex).collect(Collectors.joining(";"));
+        filters.add(Common.toFileFilters(allSupported + "|" + all).getFirst());
+        filters.add(allFiles);
+        return filters;
     }
 
     private void tsbAddFolder_Click(ActionEvent ev) {
@@ -897,11 +1148,16 @@ public class FormPlayList extends JFrame {
 
     /** Shows how far the reading has got in the title, nothing when {@code total} is 0. */
     private void progress(int done, int total) {
+        progress("msgReading", "reading", done, total);
+    }
+
+    /** Shows how far {@code what} has got in the title, nothing when {@code total} is 0 and nothing is going on. */
+    private void progress(String what, String defaultWhat, int done, int total) {
         String title = text("$this.Text", "play list");
         if (total > 0) {
-            title += " - " + text("msgReading", "reading") + " " + done + " / " + total;
+            title += " - " + text(what, defaultWhat) + " " + done + " / " + total;
         } else if (batches > 0) {
-            title += " - " + text("msgReading", "reading");
+            title += " - " + text(what, defaultWhat);
         }
         setTitle(title);
     }
@@ -1111,10 +1367,18 @@ public class FormPlayList extends JFrame {
         int old = this.zoom;
         this.zoom = zoom;
 
-        Font font = baseFont.deriveFont(baseFont.getSize2D() * zoom);
         for (Component c : toolStrip1.getComponents()) {
             // the search box is text to read, as the list is, so it stays at x1 with it
-            c.setFont(c == tstSearch ? baseFont : font);
+            if (c != tstSearch && c instanceof JComponent jc) {
+                Font base = (Font) jc.getClientProperty(BASE_FONT);
+                if (base == null) {
+                    base = c.getFont();
+                    jc.putClientProperty(BASE_FONT, base);
+                }
+                // a UIResource font is the look and feel's to replace, and aqua puts its own tool bar
+                // font back over it: a zoomed one has to be a plain font to stay
+                c.setFont(zoom == 1 ? base : new Font(base.getAttributes()).deriveFont(base.getSize2D() * zoom));
+            }
             if (c instanceof AbstractButton b && b.getClientProperty(BASE_ICON) instanceof BufferedImage image) {
                 b.setIcon(scaled(image, zoom));
             }
@@ -1143,6 +1407,8 @@ public class FormPlayList extends JFrame {
     }
 
     private static final String BASE_ICON = "mdplayer.baseIcon";
+    /** a tool bar component's own font, at x1 */
+    private static final String BASE_FONT = "mdplayer.baseFont";
 
     private static void icon(AbstractButton b, String name) {
         BufferedImage image = Common.getImage(name);
@@ -1242,13 +1508,15 @@ public class FormPlayList extends JFrame {
     private static final Color foreground = new Color(192, 192, 255);
     private static final Color playingForeground = Color.green.brighter();
 
-    /** Shows the song being played in green. */
+    /** Shows the song being played in green, and the full path over the file name. */
     private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, false, row, column);
             List<PlayList.Music> musics = playList.getMusics();
             boolean isPlaying = row < musics.size() && musics.get(row) == playingMusic;
+            boolean isFileName = table.convertColumnIndexToModel(column) == cols.clmDispFileName.ordinal();
+            setToolTipText(isFileName && row < musics.size() ? path(musics.get(row)) : null);
             setForeground(isPlaying ? playingForeground : isSelected ? table.getSelectionForeground() : foreground);
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             return this;
@@ -1349,8 +1617,11 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList = new JPopupMenu();
         this.typeSettingsToolStripMenuItem = new JMenu();
         this.tsmiPlayThis = new JMenuItem();
+        this.tsmiJumpToPlaying = new JMenuItem();
         this.tsmiDelThis = new JMenuItem();
         this.tsmiDelAllMusic = new JMenuItem();
+        this.tsmiDelDuplicated = new JMenuItem();
+        this.tsmiDelDuplicatedByHash = new JMenuItem();
         this.tsmiOpenFolder = new JMenuItem();
         this.toolStrip1 = new JToolBar();
         this.tsbOpenPlayList = new JButton();
@@ -1459,8 +1730,11 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList.add(this.typeSettingsToolStripMenuItem);
         this.cmsPlayList.addSeparator();
         this.cmsPlayList.add(this.tsmiPlayThis);
+        this.cmsPlayList.add(this.tsmiJumpToPlaying);
         this.cmsPlayList.add(this.tsmiDelThis);
         this.cmsPlayList.addSeparator();
+        this.cmsPlayList.add(this.tsmiDelDuplicated);
+        this.cmsPlayList.add(this.tsmiDelDuplicatedByHash);
         this.cmsPlayList.add(this.tsmiDelAllMusic);
         this.cmsPlayList.add(this.tsmiOpenFolder);
         //
@@ -1481,6 +1755,11 @@ public class FormPlayList extends JFrame {
             if (dgvList.getSelectedRowCount() > 0) playRow(dgvList.getSelectedRow());
         });
         //
+        // tsmiJumpToPlaying
+        //
+        menuItem(this.tsmiJumpToPlaying, "tsmiJumpToPlaying", "Jump to the playing song");
+        this.tsmiJumpToPlaying.addActionListener(e -> jumpToPlaying());
+        //
         // tsmiDelThis
         //
         menuItem(this.tsmiDelThis, "tsmiDelThis", "Remove this song");
@@ -1490,6 +1769,16 @@ public class FormPlayList extends JFrame {
         //
         menuItem(this.tsmiDelAllMusic, "tsmiDelAllMusic", "Remove all songs");
         this.tsmiDelAllMusic.addActionListener(this::tsmiDelAllMusic_Click);
+        //
+        // tsmiDelDuplicated
+        //
+        menuItem(this.tsmiDelDuplicated, "tsmiDelDuplicated", "Remove duplicated songs");
+        this.tsmiDelDuplicated.addActionListener(this::tsmiDelDuplicated_Click);
+        //
+        // tsmiDelDuplicatedByHash
+        //
+        menuItem(this.tsmiDelDuplicatedByHash, "tsmiDelDuplicatedByHash", "Remove duplicated songs by contents");
+        this.tsmiDelDuplicatedByHash.addActionListener(this::tsmiDelDuplicatedByHash_Click);
         //
         // tsmiOpenFolder
         //
@@ -1607,7 +1896,6 @@ public class FormPlayList extends JFrame {
             }
         });
 
-        baseFont = dgvList.getFont();
         setZoom(setting.getOther().getZoom());
         updateHeaders();
     }
@@ -1643,20 +1931,30 @@ public class FormPlayList extends JFrame {
 
         typeSettingsToolStripMenuItem.setEnabled(onRow);
         tsmiPlayThis.setEnabled(onRow);
+        tsmiJumpToPlaying.setEnabled(indexOf(playingMusic) >= 0);
         tsmiDelThis.setEnabled(onRow);
         tsmiOpenFolder.setEnabled(onRow);
         tsmiDelAllMusic.setEnabled(!playList.getMusics().isEmpty());
+        tsmiDelDuplicated.setEnabled(playList.getMusics().size() > 1);
+        tsmiDelDuplicatedByHash.setEnabled(playList.getMusics().size() > 1);
         tsmiDelThis.setText(dgvList.getSelectedRowCount() > 1
                 ? text("tsmiDelThis.Text.plural", "Remove the selected songs")
                 : text("tsmiDelThis.Text", "Remove this song"));
         cmsPlayList.show(dgvList, e.getX(), e.getY());
     }
 
-    private Font baseFont;
+    /** Selects the song being played and scrolls the list to it. */
+    private void jumpToPlaying() {
+        int row = indexOf(playingMusic);
+        if (row < 0 || row >= dgvList.getRowCount()) return;
+        dgvList.setRowSelectionInterval(row, row);
+        dgvList.scrollRectToVisible(dgvList.getCellRect(row, 0, true));
+    }
 
     private JTable dgvList;
     private JPopupMenu cmsPlayList;
     private JMenuItem tsmiPlayThis;
+    private JMenuItem tsmiJumpToPlaying;
     private JMenuItem tsmiDelThis;
     private JPanel toolStripContainer1;
     private JToolBar toolStrip1;
@@ -1667,6 +1965,8 @@ public class FormPlayList extends JFrame {
     private JButton tsbUp;
     private JButton tsbDown;
     private JMenuItem tsmiDelAllMusic;
+    private JMenuItem tsmiDelDuplicated;
+    private JMenuItem tsmiDelDuplicatedByHash;
     private JButton tsbAddFolder;
     private JToggleButton tsbJapanese;
     private JToggleButton tsbEnglish;

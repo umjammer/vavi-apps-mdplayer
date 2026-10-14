@@ -79,9 +79,4 @@ public class X1_010Reader extends PcmSlotReader {
             out.note = rate > 0 ? Notes.noteOfRatio(rate / referenceRate) : -1;
         }
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return boolOf(ch, "mute");
-    }
 }

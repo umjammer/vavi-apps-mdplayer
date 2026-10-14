@@ -127,9 +127,4 @@ public class YmF271Reader extends ChipReader {
         double frequency = hz instanceof Double d ? d : 0;
         out.note = sounding && frequency > 0 ? Notes.noteOf(frequency) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return false; // the chip has no channel mask of its own
-    }
 }

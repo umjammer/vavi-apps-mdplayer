@@ -9,6 +9,7 @@ package mdplayer.fmdsp;
 import java.util.Map;
 
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Ym2203Chip;
 
 
@@ -39,14 +40,14 @@ public class Ym2203Reader extends OpnFmReader {
     @Override public int priority() { return 40; }
 
     @Override
-    protected boolean fmMasked(int ch) {
-        // the chip counts FM 1-3 as 0-2; the ch3 slots mute with ch3
-        return chip().getMask(chipId, ch < 3 ? ch : 2);
+    protected BaseChip.Channel fmMute(int ch) {
+        // the chip counts FM 1-3 as 0-2 and the ch3 slots as 6-8, which mute with ch3
+        return chip().channel(chipId, ch);
     }
 
     @Override
-    protected boolean ssgMasked(int s) {
-        return chip().getMask(chipId, 3 + s);
+    protected BaseChip.Channel ssgMute(int s) {
+        return chip().channel(chipId, 3 + s);
     }
 
     /** the chip's channel state, read back once a frame */

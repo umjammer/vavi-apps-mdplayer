@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import mdplayer.Common;
+import mdplayer.chips.BaseChip;
 import mdplayer.driver.BaseDriver;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
@@ -119,9 +120,9 @@ public class Ym2610Reader extends OpnFmReader {
     }
 
     @Override
-    public boolean masked(Group group, int ch) {
+    public BaseChip.Channel muteChannel(Group group, int ch) {
         // the section masks as one: its key register is one write for all six voices
-        return group == Group.PCM ? chip().getMask(chipId, ch == ADPCM_B ? 13 : 12) : super.masked(group, ch);
+        return group == Group.PCM ? chip().channel(chipId, ch == ADPCM_B ? 13 : 12) : super.muteChannel(group, ch);
     }
 
     /** port 1 of the register file, where the ADPCM-A section is */
@@ -255,13 +256,13 @@ public class Ym2610Reader extends OpnFmReader {
     @Override public int priority() { return 30; }
 
     @Override
-    protected boolean fmMasked(int ch) {
-        return chip().getMask(chipId, ch < 6 ? ch : 9 + ch - 6);
+    protected BaseChip.Channel fmMute(int ch) {
+        return chip().channel(chipId, ch < 6 ? ch : 9 + ch - 6);
     }
 
     @Override
-    protected boolean ssgMasked(int s) {
-        return chip().getMask(chipId, 6 + s);
+    protected BaseChip.Channel ssgMute(int s) {
+        return chip().channel(chipId, 6 + s);
     }
     /** the chip's channel state, read back once a frame */
     private Map<String, Object> info;

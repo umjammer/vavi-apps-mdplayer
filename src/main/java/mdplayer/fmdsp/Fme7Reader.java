@@ -138,9 +138,4 @@ public class Fme7Reader extends ChipReader {
         out.note = sounding && tone(ch) && period > 0
                 ? Notes.noteOf(clock / (16.0 * period)) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

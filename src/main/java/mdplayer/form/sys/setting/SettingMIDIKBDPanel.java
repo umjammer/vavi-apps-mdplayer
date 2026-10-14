@@ -11,10 +11,11 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import mdplayer.Common;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import mdplayer.form.sys.FormSetting;
 
@@ -51,19 +52,19 @@ public class SettingMIDIKBDPanel extends SettingTab {
     private final JCheckBox rbFM4;
     private final JCheckBox rbFM1;
     private final JPanel groupBox2;
-    private final JTextArea tbCCFadeout;
-    private final JTextArea tbCCPause;
-    private final JTextArea tbCCSlow;
-    private final JTextArea tbCCPrevious;
-    private final JTextArea tbCCNext;
-    private final JTextArea tbCCFast;
-    private final JTextArea tbCCStop;
-    private final JTextArea tbCCPlay;
-    private final JTextArea tbCCCopyLog;
+    private final JTextField tbCCFadeout;
+    private final JTextField tbCCPause;
+    private final JTextField tbCCSlow;
+    private final JTextField tbCCPrevious;
+    private final JTextField tbCCNext;
+    private final JTextField tbCCFast;
+    private final JTextField tbCCStop;
+    private final JTextField tbCCPlay;
+    private final JTextField tbCCCopyLog;
     private final JLabel label17;
-    private final JTextArea tbCCDelLog;
+    private final JTextField tbCCDelLog;
     private final JLabel label15;
-    private final JTextArea tbCCChCopy;
+    private final JTextField tbCCChCopy;
     private final JLabel label9;
     private final JLabel label8;
     private final JLabel pictureBox1;
@@ -86,19 +87,19 @@ public class SettingMIDIKBDPanel extends SettingTab {
         this.pictureBox3 = new JLabel();
         this.pictureBox2 = new JLabel();
         this.pictureBox1 = new JLabel();
-        this.tbCCFadeout = new JTextArea();
-        this.tbCCPause = new JTextArea();
-        this.tbCCSlow = new JTextArea();
-        this.tbCCPrevious = new JTextArea();
-        this.tbCCNext = new JTextArea();
-        this.tbCCFast = new JTextArea();
-        this.tbCCStop = new JTextArea();
-        this.tbCCPlay = new JTextArea();
-        this.tbCCCopyLog = new JTextArea();
+        this.tbCCFadeout = new JTextField();
+        this.tbCCPause = new JTextField();
+        this.tbCCSlow = new JTextField();
+        this.tbCCPrevious = new JTextField();
+        this.tbCCNext = new JTextField();
+        this.tbCCFast = new JTextField();
+        this.tbCCStop = new JTextField();
+        this.tbCCPlay = new JTextField();
+        this.tbCCCopyLog = new JTextField();
         this.label17 = new JLabel();
-        this.tbCCDelLog = new JTextArea();
+        this.tbCCDelLog = new JTextField();
         this.label15 = new JLabel();
-        this.tbCCChCopy = new JTextArea();
+        this.tbCCChCopy = new JTextField();
         this.label8 = new JLabel();
         this.label9 = new JLabel();
         this.gbUseChannel = new JPanel();
@@ -163,60 +164,18 @@ public class SettingMIDIKBDPanel extends SettingTab {
         //
         // gbMIDIKeyboard
         //
-        this.gbMIDIKeyboard.add(this.pictureBox8);
-        this.gbMIDIKeyboard.add(this.pictureBox7);
-        this.gbMIDIKeyboard.add(this.pictureBox6);
-        this.gbMIDIKeyboard.add(this.pictureBox5);
-        this.gbMIDIKeyboard.add(this.pictureBox4);
-        this.gbMIDIKeyboard.add(this.pictureBox3);
-        this.gbMIDIKeyboard.add(this.pictureBox2);
-        this.gbMIDIKeyboard.add(this.pictureBox1);
-        this.gbMIDIKeyboard.add(this.tbCCFadeout);
-        this.gbMIDIKeyboard.add(this.tbCCPause);
-        this.gbMIDIKeyboard.add(this.tbCCSlow);
-        this.gbMIDIKeyboard.add(this.tbCCPrevious);
-        this.gbMIDIKeyboard.add(this.tbCCNext);
-        this.gbMIDIKeyboard.add(this.tbCCFast);
-        this.gbMIDIKeyboard.add(this.tbCCStop);
-        this.gbMIDIKeyboard.add(this.tbCCPlay);
-        this.gbMIDIKeyboard.add(this.tbCCCopyLog);
-        this.gbMIDIKeyboard.add(this.label17);
-        this.gbMIDIKeyboard.add(this.tbCCDelLog);
-        this.gbMIDIKeyboard.add(this.label15);
-        this.gbMIDIKeyboard.add(this.tbCCChCopy);
-        this.gbMIDIKeyboard.add(this.label8);
-        this.gbMIDIKeyboard.add(this.label9);
-        this.gbMIDIKeyboard.add(this.gbUseChannel);
-        this.gbMIDIKeyboard.add(this.cmbMIDIIN);
-        this.gbMIDIKeyboard.add(this.label5);
         this.gbMIDIKeyboard.setName("gbMIDIKeyboard");
         //
         // gbUseChannel
         //
-        this.gbUseChannel.add(this.rbMONO);
-        this.gbUseChannel.add(this.rbPOLY);
-        this.gbUseChannel.add(this.groupBox7);
-        this.gbUseChannel.add(this.groupBox2);
         this.gbUseChannel.setName("gbUseChannel");
         //
         // groupBox2
         //
-        this.groupBox2.add(this.cbFM1);
-        this.groupBox2.add(this.cbFM6);
-        this.groupBox2.add(this.cbFM2);
-        this.groupBox2.add(this.cbFM5);
-        this.groupBox2.add(this.cbFM3);
-        this.groupBox2.add(this.cbFM4);
         this.groupBox2.setName("groupBox2");
         //
         // groupBox7
         //
-        this.groupBox7.add(this.rbFM6);
-        this.groupBox7.add(this.rbFM3);
-        this.groupBox7.add(this.rbFM5);
-        this.groupBox7.add(this.rbFM2);
-        this.groupBox7.add(this.rbFM4);
-        this.groupBox7.add(this.rbFM1);
         this.groupBox7.setName("groupBox7");
         //
         // label15
@@ -359,9 +318,38 @@ public class SettingMIDIKBDPanel extends SettingTab {
         //
         // tpMIDIKBD
         //
-        this.add(this.cbUseMIDIKeyboard);
-        this.add(this.gbMIDIKeyboard);
         this.setName("tpMIDIKBD");
+        // layout
+        new Grid(Grid.group(this.groupBox7))
+                .add(this.rbFM1).add(this.rbFM2).add(this.rbFM3).next()
+                .add(this.rbFM4).add(this.rbFM5).add(this.rbFM6).end();
+        new Grid(Grid.group(this.groupBox2))
+                .add(this.cbFM1).add(this.cbFM2).add(this.cbFM3).next()
+                .add(this.cbFM4).add(this.cbFM5).add(this.cbFM6).end();
+        new Grid(Grid.group(this.gbUseChannel))
+                .add(this.rbMONO).add(this.rbPOLY).next()
+                .add(this.groupBox7).add(this.groupBox2).end();
+        for (JTextField field : new JTextField[] {this.tbCCChCopy, this.tbCCDelLog, this.tbCCCopyLog,
+                this.tbCCStop, this.tbCCPause, this.tbCCFadeout, this.tbCCPrevious,
+                this.tbCCSlow, this.tbCCPlay, this.tbCCFast, this.tbCCNext}) {
+            field.setColumns(3);
+        }
+        JPanel transport = Grid.panel()
+                .add(this.tbCCStop).add(this.pictureBox4).add(this.tbCCPause).add(this.pictureBox3)
+                .add(this.tbCCFadeout).add(this.pictureBox1).add(this.tbCCPrevious).add(this.pictureBox2).next()
+                .add(this.tbCCSlow).add(this.pictureBox5).add(this.tbCCPlay).add(this.pictureBox6)
+                .add(this.tbCCFast).add(this.pictureBox7).add(this.tbCCNext).add(this.pictureBox8).build();
+        new Grid(Grid.group(this.gbMIDIKeyboard))
+                .add(this.label5).fill(this.cmbMIDIIN).next()
+                .span(this.gbUseChannel).next()
+                .span(this.label8).next()
+                .add(this.tbCCChCopy).span(this.label9).next()
+                .add(this.tbCCDelLog).span(this.label15).next()
+                .add(this.tbCCCopyLog).span(this.label17).next()
+                .span(transport).end();
+        new Grid(this)
+                .add(this.cbUseMIDIKeyboard).next()
+                .grow(this.gbMIDIKeyboard);
     }
 
     @Override

@@ -48,11 +48,6 @@ public class K051649Chip extends BaseChip {
             0, 0
     };
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false},
-            {false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -68,15 +63,12 @@ public class K051649Chip extends BaseChip {
         chip.start(1, 100, 200);
     }
 
+    /** the key on register is filtered on its way in, see {@link #write} */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            this.mask[chipId][ch] = true;
-            write(chipId, (3 << 1) | 1, keyOnOff[chipId], EnmModel.VirtualModel);
-        } else {
-            this.mask[chipId][ch] = false;
-            write(chipId, (3 << 1) | 1, keyOnOff[chipId], EnmModel.VirtualModel);
-        }
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
+        // re-send the key ons the chip already has, so the mute takes on the running note
+        write(chipId, (3 << 1) | 1, keyOnOff[chipId], EnmModel.VirtualModel);
     }
 
     public void write(int chipId, int adr, int data, EnmModel model) {
@@ -85,11 +77,11 @@ public class K051649Chip extends BaseChip {
         if ((adr & 1) != 0) {
             if ((adr >> 1) == 3) { // keyonoff
                 keyOnOff[chipId] = (byte) data;
-                data &= mask[chipId][0] ? 0xfe : 0xff;
-                data &= mask[chipId][1] ? 0xfd : 0xff;
-                data &= mask[chipId][2] ? 0xfb : 0xff;
-                data &= mask[chipId][3] ? 0xf7 : 0xff;
-                data &= mask[chipId][4] ? 0xef : 0xff;
+                data &= isMuted(chipId, 0) ? 0xfe : 0xff;
+                data &= isMuted(chipId, 1) ? 0xfd : 0xff;
+                data &= isMuted(chipId, 2) ? 0xfb : 0xff;
+                data &= isMuted(chipId, 3) ? 0xf7 : 0xff;
+                data &= isMuted(chipId, 4) ? 0xef : 0xff;
             }
         }
 
@@ -153,10 +145,5 @@ public class K051649Chip extends BaseChip {
     public void softReset(EnmModel model) {
         softReset(0, model);
         softReset(1, model);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

@@ -7,9 +7,10 @@ import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -42,7 +43,7 @@ public class SettingMIDIExpPanel extends SettingTab {
     private final JCheckBox cbMIDIPlayless;
     private final JButton btnMIDIOutputPath;
     private final JLabel lblOutputPath;
-    private final JTextArea tbMIDIOutputPath;
+    private final JTextField tbMIDIOutputPath;
     private final JCheckBox cbMIDIKeyOnFnum;
 
     public SettingMIDIExpPanel() {
@@ -66,7 +67,7 @@ public class SettingMIDIExpPanel extends SettingTab {
         this.cbMIDIPlayless = new JCheckBox();
         this.btnMIDIOutputPath = new JButton();
         this.lblOutputPath = new JLabel();
-        this.tbMIDIOutputPath = new JTextArea();
+        this.tbMIDIOutputPath = new JTextField();
 
         //
         // btnMIDIOutputPath
@@ -142,29 +143,10 @@ public class SettingMIDIExpPanel extends SettingTab {
         //
         // gbMIDIExport
         //
-        this.gbMIDIExport.add(this.cbMIDIKeyOnFnum);
-        this.gbMIDIExport.add(this.cbMIDIUseVOPM);
-        this.gbMIDIExport.add(this.groupBox6);
-        this.gbMIDIExport.add(this.cbMIDIPlayless);
-        this.gbMIDIExport.add(this.btnMIDIOutputPath);
-        this.gbMIDIExport.add(this.lblOutputPath);
-        this.gbMIDIExport.add(this.tbMIDIOutputPath);
         this.gbMIDIExport.setName("gbMIDIExport");
         //
         // groupBox6
         //
-        this.groupBox6.add(this.cbMIDIYM2612);
-        this.groupBox6.add(this.cbMIDISN76489Sec);
-        this.groupBox6.add(this.cbMIDIYM2612Sec);
-        this.groupBox6.add(this.cbMIDISN76489);
-        this.groupBox6.add(this.cbMIDIYM2151);
-        this.groupBox6.add(this.cbMIDIYM2610BSec);
-        this.groupBox6.add(this.cbMIDIYM2151Sec);
-        this.groupBox6.add(this.cbMIDIYM2610B);
-        this.groupBox6.add(this.cbMIDIYM2203);
-        this.groupBox6.add(this.cbMIDIYM2608Sec);
-        this.groupBox6.add(this.cbMIDIYM2203Sec);
-        this.groupBox6.add(this.cbMIDIYM2608);
         this.groupBox6.setName("groupBox6");
         //
         // lblOutputPath
@@ -173,9 +155,24 @@ public class SettingMIDIExpPanel extends SettingTab {
         //
         // tabMIDIExp
         //
-        this.add(this.cbUseMIDIExport);
-        this.add(this.gbMIDIExport);
         this.setName("tabMIDIExp");
+        // layout
+        new Grid(Grid.group(this.groupBox6))
+                .add(this.cbMIDIYM2612).add(this.cbMIDIYM2612Sec).next()
+                .add(this.cbMIDIYM2151).add(this.cbMIDIYM2151Sec).next()
+                .add(this.cbMIDIYM2203).add(this.cbMIDIYM2203Sec).next()
+                .add(this.cbMIDIYM2608).add(this.cbMIDIYM2608Sec).next()
+                .add(this.cbMIDIYM2610B).add(this.cbMIDIYM2610BSec).next()
+                .add(this.cbMIDISN76489).add(this.cbMIDISN76489Sec).end();
+        new Grid(Grid.group(this.gbMIDIExport))
+                .add(this.cbMIDIPlayless, 3).next()
+                .add(this.cbMIDIUseVOPM, 3).next()
+                .add(this.cbMIDIKeyOnFnum, 3).next()
+                .add(this.lblOutputPath).fill(this.tbMIDIOutputPath).add(this.btnMIDIOutputPath).next()
+                .add(this.groupBox6, 3).end();
+        new Grid(this)
+                .add(this.cbUseMIDIExport).next()
+                .grow(this.gbMIDIExport);
         //
         // tbMIDIOutputPath
         //

@@ -77,9 +77,4 @@ public class Ga20Reader extends PcmSlotReader {
         double rate = freq < 256 ? clock / 4.0 / (256 - freq) : 0;
         out.note = rate > 0 ? Notes.noteOfRatio(rate / referenceRate) : -1;
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return false; // the chip has no channel mask of its own
-    }
 }

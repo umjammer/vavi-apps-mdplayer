@@ -157,7 +157,7 @@ public abstract class MidiChannelsReader implements FmDspChipReader {
         double cents = (channels.bend(ch) - 0x2000) / 8192.0 * BEND_SEMITONES * 100;
         int semitones = (int) Math.round(cents / 100);
         out.note = channels.note(ch) + semitones;
-        out.detune = (int) Math.round(Math.max(-50, Math.min(50, cents - semitones * 100.0)));
+        out.detune = (int) Math.round(Math.clamp(cents - semitones * 100.0, -50, 50));
         out.amplitude = channels.velocity(ch) * channels.volume(ch) * channels.expression(ch) / (127.0 * 127 * 127);
     }
 

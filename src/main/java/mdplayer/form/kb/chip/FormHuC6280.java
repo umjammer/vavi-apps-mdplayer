@@ -146,7 +146,7 @@ public class FormHuC6280 extends FormChipBase<FormHuC6280.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(HuC6280Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(HuC6280Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -194,9 +194,9 @@ public class FormHuC6280 extends FormChipBase<FormHuC6280.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 6; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(HuC6280Chip.class, chipId, ch);
+                            parent.setMuted(HuC6280Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(HuC6280Chip.class, chipId, ch);
+                            parent.toggleMute(HuC6280Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -209,12 +209,12 @@ public class FormHuC6280 extends FormChipBase<FormHuC6280.Params> {
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
-                    parent.setChannelMask(HuC6280Chip.class, chipId, ch);
+                    parent.toggleMute(HuC6280Chip.class, chipId, ch);
                     return;
                 }
 
                 // Unmask.
-                for (ch = 0; ch < 6; ch++) parent.resetChannelMask(HuC6280Chip.class, chipId, ch);
+                for (ch = 0; ch < 6; ch++) parent.setMuted(HuC6280Chip.class, chipId, ch, false);
                 return;
             }
 
@@ -431,28 +431,6 @@ public class FormHuC6280 extends FormChipBase<FormHuC6280.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return HuC6280Chip.class; }
         @Override public String title(int chipId) { return "OotakeHuC6280 (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormHuC6280(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            HuC6280Chip c = audio.plugin.chipRegister.chip(HuC6280Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(HuC6280Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(HuC6280Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(HuC6280Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 6; ch++)
-                forceChannelMask(audio, HuC6280Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(HuC6280Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(27, MDSound.Chip.MAIN_TAG, HuC6280Chip.class, "huc6280", 120));

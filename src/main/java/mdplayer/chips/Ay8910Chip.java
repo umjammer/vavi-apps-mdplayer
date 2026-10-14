@@ -35,11 +35,6 @@ public class Ay8910Chip extends BaseChip {
 
     private final int[] fadeoutVolume = {0, 0};
 
-    private final boolean[][] mask = {
-            {false, false, false},
-            {false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -64,24 +59,10 @@ public class Ay8910Chip extends BaseChip {
     public void write(int chipId, int addr, int data, EnmModel model) {
         fireEventHappened("led.on", chipId);
 
-        if (model == EnmModel.VirtualModel)
-            // psg mixer
-            if (addr == 0x07) {
-                int maskData = 0;
-                if (mask[chipId][0])
-                    maskData |= 0x9 << 0;
-                if (mask[chipId][1])
-                    maskData |= 0x9 << 1;
-                if (mask[chipId][2])
-                    maskData |= 0x9 << 2;
-                data |= maskData;
-            }
-
         // psg level
         if ((addr == 0x08 || addr == 0x09 || addr == 0x0a)) {
             int d = fadeoutVolume[chipId] >> 3;
             data = Math.max(data - d, 0);
-            data = mask[chipId][addr - 0x08] ? 0 : data;
         }
 
         if (model == EnmModel.VirtualModel) {
@@ -111,15 +92,6 @@ public class Ay8910Chip extends BaseChip {
         write(chipId, 0x0b, 0x00, model);
         write(chipId, 0x0c, 0x00, model);
         write(chipId, 0x0d, 0x00, model);
-    }
-
-    @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-
-        // re-send the level the chip already has, so the mute takes on the running note
-        int[] regs = (int[]) getInfo(chipId).get("register");
-        if (regs != null) write(chipId, 0x8 + ch, regs[8 + ch], EnmModel.VirtualModel);
     }
 
     @Override
@@ -162,10 +134,5 @@ public class Ay8910Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

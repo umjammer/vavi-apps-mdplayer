@@ -51,11 +51,6 @@ public class Sn76489Chip extends BaseChip {
 
     private final int[] fadeout = {0, 0};
 
-    private final boolean[][] mask = {
-            {false, false, false, false},
-            {false, false, false, false}
-    };
-
     @Deprecated
     private final int[] latchedRegister = {
             0, 0
@@ -120,7 +115,7 @@ public class Sn76489Chip extends BaseChip {
 
                 int v = data & 0xf;
                 v = v + fadeout[chipId];
-                v = mask[chipId][(data & 0x60) >> 5] ? 15 : v;
+                v = isMuted(chipId, (data & 0x60) >> 5) ? 15 : v;
                 v = Math.min(v, 15);
                 data = (data & 0xf0) | v;
             }
@@ -212,15 +207,11 @@ public class Sn76489Chip extends BaseChip {
         );
     }
 
+    /** the levels are filtered on their way in, see {@link #write} */
     @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        if (mask) {
-            this.mask[chipId][ch] = true;
-            sendVolumeForced(chipId, ch);
-        } else {
-            this.mask[chipId][ch] = false;
-            sendVolumeForced(chipId, ch);
-        }
+    protected void applyMute(int chipId, int ch) {
+        // re-send the level the chip already has, so the mute takes on the running note
+        if (ch >= 0 && ch < 4) sendVolumeForced(chipId, ch);
     }
 
     private void sendVolumeForced(int chipId, int ch) {
@@ -238,10 +229,5 @@ public class Sn76489Chip extends BaseChip {
     public void clearFadeout() {
         setFadeout(0, 0);
         setFadeout(1, 0);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

@@ -594,6 +594,7 @@ private int CC;
         //checkTerminal();
         detectLoop();
         detectSilent();
+        detectTimeout();
         updateAtTrail.accept(playtime_detected);
 
 if (CC++ % INTERVAL == 0) { logger.log(Level.TRACE, "NSF: %d, %d, pc: %04x".formatted(out[0], out[1], this.cpu.p)); }
@@ -612,6 +613,22 @@ private static final int INTERVAL = 1024;
             );
         }
     }
+
+    /**
+     * A song whose frame by frame writes never repeat exactly is never matched by {@link #detectLoop}:
+     * Capcom's driver keeps its tempo in a fraction, so the notes loop every 28.6 s but each pass sits
+     * on different frames and the volume and pitch writes between them never line up again. Gives up
+     * after {@link #maxPlayTimeMs} the way NSFPlay does with its default play time.
+     */
+    private void detectTimeout() {
+        if (time_in_ms > maxPlayTimeMs && !playtime_detected) {
+logger.log(Level.DEBUG, "end: gave up after %ds".formatted(maxPlayTimeMs / 1000));
+            playtime_detected = true;
+            updateAtDetectSilent.accept((long) time_in_ms * this.sampleRate / 1000);
+        }
+    }
+
+    private static final int maxPlayTimeMs = 5 * 60 * 1000;
 
     private void detectSilent() {
         if (silent_length > sampleRate * 3L && !playtime_detected) {

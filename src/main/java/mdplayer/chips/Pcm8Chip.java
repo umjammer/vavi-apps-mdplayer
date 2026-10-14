@@ -35,10 +35,6 @@ public class Pcm8Chip extends BaseChip {
     public static final int AUTO = -1;
 
     // not view
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false}
-    };
 
     @Override
     @SuppressWarnings("unchecked")
@@ -107,10 +103,6 @@ public class Pcm8Chip extends BaseChip {
         if (port == -1 && addr == -1 && data == -1)
             return;
         context.mds.inst(X68kYm2151Inst.class).write(chipId, port, addr, data);
-    }
-
-    public void setMask(int chipId, int ch, boolean mask) {
-        this.mask[chipId][ch] = mask;
     }
 
     //

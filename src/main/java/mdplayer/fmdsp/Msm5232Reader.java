@@ -167,9 +167,4 @@ public class Msm5232Reader extends ChipReader {
         out.volume = eg >> 7; // 0..16
         out.amplitude = sounding ? eg / egMax : 0;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

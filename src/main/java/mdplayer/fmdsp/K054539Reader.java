@@ -113,9 +113,4 @@ public class K054539Reader extends PcmSlotReader {
     private static int weight(int position) {
         return (int) (Math.sqrt(position) * 1000);
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return false; // the chip has no channel mask of its own
-    }
 }

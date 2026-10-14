@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.NpNesChip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackInfo;
@@ -124,8 +125,9 @@ public class FdsReader extends ChipReader {
         out.note = sounding ? Notes.noteOf(freq * cpuClock / step) : -1;
     }
 
+    /** the chip is the one channel, whichever row shows it */
     @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, 0);
+    public BaseChip.Channel muteChannel(Group group, int ch) {
+        return super.muteChannel(group, 0);
     }
 }

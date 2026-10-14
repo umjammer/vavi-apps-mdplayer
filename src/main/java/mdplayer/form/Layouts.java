@@ -13,10 +13,12 @@ import java.awt.Point;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import javax.swing.AbstractButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.MenuElement;
+import javax.swing.border.TitledBorder;
 
 
 /**
@@ -97,6 +99,42 @@ public final class Layouts {
             text(bundle, item.getComponent());
             captions(item, bundle);
         }
+    }
+
+    /**
+     * Gives a laid out tree the captions the designer gave it: buttons, labels, tabs and group
+     * boxes made by {@link Grid#group}. Only the blank ones are filled, so a caption the code set
+     * wins — the {@code .resx} names are not unique across the user controls that were merged in.
+     */
+    public static void labels(Container container, ResourceBundle bundle) {
+        for (Component component : container.getComponents()) {
+            String value = string(bundle, component, ".Text");
+            if (value != null) {
+                switch (component) {
+                    case AbstractButton button when blank(button.getText()) -> button.setText(value);
+                    case JLabel label when blank(label.getText()) -> label.setText(value);
+                    case JComponent c when c.getBorder() instanceof TitledBorder border && blank(border.getTitle()) ->
+                            border.setTitle(value);
+                    default -> {
+                    }
+                }
+            }
+
+            if (component instanceof JTabbedPane tabbed) {
+                for (int i = 0; i < tabbed.getTabCount(); i++) {
+                    // the pages were added by add(page), which titles the tab after the component
+                    String title = string(bundle, tabbed.getComponentAt(i), ".Text");
+                    if (title != null) tabbed.setTitleAt(i, title);
+                }
+            }
+            if (component instanceof Container child) {
+                labels(child, bundle);
+            }
+        }
+    }
+
+    private static boolean blank(String text) {
+        return text == null || text.isBlank();
     }
 
     /** The designer put the labels and the button captions in the {@code .resx} too. */

@@ -20,7 +20,7 @@ import vavi.sound.mfi.MfiChip;
 
 
 /**
- * Measures how loud each MFi synthesizer plays, for {@link mdplayer.driver.mfi.MldSynth#getGain()}.
+ * Measures how loud each MFi synthesizer plays, for {@code mdplayer.driver.mfi.MldSynth#getGain()}.
  * <p>
  * The mfi driver renders on a different synthesizer per chip, and they are ~17 dB apart for the
  * same kind of song, so one {@code MasterVolume} can't level them. This picks songs of each chip

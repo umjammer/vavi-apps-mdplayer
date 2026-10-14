@@ -172,9 +172,9 @@ public class FormS5B extends FormChipBase<FormS5B.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 3; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Fme7Chip.class, chipId, ch);
+                            parent.setMuted(Fme7Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Fme7Chip.class, chipId, ch);
+                            parent.toggleMute(Fme7Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -187,12 +187,12 @@ public class FormS5B extends FormChipBase<FormS5B.Params> {
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
-                    parent.setChannelMask(Fme7Chip.class, chipId, ch);
+                    parent.toggleMute(Fme7Chip.class, chipId, ch);
                     return;
                 }
 
                 // Unmask.
-                for (ch = 0; ch < 3; ch++) parent.resetChannelMask(Fme7Chip.class, chipId, ch);
+                for (ch = 0; ch < 3; ch++) parent.setMuted(Fme7Chip.class, chipId, ch, false);
             }
         }
     };

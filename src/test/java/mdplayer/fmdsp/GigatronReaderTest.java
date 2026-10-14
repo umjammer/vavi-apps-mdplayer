@@ -84,7 +84,7 @@ class GigatronReaderTest {
                 if (reader.active(FmDspChipReader.Group.FM)) sawActive = true;
                 FmDspChannel c = new FmDspChannel();
                 reader.read(FmDspChipReader.Group.FM, 0, c);
-                if (c.sounding && (notes.isEmpty() || notes.get(notes.size() - 1) != c.note)) notes.add(c.note);
+                if (c.sounding && (notes.isEmpty() || notes.getLast() != c.note)) notes.add(c.note);
                 FmDspChannel idle = new FmDspChannel();
                 reader.read(FmDspChipReader.Group.FM, 2, idle);
                 assertFalse(idle.sounding, "channel 3 is never written");

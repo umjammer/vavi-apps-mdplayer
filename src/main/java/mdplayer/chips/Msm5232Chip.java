@@ -24,9 +24,6 @@ public class Msm5232Chip extends BaseChip {
 
     public static final int CHANNELS = 8;
 
-    /** bit n: voice n muted */
-    private final int[] mask = {0, 0};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -46,29 +43,11 @@ public class Msm5232Chip extends BaseChip {
      * {@code clock}, {@code control1}/{@code control2} (bit 4 ARM, bit 3-0 2'/4'/8'/16' enable),
      * {@code extVol1}/{@code extVol2} (0..15), and {@code voices}, a list of eight maps with
      * {@code pitch} (the pitch code, -1 before the first key on), {@code keyOn}, {@code noise},
-     * {@code egSection} (0 attack, 1 decay, 2 release, -1 off), {@code egVolume} (0..2048) and
-     * {@code mute}.
+     * {@code egSection} (0 attack, 1 decay, 2 release, -1 off) and {@code egVolume} (0..2048).
      */
     @Override
     public Map<String, Object> getInfo(int chipId) {
         Msm5232Inst inst = context.mds.inst(Msm5232Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        Msm5232Inst inst = context.mds.inst(Msm5232Inst.class);
-        if (mask) {
-            this.mask[chipId] |= 1 << ch;
-            if (inst != null) inst.setMask(chipId, ch);
-        } else {
-            this.mask[chipId] &= ~(1 << ch);
-            if (inst != null) inst.resetMask(chipId, ch);
-        }
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < CHANNELS && (mask[chipId] & (1 << ch)) != 0;
     }
 }

@@ -83,9 +83,4 @@ public class YmZ280BReader extends PcmSlotReader {
         out.pan = panOf(0x10 - pan, pan);
         out.note = frequency > 0 ? Notes.noteOfRatio(frequency / referenceRate) : -1;
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return boolOf(ch, "mute");
-    }
 }

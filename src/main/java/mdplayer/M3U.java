@@ -1,18 +1,19 @@
 package mdplayer;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
+import java.util.Map;
 
 import mdplayer.driver.FileFormat;
 import vavi.util.archive.Archive;
-import vavi.util.archive.Archives;
 import vavi.util.archive.Entry;
+import vavi.util.archive.m3u.M3uArchiveSpi;
+import vavi.util.archive.spi.ArchiveSpi;
 
 import static java.lang.System.getLogger;
 import static mdplayer.Common.charset;
@@ -22,27 +23,17 @@ public class M3U {
 
     private static final Logger logger = getLogger(M3U.class.getName());
 
+    /** reads the playlists, ms932 is for the ones that are not UTF-8 */
+    private static final ArchiveSpi m3uSpi = new M3uArchiveSpi();
+
+    /** an m3u needs no #EXTM3U header, so the spi is asked directly instead of {@link vavi.util.archive.Archives} */
+    private static Archive open(Object m3u) throws IOException {
+        return m3uSpi.createArchiveInstance(m3u, Map.of(M3uArchiveSpi.ENV_KEY_CHARSET, charset));
+    }
+
     public static PlayList loadM3U(String filename, String rootPath) {
         try {
-            PlayList pl = new PlayList();
-
-            try (var sr = new Scanner(Files.newInputStream(Path.of(filename)), charset)) {
-                String line;
-                while (sr.hasNextLine()) {
-                    line = sr.nextLine().trim();
-                    if (line.isEmpty()) continue;
-                    if (line.charAt(0) == '#') continue;
-
-                    PlayList.Music ms = analyzeLine(line, rootPath);
-                    if (ms != null) {
-                        ms.format = FileFormat.getFileFormat(ms.fileName);
-                        pl.getMusics().add(ms);
-                    }
-                }
-            }
-
-            return pl;
-
+            return toPlayList(open(new File(filename)), rootPath, null);
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
             return new PlayList();
@@ -51,55 +42,36 @@ public class M3U {
 
     public static PlayList loadM3U(Archive archive, Entry entry, String zipFileName) {
         try {
-            PlayList pl = new PlayList();
-
-            try (Scanner sr = new Scanner(archive.getInputStream(entry), charset)) {
-                String line;
-                while (sr.hasNextLine()) {
-                    line = sr.nextLine();
-                    line = line.trim();
-                    if (line.isEmpty()) continue;
-                    if (line.charAt(0) == '#') continue;
-
-                    PlayList.Music ms = analyzeLine(line, "");
-                    ms.format = FileFormat.getFileFormat(ms.fileName);
-                    ms.arcFileName = zipFileName;
-                    pl.getMusics().add(ms);
-                }
-            }
-
-            return pl;
-
+            return toPlayList(open(archive.getInputStream(entry)), "", zipFileName);
         } catch (Exception ex) {
             logger.log(Level.ERROR, ex.getMessage(), ex);
             return new PlayList();
         }
     }
 
-    private static PlayList loadM3U(String archiveFile, String fileName, String zipFileName) {
+    /** an entry's name is the whole line, nezplug's "::" fields included */
+    private static PlayList toPlayList(Archive m3u, String rootPath, String zipFileName) throws IOException {
+        PlayList pl = new PlayList();
         try {
-            PlayList pl = new PlayList();
-            Archive cmd = Archives.getArchive(new File(archiveFile));
-            byte[] buf = cmd.getInputStream(cmd.getEntry(fileName)).readAllBytes();
-            String[] text = new String(buf, charset).split("\n");
-
-            for (String txt : text) {
-                String line = txt.trim();
-                if (line.isEmpty()) continue;
-                if (line.charAt(0) == '#') continue;
-
-                PlayList.Music ms = analyzeLine(line, "");
+            for (Entry e : m3u.entries()) {
+                PlayList.Music ms = analyzeLine(e.getName().trim(), rootPath);
+                if (ms == null) continue;
+                // an #EXTINF title stands in when the line gives none
+                if (ms.title == null || ms.title.isEmpty()) {
+                    String title = e.getComment();
+                    if (title != null && !title.isEmpty()) {
+                        ms.title = title;
+                        ms.titleJ = title;
+                    }
+                }
                 ms.format = FileFormat.getFileFormat(ms.fileName);
-                ms.arcFileName = zipFileName;
+                if (zipFileName != null) ms.arcFileName = zipFileName;
                 pl.getMusics().add(ms);
             }
-
-            return pl;
-
-        } catch (Exception ex) {
-            logger.log(Level.ERROR, ex.getMessage(), ex);
-            return new PlayList();
+        } finally {
+            m3u.close();
         }
+        return pl;
     }
 
     private static PlayList.Music analyzeLine(String line, String rootPath) {

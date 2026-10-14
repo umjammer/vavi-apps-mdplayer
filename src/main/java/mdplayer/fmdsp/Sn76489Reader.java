@@ -125,9 +125,4 @@ public class Sn76489Reader extends ChipReader {
         if (right) return Pan.RIGHT;
         return Pan.NONE;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

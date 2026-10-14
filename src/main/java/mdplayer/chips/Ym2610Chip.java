@@ -88,11 +88,6 @@ public class Ym2610Chip extends BaseChip {
 
     private final int[] nowFadeoutVol = {0, 0};
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false}
-    };
-
     @SuppressWarnings("unchecked")
     private Class<? extends AdpcmEnabledInstrument> _inst(int chipId) {
         return (Class<? extends AdpcmEnabledInstrument>) inst(chipId);
@@ -298,7 +293,7 @@ public class Ym2610Chip extends BaseChip {
             if (ch != 3) {
                 if ((algM[al] & (1 << slot)) > 0) {
                     data = Math.min(data + nowFadeoutVol[chipId], 127);
-                    data = mask[chipId][port * 3 + ch] ? 127 : data;
+                    data = isMuted(chipId, port * 3 + ch) ? 127 : data;
                 }
             }
         }
@@ -307,7 +302,7 @@ public class Ym2610Chip extends BaseChip {
             int ch = (addr & 0x3);
             int al = data & 0x07; // AL
 
-            if (ch != 3 && mask[chipId][ch]) {
+            if (ch != 3 && isMuted(chipId, ch)) {
                 for (int slot = 0; slot < 4; slot++) {
                     if ((algM[al] & (1 << slot)) != 0) {
                         int tslot = (slot == 1 ? 2 : (slot == 2 ? 1 : slot)) * 4;
@@ -321,9 +316,9 @@ public class Ym2610Chip extends BaseChip {
         // ssg mixer
         if (port == 0 && addr == 0x07) {
             int maskData = 0;
-            if (mask[chipId][6]) maskData |= 0x9 << 0;
-            if (mask[chipId][7]) maskData |= 0x9 << 1;
-            if (mask[chipId][8]) maskData |= 0x9 << 2;
+            if (isMuted(chipId, 6)) maskData |= 0x9 << 0;
+            if (isMuted(chipId, 7)) maskData |= 0x9 << 1;
+            if (isMuted(chipId, 8)) maskData |= 0x9 << 2;
             data |= maskData;
         }
 
@@ -331,19 +326,19 @@ public class Ym2610Chip extends BaseChip {
         if (port == 0 && (addr == 0x08 || addr == 0x09 || addr == 0x0a)) {
             int d = nowFadeoutVol[chipId] >> 3;
             data = Math.max(data - d, 0);
-            data = mask[chipId][addr - 0x08 + 6] ? 0 : data;
+            data = isMuted(chipId, addr - 0x08 + 6) ? 0 : data;
         }
 
         // rhythm level
         if (port == 1 && addr == 0x01) {
             int d = nowFadeoutVol[chipId] >> 1;
             data = Math.max(data - d, 0);
-            //data = mask[chipId][12] ? 0 : data;
+            //data = isMuted(chipId, 12) ? 0 : data;
         }
 
         // Rhythm
         if (port == 1 && addr == 0x00) {
-            if (mask[chipId][12]) {
+            if (isMuted(chipId, 12)) {
                 data = 0xbf;
             }
         }
@@ -352,12 +347,12 @@ public class Ym2610Chip extends BaseChip {
         if (port == 0 && addr == 0x1b) {
             int d = nowFadeoutVol[chipId] * 2;
             data = Math.max(data - d, 0);
-            data = mask[chipId][13] ? 0 : data;
+            data = isMuted(chipId, 13) ? 0 : data;
         }
 
         // adpcm start
         if (port == 0 && addr == 0x10) {
-            if ((data & 0x80) != 0 && mask[chipId][13]) {
+            if ((data & 0x80) != 0 && isMuted(chipId, 13)) {
                 data &= 0x7f;
             }
         }
@@ -549,16 +544,16 @@ public class Ym2610Chip extends BaseChip {
         }
     }
 
+    /** FM ch3 and its extended slots mask as one */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
-        // FM ch3 and its extended slots mask as one
-        if (ch == 2 || (ch >= 9 && ch < 12)) {
-            this.mask[chipId][2] = mask;
-            this.mask[chipId][9] = mask;
-            this.mask[chipId][10] = mask;
-            this.mask[chipId][11] = mask;
-        }
+    protected long linked(int ch) {
+        return ch == 2 || (ch >= 9 && ch < 12) ? 0b1110_0000_0100 : super.linked(ch);
+    }
+
+    /** the levels are filtered on their way in, see {@link #write}; this re-sends what the chip holds */
+    @Override
+    protected void applyMute(int chipId, int ch) {
+        if (ch < 0) return;
 
         int c = (ch < 3) ? ch : (ch - 3);
         int p = (ch < 3) ? 0 : 1;
@@ -591,7 +586,7 @@ public class Ym2610Chip extends BaseChip {
             write(chipId, 0, 0x48 + 2, register[chipId][0][0x48 + 2], EnmModel.RealModel);
             write(chipId, 0, 0x4c + 2, register[chipId][0][0x4c + 2], EnmModel.RealModel);
         } else if (ch == 12) {
-            if (this.mask[chipId][12]) {
+            if (this.isMuted(chipId, 12)) {
                 write(chipId, 1, 0x00, 1, EnmModel.VirtualModel);
                 write(chipId, 1, 0x00, 1, EnmModel.RealModel);
             }
@@ -672,10 +667,5 @@ public class Ym2610Chip extends BaseChip {
         }
 
         dumpData(model, "ADPCMB", vgmAdr + 15, vgmBuf, bLen - 8);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

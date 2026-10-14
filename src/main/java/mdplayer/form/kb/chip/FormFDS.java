@@ -20,8 +20,8 @@ import mdplayer.Audio;
 import mdplayer.Chip;
 import mdplayer.Common;
 import mdplayer.Tables;
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.NesChip;
-import mdplayer.chips.NesChip.FdsChip;
 import mdplayer.chips.NpNesChip;
 import mdplayer.form.FrameBuffer;
 import mdplayer.form.ScreenPanel;
@@ -127,7 +127,13 @@ public class FormFDS extends FormChipBase<FormFDS.Params> {
         newParam.MasterVol = (int) info.get("MasterVol");
         newParam.WE = (boolean) info.get("WE");
 
-        newParam.channel.mask = audio.plugin.chipRegister.chip(NpNesChip.FdsChip.class).getMask(chipId, -1);
+        newParam.channel.mask = audio.plugin.chipRegister.chip(fds()).isMuted(chipId, 0);
+    }
+
+    /** the FDS chip of the family the song plays on: an nsf's machine, or a vgm's emulator */
+    private Class<? extends BaseChip> fds() {
+        return audio.plugin != null && audio.plugin.chipRegister.chip(NpNesChip.FdsChip.class).instances() > 0
+                ? NpNesChip.FdsChip.class : NesChip.FdsChip.class;
     }
 
     @Override
@@ -173,9 +179,9 @@ public class FormFDS extends FormChipBase<FormFDS.Params> {
                 // However, if you click on ch, the mask will be inverted.
                 if (px < 8) {
                     if (newParam.channel.mask)
-                        parent.resetChannelMask(FdsChip.class, chipId, 0);
+                        parent.setMuted(fds(), chipId, 0, false);
                     else
-                        parent.setChannelMask(FdsChip.class, chipId, 0);
+                        parent.toggleMute(fds(), chipId, 0);
                 }
                 return;
             }
@@ -184,13 +190,13 @@ public class FormFDS extends FormChipBase<FormFDS.Params> {
             if (py < 2 * 8) {
                 if (ev.getButton() == MouseEvent.BUTTON2) {
                     // Unmask.
-                    parent.resetChannelMask(FdsChip.class, chipId, 0);
+                    parent.setMuted(fds(), chipId, 0, false);
                     return;
                 }
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
-                    parent.setChannelMask(FdsChip.class, chipId, 0);
+                    parent.toggleMute(fds(), chipId, 0);
                 }
             }
         }
@@ -346,24 +352,6 @@ public class FormFDS extends FormChipBase<FormFDS.Params> {
         @Override public String category() { return "nes"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return NpNesChip.FdsChip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormFDS(frm, chipId, zoom); }
-
-        @Override public List<Class<? extends Chip>> maskChips() {
-            return List.of(NpNesChip.FdsChip.class, NesChip.FdsChip.class);
-        }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            NpNesChip.FdsChip c = audio.plugin.chipRegister.chip(NpNesChip.FdsChip.class);
-            if (!c.getMask(chipId, -1)) c.setMask(chipId, -1); else c.resetMask(chipId, -1);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            // the reset always went to the vgm-side FDS, kept as the original had it
-            audio.plugin.chipRegister.chip(NesChip.FdsChip.class).setMask(chipId, -1);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            resetChannelMask(audio, NpNesChip.FdsChip.class, chipId, 0);
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(50, MDSound.Chip.MAIN_TAG, NpNesChip.FdsChip.class, "FDS", 200));

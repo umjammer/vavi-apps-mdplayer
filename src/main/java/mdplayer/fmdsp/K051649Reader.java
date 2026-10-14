@@ -130,9 +130,4 @@ public class K051649Reader extends ChipReader {
         out.ssgTone = true;
         out.note = sounding ? Notes.noteOf(clock / (16.0 * (freq + 1))) : -1;
     }
-
-    @Override
-    public boolean masked(Group group, int ch) {
-        return chip().getMask(chipId, ch);
-    }
 }

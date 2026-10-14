@@ -22,8 +22,6 @@ import mdsound.instrument.Msm5205Inst;
  */
 public class Msm5205Chip extends BaseChip {
 
-    private final boolean[] mask = {false, false};
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
@@ -48,19 +46,5 @@ public class Msm5205Chip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         Msm5205Inst inst = context.mds.inst(Msm5205Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId] = mask;
-        Msm5205Inst inst = context.mds.inst(Msm5205Inst.class);
-        if (inst == null) return;
-        if (mask) inst.setMask(chipId, ch);
-        else inst.resetMask(chipId, ch);
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return mask[chipId];
     }
 }

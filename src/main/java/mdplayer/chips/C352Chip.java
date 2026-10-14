@@ -22,28 +22,21 @@ import mdsound.instrument.C352Inst;
  */
 public class C352Chip extends BaseChip {
 
-    private final boolean[][] mask = {
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false},
-            {false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-                    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false}
-    };
-
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends Instrument>[] implementations() {
         return new Class[] {C352Inst.class};
     }
 
+    /** {@link #write} keeps the key ons of a muted channel from the chip */
     @Override
-    protected void setMask(int chipId, int ch, boolean mask, Object... args) {
-        this.mask[chipId][ch] = mask;
+    protected void applyMute(int chipId, int ch) {
     }
 
     public void write(int chipId, int adr, int data, EnmModel model) {
         fireEventHappened("led.on", chipId);
 
-        if (adr < 0x100 && (adr % 8) == 3 && mask[chipId][adr / 8]) {
+        if (adr < 0x100 && (adr % 8) == 3 && isMuted(chipId, adr / 8)) {
             data &= 0xbfff;
         }
         if (model == EnmModel.VirtualModel)
@@ -63,10 +56,5 @@ public class C352Chip extends BaseChip {
     public Map<String, Object> getInfo(int chipId) {
         C352Inst inst = context.mds.inst(C352Inst.class);
         return inst == null ? Collections.emptyMap() : inst.getView(chipId, "info");
-    }
-
-    @Override
-    public boolean getMask(int chipId, int ch) {
-        return ch < mask[chipId].length && mask[chipId][ch];
     }
 }

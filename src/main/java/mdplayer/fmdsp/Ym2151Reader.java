@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import mdplayer.chips.BaseChip;
 import mdplayer.chips.Ym2151Chip;
 import vavi.sound.visualizer.fmdsp.LevelDataSource.Pan;
 import vavi.sound.visualizer.fmdsp.TrackDetail;
@@ -155,9 +156,8 @@ public class Ym2151Reader extends ChipReader {
     }
 
     @Override
-    public boolean masked(Group group, int slot) {
-        int ch = channelOf(slot);
-        return ch >= 0 && chip().getMask(chipId, ch);
+    public BaseChip.Channel muteChannel(Group group, int slot) {
+        return super.muteChannel(group, channelOf(slot));
     }
 
     /**

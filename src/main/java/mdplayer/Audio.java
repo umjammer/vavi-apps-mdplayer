@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.sound.sampled.AudioFormat;
@@ -157,6 +156,8 @@ logger.log(Level.DEBUG, "line: " + e.getType());
             plugin.stopped = true;
             return false;
         }
+        // the chips keep their mutes from song to song, the instruments are new every time
+        plugin.chipRegister.restoreMutes();
 //logger.log(Level.TRACE, "play: " + audio.stopped + ", " + audio.hashCode());
         listeners.forEach(l -> plugin.getDriver().addViewListener(l)); // TODO consider more
 

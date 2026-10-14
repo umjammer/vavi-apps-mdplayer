@@ -6,8 +6,9 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -44,7 +45,7 @@ public class SettingNSFPanel extends SettingTab {
     private final JCheckBox cbNFSNes_UnmuteOnReset;
     private final JLabel label21;
     private final JLabel label20;
-    private final JTextArea tbNSFFds_LPF;
+    private final JTextField tbNSFFds_LPF;
     private final JCheckBox cbNFSFds_4085Reset;
     private final JProgressBar trkbNSFLPF;
     private final JLabel label53;
@@ -80,7 +81,7 @@ public class SettingNSFPanel extends SettingTab {
         this.groupBox8 = new JPanel();
         this.label21 = new JLabel();
         this.label20 = new JLabel();
-        this.tbNSFFds_LPF = new JTextArea();
+        this.tbNSFFds_LPF = new JTextField();
         this.cbNFSFds_4085Reset = new JCheckBox();
         this.cbNSFFDSWriteDisable8000 = new JCheckBox();
 
@@ -159,43 +160,22 @@ public class SettingNSFPanel extends SettingTab {
         //
         // groupBox10
         //
-        this.groupBox10.add(this.cbNSFDmc_DPCMReverse);
-        this.groupBox10.add(this.cbNSFDmc_RandomizeTri);
-        this.groupBox10.add(this.cbNSFDmc_TriMute);
-        this.groupBox10.add(this.cbNSFDmc_RandomizeNoise);
-        this.groupBox10.add(this.cbNSFDmc_DPCMAntiClick);
-        this.groupBox10.add(this.cbNSFDmc_EnablePNoise);
-        this.groupBox10.add(this.cbNSFDmc_Enable4011);
-        this.groupBox10.add(this.cbNSFDmc_NonLinearMixer);
-        this.groupBox10.add(this.cbNSFDmc_UnmuteOnReset);
         this.groupBox10.setName("groupBox10");
         //
         // groupBox11
         //
-        this.groupBox11.add(this.cbNSFMmc5_PhaseRefresh);
-        this.groupBox11.add(this.cbNSFMmc5_NonLinearMixer);
         this.groupBox11.setName("groupBox11");
         //
         // groupBox12
         //
-        this.groupBox12.add(this.cbNSFN160_Serial);
         this.groupBox12.setName("groupBox12");
         //
         // groupBox8
         //
-        this.groupBox8.add(this.label21);
-        this.groupBox8.add(this.label20);
-        this.groupBox8.add(this.tbNSFFds_LPF);
-        this.groupBox8.add(this.cbNFSFds_4085Reset);
-        this.groupBox8.add(this.cbNSFFDSWriteDisable8000);
         this.groupBox8.setName("groupBox8");
         //
         // groupBox9
         //
-        this.groupBox9.add(this.cbNFSNes_DutySwap);
-        this.groupBox9.add(this.cbNFSNes_PhaseRefresh);
-        this.groupBox9.add(this.cbNFSNes_NonLinearMixer);
-        this.groupBox9.add(this.cbNFSNes_UnmuteOnReset);
         this.groupBox9.setName("groupBox9");
         //
         // label20
@@ -220,16 +200,43 @@ public class SettingNSFPanel extends SettingTab {
         //
         // tpNSF
         //
-        this.add(this.trkbNSFLPF);
-        this.add(this.label53);
-        this.add(this.label52);
-        this.add(this.trkbNSFHPF);
-        this.add(this.groupBox10);
-        this.add(this.groupBox12);
-        this.add(this.groupBox11);
-        this.add(this.groupBox9);
-        this.add(this.groupBox8);
         this.setName("tpNSF");
+        // layout
+        new Grid(Grid.group(this.groupBox9))
+                .add(this.cbNFSNes_UnmuteOnReset).next()
+                .add(this.cbNFSNes_NonLinearMixer).next()
+                .add(this.cbNFSNes_PhaseRefresh).next()
+                .add(this.cbNFSNes_DutySwap).end();
+        this.tbNSFFds_LPF.setColumns(6);
+        new Grid(Grid.group(this.groupBox8))
+                .add(Grid.row(this.label20, this.tbNSFFds_LPF, this.label21)).next()
+                .add(this.cbNFSFds_4085Reset).next()
+                .add(this.cbNSFFDSWriteDisable8000).end();
+        new Grid(Grid.group(this.groupBox11))
+                .add(this.cbNSFMmc5_NonLinearMixer).next()
+                .add(this.cbNSFMmc5_PhaseRefresh).end();
+        new Grid(Grid.group(this.groupBox10))
+                .add(this.cbNSFDmc_UnmuteOnReset).next()
+                .add(this.cbNSFDmc_NonLinearMixer).next()
+                .add(this.cbNSFDmc_Enable4011).next()
+                .add(this.cbNSFDmc_EnablePNoise).next()
+                .add(this.cbNSFDmc_DPCMAntiClick).next()
+                .add(this.cbNSFDmc_RandomizeNoise).next()
+                .add(this.cbNSFDmc_TriMute).next()
+                .add(this.cbNSFDmc_RandomizeTri).next()
+                .add(this.cbNSFDmc_DPCMReverse).end();
+        new Grid(Grid.group(this.groupBox12))
+                .add(this.cbNSFN160_Serial).end();
+        JPanel left = Grid.panel()
+                .wide(this.groupBox9).next()
+                .wide(this.groupBox8).next()
+                .wide(this.groupBox11).build();
+        JPanel right = Grid.panel()
+                .wide(this.groupBox10).next()
+                .wide(this.groupBox12).build();
+        new Grid(this)
+                .add(left).add(right).next()
+                .span(Grid.row(this.label52, this.trkbNSFHPF, this.label53, this.trkbNSFLPF)).end();
         //
         // trkbNSFHPF
         //

@@ -39,9 +39,4 @@ public class N163Reader extends NsfTrackInfoReader {
     protected BaseChip chip() {
         return chipRegister.chip(NpNesChip.N163Chip.class);
     }
-
-    @Override
-    protected boolean muted(int ch) {
-        return chipRegister.chip(NpNesChip.N163Chip.class).getMask(0, ch);
-    }
 }

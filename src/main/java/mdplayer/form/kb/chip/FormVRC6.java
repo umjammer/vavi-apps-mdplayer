@@ -94,9 +94,9 @@ public class FormVRC6 extends FormChipBase<FormVRC6.Params> {
                 if (px < 8) {
                     for (ch = 0; ch < 3; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(Vrc6Chip.class, chipId, ch);
+                            parent.setMuted(Vrc6Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(Vrc6Chip.class, chipId, ch);
+                            parent.toggleMute(Vrc6Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -105,7 +105,7 @@ public class FormVRC6 extends FormChipBase<FormVRC6.Params> {
             if (ev.getButton() == MouseEvent.BUTTON2) {
                 for (int i = 0; i < 3; i++) {
                     // Unmask.
-                    parent.resetChannelMask(Vrc6Chip.class, chipId, i);
+                    parent.setMuted(Vrc6Chip.class, chipId, i, false);
                 }
 
                 return;
@@ -116,7 +116,7 @@ public class FormVRC6 extends FormChipBase<FormVRC6.Params> {
             ch /= 2;
             if (ev.getButton() == MouseEvent.BUTTON1) {
                 // Mask.
-                parent.setChannelMask(Vrc6Chip.class, chipId, ch);
+                parent.toggleMute(Vrc6Chip.class, chipId, ch);
             }
         }
     };
@@ -158,7 +158,7 @@ public class FormVRC6 extends FormChipBase<FormVRC6.Params> {
         }
     
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -275,30 +275,6 @@ public class FormVRC6 extends FormChipBase<FormVRC6.Params> {
         @Override public Class<? extends mdplayer.Chip> chip() { return NpNesChip.Vrc6Chip.class; }
         @Override public String title(int chipId) { return "Vrc6Inst (%s)".formatted(chipId == 0 ? "Primary" : "Secondary"); }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormVRC6(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            if (ch >= 0 && ch < 3) {
-                NpNesChip.Vrc6Chip c = audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class);
-                if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-            }
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 3; ch++)
-                forceChannelMask(audio, NpNesChip.Vrc6Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(NpNesChip.Vrc6Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(53, MDSound.Chip.MAIN_TAG, NpNesChip.Vrc6Chip.class, "VRC6", 50));

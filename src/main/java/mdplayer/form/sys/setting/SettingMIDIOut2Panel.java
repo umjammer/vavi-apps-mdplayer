@@ -5,8 +5,9 @@ import java.lang.System.Logger;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import mdplayer.Setting;
+import mdplayer.form.Grid;
 import mdplayer.form.SettingTab;
 import static java.lang.System.getLogger;
 
@@ -22,27 +23,27 @@ public class SettingMIDIOut2Panel extends SettingTab {
 
     private final JPanel groupBox15;
     private final JButton btnBeforeSend_Default;
-    private final JTextArea tbBeforeSend_Custom;
-    private final JTextArea tbBeforeSend_XGReset;
+    private final JTextField tbBeforeSend_Custom;
+    private final JTextField tbBeforeSend_XGReset;
     private final JLabel label34;
     private final JLabel label32;
-    private final JTextArea tbBeforeSend_GSReset;
+    private final JTextField tbBeforeSend_GSReset;
     private final JLabel label33;
-    private final JTextArea tbBeforeSend_GMReset;
+    private final JTextField tbBeforeSend_GMReset;
     private final JLabel label31;
     private final JLabel label35;
 
     public SettingMIDIOut2Panel() {
         this.groupBox15 = new JPanel();
         this.btnBeforeSend_Default = new JButton();
-        this.tbBeforeSend_Custom = new JTextArea();
-        this.tbBeforeSend_XGReset = new JTextArea();
+        this.tbBeforeSend_Custom = new JTextField();
+        this.tbBeforeSend_XGReset = new JTextField();
         this.label35 = new JLabel();
         this.label34 = new JLabel();
         this.label32 = new JLabel();
-        this.tbBeforeSend_GSReset = new JTextArea();
+        this.tbBeforeSend_GSReset = new JTextField();
         this.label33 = new JLabel();
-        this.tbBeforeSend_GMReset = new JTextArea();
+        this.tbBeforeSend_GMReset = new JTextField();
         this.label31 = new JLabel();
 
         //
@@ -53,16 +54,6 @@ public class SettingMIDIOut2Panel extends SettingTab {
         //
         // groupBox15
         //
-        this.groupBox15.add(this.btnBeforeSend_Default);
-        this.groupBox15.add(this.tbBeforeSend_Custom);
-        this.groupBox15.add(this.tbBeforeSend_XGReset);
-        this.groupBox15.add(this.label35);
-        this.groupBox15.add(this.label34);
-        this.groupBox15.add(this.label32);
-        this.groupBox15.add(this.tbBeforeSend_GSReset);
-        this.groupBox15.add(this.label33);
-        this.groupBox15.add(this.tbBeforeSend_GMReset);
-        this.groupBox15.add(this.label31);
         this.groupBox15.setName("groupBox15");
         //
         // label31
@@ -103,8 +94,17 @@ public class SettingMIDIOut2Panel extends SettingTab {
         //
         // tpMIDIOut2
         //
-        this.add(this.groupBox15);
         this.setName("tpMIDIOut2");
+        // layout
+        new Grid(Grid.group(this.groupBox15))
+                .add(this.label31).fill(this.tbBeforeSend_GMReset).next()
+                .add(this.label32).fill(this.tbBeforeSend_XGReset).next()
+                .add(this.label33).fill(this.tbBeforeSend_GSReset).next()
+                .add(this.label34).fill(this.tbBeforeSend_Custom).next()
+                .span(Grid.trailing(this.btnBeforeSend_Default)).next()
+                .span(this.label35).end();
+        new Grid(this)
+                .span(this.groupBox15).end();
     }
 
     @Override

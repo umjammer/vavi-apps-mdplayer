@@ -106,7 +106,7 @@ public class FormOKIM6295 extends FormChipBase<FormOKIM6295.Params> {
     
         // the chip itself is the source of truth for channel muting
         for (int mch = 0; mch < newParam.channels.length; mch++)
-            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(OkiM6295Chip.class).getMask(chipId, mch);
+            newParam.channels[mch].mask = audio.plugin.chipRegister.chip(OkiM6295Chip.class).isMuted(chipId, mch);
     }
 
     @Override
@@ -145,9 +145,9 @@ public class FormOKIM6295 extends FormChipBase<FormOKIM6295.Params> {
                 if (px < 8) {
                     for (int ch = 0; ch < 4; ch++) {
                         if (newParam.channels[ch].mask)
-                            parent.resetChannelMask(OkiM6295Chip.class, chipId, ch);
+                            parent.setMuted(OkiM6295Chip.class, chipId, ch, false);
                         else
-                            parent.setChannelMask(OkiM6295Chip.class, chipId, ch);
+                            parent.toggleMute(OkiM6295Chip.class, chipId, ch);
                     }
                 }
                 return;
@@ -160,12 +160,12 @@ public class FormOKIM6295 extends FormChipBase<FormOKIM6295.Params> {
 
                 if (ev.getButton() == MouseEvent.BUTTON1) {
                     // Mask.
-                    parent.setChannelMask(OkiM6295Chip.class, chipId, ch);
+                    parent.toggleMute(OkiM6295Chip.class, chipId, ch);
                     return;
                 }
 
                 // Unmask.
-                for (ch = 0; ch < 4; ch++) parent.resetChannelMask(OkiM6295Chip.class, chipId, ch);
+                for (ch = 0; ch < 4; ch++) parent.setMuted(OkiM6295Chip.class, chipId, ch, false);
             }
         }
     };
@@ -320,28 +320,6 @@ public class FormOKIM6295 extends FormChipBase<FormOKIM6295.Params> {
         @Override public String category() { return "pcm"; }
         @Override public Class<? extends mdplayer.Chip> chip() { return OkiM6295Chip.class; }
         @Override public View create(FormMain frm, int chipId, int zoom) { return new FormOKIM6295(frm, chipId, zoom); }
-
-        @Override public void setChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            OkiM6295Chip c = audio.plugin.chipRegister.chip(OkiM6295Chip.class);
-            if (!c.getMask(chipId, ch)) c.setMask(chipId, ch); else c.resetMask(chipId, ch);
-        }
-
-        @Override public void resetChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch) {
-            audio.plugin.chipRegister.chip(OkiM6295Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void forceChannelMask(Audio audio, Class<? extends mdplayer.Chip> chip, int chipId, int ch, boolean mask) {
-            if (mask)
-                audio.plugin.chipRegister.chip(OkiM6295Chip.class).setMask(chipId, ch);
-            else
-                audio.plugin.chipRegister.chip(OkiM6295Chip.class).resetMask(chipId, ch);
-        }
-
-        @Override public void reapplyChannelMasks(Audio audio, int chipId) {
-            for (int ch = 0; ch < 4; ch++)
-                forceChannelMask(audio, OkiM6295Chip.class, chipId, ch,
-                        audio.plugin.chipRegister.chip(OkiM6295Chip.class).getMask(chipId, ch));
-        }
 
         @Override public List<MixerSlot> mixerSlots() {
             return List.of(new MixerSlot(38, MDSound.Chip.MAIN_TAG, OkiM6295Chip.class, "okim6295", 200));
