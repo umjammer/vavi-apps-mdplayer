@@ -968,15 +968,15 @@ public class FormMain extends JFrame {
         if (forcedExit || closing) return;
         closing = true;
 
-        logger.log(Level.ERROR, "Termination process begins");
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 00");
+        logger.log(Level.DEBUG, "Termination process begins");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 00");
 
         frmPlayList.stop();
         frmPlayList.save();
 
         tonePallet.save(null);
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 01");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 01");
 
         StopMIDIInMonitoring();
         Request req = new Request(enmRequest.Die, null, null);
@@ -984,7 +984,7 @@ public class FormMain extends JFrame {
         // No callbacks for suicide requests; a stuck audio side must not keep the player from ending
         if (!waitFor(req::getEnd)) logger.log(Level.WARNING, "audio did not stop, going on");
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 02");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 02");
 
         isRunning = false;
         // the screen loop may never have started, when a dialog held the start up
@@ -992,7 +992,7 @@ public class FormMain extends JFrame {
 
         keyboardHook1.close();
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 03");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 03");
 
         if (ym2612MIDI != null)
             ym2612MIDI.close();
@@ -1000,7 +1000,7 @@ public class FormMain extends JFrame {
         // release
         closeScreen();
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 04");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 04");
 
         recordWindowState();
 
@@ -1015,7 +1015,7 @@ public class FormMain extends JFrame {
         for (VisualizerProvider p : VisualizerProvider.providers()) p.close();
         if (frmVSTeffectList != null) frmVSTeffectList.setVisible(false);
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 05");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 05");
 
         // the VST plug-ins outlive every song - this is the one place they are let go of, and it
         // has to be before the settings are written, since it is what puts the effect chain in them
@@ -1025,11 +1025,11 @@ public class FormMain extends JFrame {
         setting.save();
         saved = true;
 
-        logger.log(Level.ERROR, "frmMain_FormClosing:STEP 06");
+        logger.log(Level.DEBUG, "frmMain_FormClosing:STEP 06");
 
         if (mmf != null) mmf.close(); // not made yet when the start up was held up
 
-        logger.log(Level.ERROR, "Termination process complete");
+        logger.log(Level.DEBUG, "Termination process complete");
     }
 
     /** Waits up to {@link #CLOSE_TIMEOUT} ms for {@code done}, and tells whether it came. */
