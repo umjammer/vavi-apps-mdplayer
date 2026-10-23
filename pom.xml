@@ -481,6 +481,11 @@
       <artifactId>vavi-awt</artifactId>
       <version>1.0.12</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
+      <artifactId>vavi-sound-vst</artifactId>
+      <version>0.0.1</version>
+    </dependency>
 
     <dependency>
       <groupId>com.github.umjammer</groupId> <!-- vavi / com.github.umjammer -->
