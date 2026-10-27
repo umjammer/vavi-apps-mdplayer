@@ -182,8 +182,13 @@ public class MuapDriver extends BaseDriver {
             if (ret[0].args.get(i) != null && ret[0].args.get(i) instanceof byte[]) {
                 toneBuff = (byte[]) ret[0].args.get(i);
             }
-            if (ret[0].args.get(i + 1) != null && ret[0].args.get(i + 1) instanceof int[]) {
-                labelAdr = (int[]) ret[0].args.get(i + 1);
+            // the compiler hands the labels over as short[] (the C# ushort[]); dropping them left
+            // the driver nothing to count "@label" passes with, so a song looping by "@jump" never ended
+            if (i + 1 < ret[0].args.size() && ret[0].args.get(i + 1) instanceof short[] labels) {
+                labelAdr = new int[labels.length];
+                for (int j = 0; j < labels.length; j++) labelAdr[j] = labels[j] & 0xffff;
+            } else if (i + 1 < ret[0].args.size() && ret[0].args.get(i + 1) instanceof int[] labels) {
+                labelAdr = labels;
             }
         }
 
