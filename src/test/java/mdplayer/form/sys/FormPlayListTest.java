@@ -194,6 +194,40 @@ class FormPlayListTest {
         assertEquals("d", form.getPlayingSongInfo().title, "next follows the list as moved");
     }
 
+    /** removing, moving and sorting can be undone and redone, ten edits back */
+    @Test
+    void undoRedo() throws Exception {
+        add("c", "a", "d", "b");
+        Class<?>[] click = {java.awt.event.ActionEvent.class};
+        select(1, 2);
+        call("tsmiDelThis_Click", click, (Object) null);
+        assertEquals(List.of("c", "b"), titles());
+        call("undo", new Class<?>[0]);
+        assertEquals(List.of("c", "a", "d", "b"), titles());
+        assertTrue(table.isRowSelected(1) && table.isRowSelected(2), "what was removed is selected again");
+        call("redo", new Class<?>[0]);
+        assertEquals(List.of("c", "b"), titles());
+        call("undo", new Class<?>[0]);
+
+        call("sortBy", new Class<?>[] {int.class}, FormPlayList.cols.clmTitle.ordinal());
+        assertEquals(List.of("a", "b", "c", "d"), titles());
+        select(0);
+        call("move", new Class<?>[] {int.class}, 1);
+        assertEquals(List.of("b", "a", "c", "d"), titles());
+        call("undo", new Class<?>[0]);
+        call("undo", new Class<?>[0]);
+        assertEquals(List.of("c", "a", "d", "b"), titles());
+
+        select(0);
+        for (int i = 0; i < 12; i++) call("move", new Class<?>[] {int.class}, i % 2 == 0 ? 1 : -1);
+        for (int i = 0; i < 12; i++) call("undo", new Class<?>[0]);
+        assertFalse((boolean) call("canUndo", new Class<?>[0]), "only ten are kept");
+        assertTrue((boolean) call("canRedo", new Class<?>[0]));
+        select(0);
+        call("move", new Class<?>[] {int.class}, 1);
+        assertFalse((boolean) call("canRedo", new Class<?>[0]), "an edit drops what was undone");
+    }
+
     /** a list opened again goes to the song played last when it was saved */
     @Test
     void lastPlayed(@org.junit.jupiter.api.io.TempDir Path dir) throws Exception {
