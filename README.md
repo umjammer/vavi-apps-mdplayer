@@ -323,6 +323,8 @@ you can select a chip implementation variant by number.
  * ~~volume leveling~~
  * ~~calibration works for each Y/F/R inside mfi?~~
  * ~~fuetrek adpcm, check rohm also~~
+ * ~~vst, separate into new project (merge from arcoflex056)~~
+ * playlist undo deletion
 
 ---
 
