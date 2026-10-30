@@ -38,6 +38,7 @@ import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -192,6 +193,8 @@ public class FormPlayList extends JFrame {
         playingMusic = null;
         lastPlayIndex = -1;
         randomStack.clear();
+        undos.clear();
+        redos.clear();
         clearSort();
         refresh();
         restoreLastPlayed();
@@ -526,6 +529,7 @@ public class FormPlayList extends JFrame {
             if (r < pi) before++;
         }
         boolean playingRemoved = removed.contains(playingMusic);
+        remember();
         musics.removeIf(removed::contains);
         randomStack.removeIf(removed::contains);
         clearSort();
@@ -550,6 +554,7 @@ public class FormPlayList extends JFrame {
                 getTitle(), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (res != JOptionPane.YES_OPTION) return;
 
+        remember();
         playList.getMusics().clear();
         randomStack.clear();
         playingMusic = null;
@@ -600,6 +605,7 @@ public class FormPlayList extends JFrame {
         if (removed.isEmpty()) return;
 
         List<PlayList.Music> selected = selectedMusics();
+        remember();
         musics.removeIf(removed::contains);
         randomStack.removeIf(removed::contains);
         clearSort();
@@ -677,6 +683,7 @@ public class FormPlayList extends JFrame {
         List<PlayList.Music> musics = playList.getMusics();
         Set<PlayList.Music> sel = Collections.newSetFromMap(new IdentityHashMap<>());
         sel.addAll(selected);
+        remember();
         if (direction < 0) {
             for (int i = 1; i < musics.size(); i++) {
                 if (sel.contains(musics.get(i)) && !sel.contains(musics.get(i - 1))) {
@@ -708,11 +715,95 @@ public class FormPlayList extends JFrame {
     private void tsmiA_Click(ActionEvent ev) {
         String type = ((JMenuItem) ev.getSource()).getText();
         List<PlayList.Music> selected = selectedMusics();
+        if (selected.isEmpty()) return;
+        remember(selected);
         for (PlayList.Music music : selected) {
             music.type = type;
         }
         refresh();
         select(selected);
+    }
+
+    // ---- undoing
+
+    /** how many edits of the list can be undone */
+    private static final int undoSize = 10;
+
+    /**
+     * The list as it was at one time: the songs in their order, and the types of the songs an edit
+     * set the type of. A song is kept by reference, so its tags are not copied.
+     */
+    private record State(List<PlayList.Music> musics, Map<PlayList.Music, String> types,
+                         PlayList.Music playingMusic, int sortColumn, boolean sortAscending,
+                         List<PlayList.Music> selected) {}
+
+    /** the states before the edits that can be undone, the latest last */
+    private final Deque<State> undos = new ArrayDeque<>();
+    /** the states before the undos that can be redone, the latest last */
+    private final Deque<State> redos = new ArrayDeque<>();
+
+    /** The list as it is now, with the types of {@code typed} when not null. */
+    private State state(Collection<PlayList.Music> typed) {
+        Map<PlayList.Music, String> types = null;
+        if (typed != null) {
+            types = new IdentityHashMap<>();
+            for (PlayList.Music music : typed) types.put(music, music.type);
+        }
+        return new State(new ArrayList<>(playList.getMusics()), types, playingMusic, sortColumn, sortAscending, selectedMusics());
+    }
+
+    /** Keeps the list as it is now, before it is edited, so that the edit can be undone. */
+    private void remember() {
+        remember(null);
+    }
+
+    /** @param typed the songs whose type the edit sets, or null when it sets none */
+    private void remember(Collection<PlayList.Music> typed) {
+        push(undos, state(typed));
+        redos.clear();
+    }
+
+    private static void push(Deque<State> states, State state) {
+        states.addLast(state);
+        while (states.size() > undoSize) states.removeFirst();
+    }
+
+    /** Takes the list back to before the last edit. */
+    void undo() {
+        swap(undos, redos);
+    }
+
+    /** Does again the edit undone last. */
+    void redo() {
+        swap(redos, undos);
+    }
+
+    /** Takes the list to the latest state of {@code from}, keeping the list as it is now on {@code to}. */
+    private void swap(Deque<State> from, Deque<State> to) {
+        if (from.isEmpty()) return;
+        State s = from.removeLast();
+        push(to, state(s.types() == null ? null : s.types().keySet()));
+
+        List<PlayList.Music> musics = playList.getMusics();
+        musics.clear();
+        musics.addAll(s.musics());
+        if (s.types() != null) s.types().forEach((music, type) -> music.type = type);
+        // the song being played may have changed since, only a list emptied lost it
+        if (playingMusic == null) playingMusic = s.playingMusic();
+        sortColumn = s.sortColumn();
+        sortAscending = s.sortAscending();
+        updateHeaders();
+        refresh();
+        playIndex();
+        select(s.selected());
+    }
+
+    boolean canUndo() {
+        return !undos.isEmpty();
+    }
+
+    boolean canRedo() {
+        return !redos.isEmpty();
     }
 
     // ---- searching
@@ -795,6 +886,7 @@ public class FormPlayList extends JFrame {
                     : naturalCompare(a.toString(), b.toString());
             return sortAscending ? r : -r;
         });
+        remember();
         playList.getMusics().sort(c); // a stable sort, so sorting by one column then another works
         updateHeaders();
         refresh();
@@ -1133,6 +1225,7 @@ public class FormPlayList extends JFrame {
         int at = indexOf(before);
         if (at < 0) at = musics.size();
         if (first[0] == null) {
+            remember(); // undoing takes the whole batch away, the songs read so far
             first[0] = added.getFirst();
             dgvList.scrollRectToVisible(dgvList.getCellRect(at, 0, true));
         }
@@ -1623,6 +1716,8 @@ public class FormPlayList extends JFrame {
         this.tsmiDelDuplicated = new JMenuItem();
         this.tsmiDelDuplicatedByHash = new JMenuItem();
         this.tsmiOpenFolder = new JMenuItem();
+        this.tsmiUndo = new JMenuItem();
+        this.tsmiRedo = new JMenuItem();
         this.toolStrip1 = new JToolBar();
         this.tsbOpenPlayList = new JButton();
         this.tsbSavePlayList = new JButton();
@@ -1737,6 +1832,9 @@ public class FormPlayList extends JFrame {
         this.cmsPlayList.add(this.tsmiDelDuplicatedByHash);
         this.cmsPlayList.add(this.tsmiDelAllMusic);
         this.cmsPlayList.add(this.tsmiOpenFolder);
+        this.cmsPlayList.addSeparator();
+        this.cmsPlayList.add(this.tsmiUndo);
+        this.cmsPlayList.add(this.tsmiRedo);
         //
         // typeSettingsToolStripMenuItem
         //
@@ -1784,6 +1882,21 @@ public class FormPlayList extends JFrame {
         //
         menuItem(this.tsmiOpenFolder, "tsmiOpenFolder", "Open the folder");
         this.tsmiOpenFolder.addActionListener(this::tsmiOpenFolder_Click);
+        //
+        // tsmiUndo, tsmiRedo
+        //
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+        KeyStroke undoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask);
+        KeyStroke redoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask | InputEvent.SHIFT_DOWN_MASK);
+        menuItem(this.tsmiUndo, "tsmiUndo", "Undo");
+        this.tsmiUndo.setAccelerator(undoKey);
+        this.tsmiUndo.addActionListener(e -> undo());
+        menuItem(this.tsmiRedo, "tsmiRedo", "Redo");
+        this.tsmiRedo.setAccelerator(redoKey);
+        this.tsmiRedo.addActionListener(e -> redo());
+        bindKey(undoKey, "undo", this::undo);
+        bindKey(redoKey, "redo", this::redo);
+        bindKey(KeyStroke.getKeyStroke(KeyEvent.VK_Y, menuMask), "redo", this::redo);
         //
         // toolStrip1
         //
@@ -1937,6 +2050,8 @@ public class FormPlayList extends JFrame {
         tsmiDelAllMusic.setEnabled(!playList.getMusics().isEmpty());
         tsmiDelDuplicated.setEnabled(playList.getMusics().size() > 1);
         tsmiDelDuplicatedByHash.setEnabled(playList.getMusics().size() > 1);
+        tsmiUndo.setEnabled(canUndo());
+        tsmiRedo.setEnabled(canRedo());
         tsmiDelThis.setText(dgvList.getSelectedRowCount() > 1
                 ? text("tsmiDelThis.Text.plural", "Remove the selected songs")
                 : text("tsmiDelThis.Text", "Remove this song"));
@@ -1977,4 +2092,6 @@ public class FormPlayList extends JFrame {
     private JButton tsbImgExt;
     private Timer timer1;
     private JMenuItem tsmiOpenFolder;
+    private JMenuItem tsmiUndo;
+    private JMenuItem tsmiRedo;
 }
